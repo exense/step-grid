@@ -8,17 +8,12 @@
  * Contributors:
  *     IBM Corporation - initial API and implementation
  *******************************************************************************/
-package step.commons.helpers;
+package step.grid.filemanager;
 
-import java.io.IOException;
+import java.io.File;
 
-import org.junit.Test;
-
-public class FileHelperTest {
-
-	@Test
-	public void test() throws IOException {
-		// TODO
-	}
-
+public interface StreamingFileProvider {
+	
+	public File saveFileTo(String fileHandle, File file) throws FileProviderException;
+	
 }

@@ -8,17 +8,13 @@
  * Contributors:
  *     IBM Corporation - initial API and implementation
  *******************************************************************************/
-package step.commons.helpers;
+package step.grid.filemanager;
 
-import java.io.IOException;
+@SuppressWarnings("serial")
+public class ControllerCallException extends Exception {
 
-import org.junit.Test;
-
-public class FileHelperTest {
-
-	@Test
-	public void test() throws IOException {
-		// TODO
+	public ControllerCallException(Throwable cause) {
+		super(cause);
 	}
 
 }
