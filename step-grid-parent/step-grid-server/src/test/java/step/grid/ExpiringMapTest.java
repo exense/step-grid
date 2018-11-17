@@ -34,10 +34,13 @@ public class ExpiringMapTest {
 		
 		m.put("test", "test");
 		Assert.assertEquals("test", m.get("test"));
-		
-		for(int i=0;i<100;i++) {
-			Thread.sleep(1);
+
+		// Loop longer than 10ms (this is unfortunately depending on the CPU speed of the machined the test is running on)
+		for(int i=0;i<1000000;i++) {
 			m.touch("test");
+			// The following doesn't seem to be reliable. Depending on the machine the sleep time is sometime higher than 10ms
+			// which caused the test to fail
+			// Thread.sleep(1)
 		}
 		
 		Assert.assertEquals("test", m.get("test"));
