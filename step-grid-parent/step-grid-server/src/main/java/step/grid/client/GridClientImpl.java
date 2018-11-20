@@ -223,6 +223,8 @@ public class GridClientImpl implements GridClient {
 		AgentTokenWrapper agentTokenWrapper = new AgentTokenWrapper(token);
 		agentTokenWrapper.setServices(localAgentTokenServices);
 		
+		localAgentTokenServices.getApplicationContextBuilder().resetContext();
+		
 		MessageHandler h = localMessageHandlerPool.get(message.getHandler());
 		output = h.handle(agentTokenWrapper, message);
 		return output;
