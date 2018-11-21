@@ -23,13 +23,71 @@ import org.slf4j.LoggerFactory;
 import step.grid.filemanager.FileProviderException;
 import step.grid.io.InputMessage;
 
+/**
+ * This class provides an API for the creation of hierarchical classloaders.
+ * The creation of a classloader tree and the execution of a {@link Callable}
+ * in the created context using this class works basically as follow:
+ * 
+ * <pre>
+ *  ApplicationContextBuilder builder = new ApplicationContextBuilder()
+ *  builder.pushContext(...)
+ *  builder.pushContext(...)
+ *  builder.runInContext(...)
+ * </pre>
+ * 
+ * It supports the creation of {@link ClassLoader} trees structures using a fork 
+ * mechanism. For instance:
+ * 
+ * <pre>
+ *  ApplicationContextBuilder builder = new ApplicationContextBuilder()
+ *  builder.pushContext(...)
+ *  builder.fork("newBranchName")
+ *  builder.pushContext("newBranchName", ...)
+ *  builder.runInContext("newBranchName", ...)
+ * </pre> 
+ * 
+ * This code will result in a tree of {@link ClassLoader} having to branches:
+ * the master branch (the default one) and the branch called "newBranchName"
+ * This branches can be selected for execution using builder.runInContext("branchName",...)
+ * 
+ * @author Jérôme Comte
+ *
+ */
 public class ApplicationContextBuilder {
 	
+	public static final String MASTER = "master";
+
 	private static final Logger logger = LoggerFactory.getLogger(ApplicationContextBuilder.class);
 		
-	private ApplicationContext rootContext;
+	private ConcurrentHashMap<String, Branch> branches = new ConcurrentHashMap<>();
+	
+	protected class Branch {
 		
-	private ThreadLocal<ApplicationContext> currentContexts = new ThreadLocal<>();
+		private ApplicationContext rootContext;
+		
+		private final ThreadLocal<ApplicationContext> currentContexts = new ThreadLocal<>();
+
+		protected Branch(ApplicationContext rootContext) {
+			super();
+			this.rootContext = rootContext;
+			reset();
+		}
+		
+		protected void reset() {
+			currentContexts.set(rootContext);
+		}
+		
+		public Branch fork(String newBranchName) {
+			ApplicationContext currentContext = currentContexts.get();
+			Branch newBranch = new Branch(currentContext);
+			ApplicationContextBuilder.this.branches.put(newBranchName, newBranch);
+			return newBranch;
+		}
+
+		protected ThreadLocal<ApplicationContext> getCurrentContexts() {
+			return currentContexts;
+		}
+	}
 	
 	public static class ApplicationContext implements Closeable {
 		
@@ -39,8 +97,13 @@ public class ApplicationContextBuilder {
 		
 		private Map<String, Object> contextObjects = new HashMap<>();
 
-		public ApplicationContext() {
+		protected ApplicationContext() {
 			super();
+		}
+		
+		protected ApplicationContext(ClassLoader classLoader) {
+			super();
+			this.classLoader = classLoader;
 		}
 
 		public Object get(Object key) {
@@ -54,7 +117,7 @@ public class ApplicationContextBuilder {
 		public ClassLoader getClassLoader() {
 			return classLoader;
 		}
-
+		
 		@Override
 		public void close() throws IOException {
 			if(classLoader!=null && classLoader instanceof Closeable) {
@@ -63,21 +126,75 @@ public class ApplicationContextBuilder {
 		}
 	}
 	
+	/**
+	 * Creates a new instance of {@link ApplicationContextBuilder} using the {@link ClassLoader} 
+	 * of this class as root {@link ClassLoader}
+	 */
 	public ApplicationContextBuilder() {
-		rootContext = new ApplicationContext();
-		rootContext.classLoader = InputMessage.class.getClassLoader();
-		resetContext();
+		ApplicationContext rootContext = new ApplicationContext(this.getClass().getClassLoader());
+		Branch branch = new Branch(rootContext);
+		branches.put(MASTER, branch);
 	}
 	
+	/**
+	 * Reset the context of all branches for this thread.
+	 * After calling this method the current context will point to
+	 * the root context of each branches.
+	 */
 	public void resetContext() {
-		currentContexts.set(rootContext);
+		branches.values().forEach(branch->branch.reset());
+	}
+
+	private Branch getBranch(String branchName) {
+		Branch branch = branches.get(branchName);
+		if(branch == null) {
+			throw new RuntimeException("No branch found with name "+branchName);
+		}
+		return branch;
 	}
 	
+	/**
+	 * Create a new branch based on the current context of the default branch
+	 * 
+	 * @param newBranchName the name of the new branch to be created
+	 */
+	public void forkCurrentContext(String newBranchName) {
+		getBranch(MASTER).fork(newBranchName);
+	}
+	
+	/**
+	 * Create a new branch based on the current context of the branch specified as input
+	 * 
+	 * @param originBranchName the branch to be forked
+	 * @param newBranchName the name of the new branch to be created
+	 */
+	public void forkCurrentContext(String originBranchName, String newBranchName) {
+		getBranch(originBranchName).fork(newBranchName);
+	}
+	
+	/**
+	 * Push a new context (resulting in a {@link ClassLoader}) to the stack for the current thread
+	 * 
+	 * @param descriptor the descriptor of the context to be pushed 
+	 * @throws ApplicationContextBuilderException
+	 */
 	public void pushContext(ApplicationContextFactory descriptor) throws ApplicationContextBuilderException {
+		pushContext(MASTER, descriptor);
+	}
+	
+	/**
+	 * Push a new context (resulting in a {@link ClassLoader}) to the stack of the branch specified as input for the current thread
+	 * 
+	 * @param branchName the name of the branch to push the new context onto
+	 * @param descriptor the descriptor of the context to be pushed 
+	 * @throws ApplicationContextBuilderException
+	 */
+	public void pushContext(String branchName, ApplicationContextFactory descriptor) throws ApplicationContextBuilderException {
 		synchronized(this) {
-			ApplicationContext parentContext = currentContexts.get();
+			ThreadLocal<ApplicationContext> branch = getBranch(branchName).getCurrentContexts();
+			ApplicationContext parentContext = branch.get();
 			if(parentContext==null) {
-				parentContext = rootContext;
+				throw new RuntimeException("The current context is null. This should never occur");
 			}
 			
 			String contextKey = descriptor.getId();
@@ -103,7 +220,7 @@ public class ApplicationContextBuilder {
 					throw new ApplicationContextBuilderException(e);
 				}
 			}
-			currentContexts.set(context);
+			branch.set(context);
 		}
 	}
 
@@ -113,12 +230,35 @@ public class ApplicationContextBuilder {
 	}
 	
 	public ApplicationContext getCurrentContext() {
-		return currentContexts.get();
+		return getCurrentContext(MASTER);
 	}
 	
-	public <T> T runInContext(Callable<T> runnable) throws Exception {
+	public ApplicationContext getCurrentContext(String branch) {
+		return getBranch(branch).getCurrentContexts().get();
+	}
+	
+	/**
+	 * Execute the callable passed as argument in the current context of this thread
+	 * 
+	 * @param callable the callable to be executed
+	 * @return the result of the callable
+	 * @throws Exception
+	 */
+	public <T> T runInContext(Callable<T> callable) throws Exception {
+		return runInContext(MASTER, callable);
+	}
+	
+	/**
+	 * Execute the callable passed as argument in the current context of this thread on the branch specified as input
+	 * 
+	 * @param branchName the name of the branch to be used for execution
+	 * @param callable the callable to be executed
+	 * @return the result of the callable
+	 * @throws Exception
+	 */
+	public <T> T runInContext(String branchName, Callable<T> runnable) throws Exception {
 		ClassLoader previousCl = Thread.currentThread().getContextClassLoader();
-		Thread.currentThread().setContextClassLoader(getCurrentContext().getClassLoader());
+		Thread.currentThread().setContextClassLoader(getCurrentContext(branchName).getClassLoader());
 		try {
 			return runnable.call();
 		} finally {
