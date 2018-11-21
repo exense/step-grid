@@ -26,6 +26,7 @@
 
 	<properties>
 		<junit.version>4.8.1</junit.version>
+		<jackson.version>2.5.4</jackson.version>
 	</properties>
 
 	<modules>
