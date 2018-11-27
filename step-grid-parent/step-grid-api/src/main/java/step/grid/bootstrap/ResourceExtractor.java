@@ -29,21 +29,15 @@ public class ResourceExtractor {
 	
 	public static File extractResource(ClassLoader cl, String resourceName) {
 		File gridJar;
-		InputStream is = cl.getResourceAsStream(resourceName);
-		try {
+		
+		try (InputStream is = cl.getResourceAsStream(resourceName)) {
 			gridJar = File.createTempFile(resourceName + "-" + UUID.randomUUID(), resourceName.substring(resourceName.lastIndexOf(".")));
 			Files.copy(is, gridJar.toPath(), StandardCopyOption.REPLACE_EXISTING);
 			gridJar.deleteOnExit();
 			return gridJar; 
 		} catch (IOException e) {
 			throw new RuntimeException("Error while extracting plugin file", e);
-		} finally {
-			try {
-				is.close();
-			} catch (IOException e) {
-				throw new RuntimeException("Error while extracting plugin file (stream close())", e);
-			}
-		}
+		} 
 	}
 
 }
