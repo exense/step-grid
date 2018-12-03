@@ -42,10 +42,12 @@ import com.fasterxml.jackson.jaxrs.json.JacksonJsonProvider;
 import step.commons.helpers.FileHelper;
 import step.grid.filemanager.ControllerCallException;
 import step.grid.filemanager.ControllerCallTimeout;
-import step.grid.filemanager.FileProviderException;
-import step.grid.filemanager.StreamingFileProvider;
+import step.grid.filemanager.FileManagerException;
+import step.grid.filemanager.FileVersion;
+import step.grid.filemanager.FileVersionId;
+import step.grid.filemanager.FileVersionProvider;
 
-public class RegistrationClient implements StreamingFileProvider {
+public class RegistrationClient implements FileVersionProvider {
 	
 	private final String registrationServer;
 	
@@ -87,11 +89,11 @@ public class RegistrationClient implements StreamingFileProvider {
 	}
 
 	@Override
-	public File saveFileTo(String fileHandle, File container) throws FileProviderException {
+	public FileVersion saveFileVersionTo(FileVersionId fileVersionId, File container) throws FileManagerException {
 		try {
 			Response response;
 			try {
-				response = client.target(registrationServer + "/grid/file/"+fileHandle).request().property(ClientProperties.READ_TIMEOUT, callTimeout)
+				response = client.target(registrationServer + "/grid/file/"+fileVersionId.getFileId()+"/"+fileVersionId.getVersion()).request().property(ClientProperties.READ_TIMEOUT, callTimeout)
 						.property(ClientProperties.CONNECT_TIMEOUT, connectionTimeout).get();
 			} catch (ProcessingException e) {
 				Throwable cause = e.getCause();
@@ -126,16 +128,17 @@ public class RegistrationClient implements StreamingFileProvider {
 						bos.close();					
 					}
 					if(logger.isDebugEnabled()) {
-						logger.debug("Uncompressed file "+ fileHandle +" in "+(System.currentTimeMillis()-t2)+"ms to "+file.getAbsoluteFile());
+						logger.debug("Uncompressed file "+ fileVersionId +" in "+(System.currentTimeMillis()-t2)+"ms to "+file.getAbsoluteFile());
 					}
 					
-					return file;				
+					FileVersion fileVersion = new FileVersion(file, fileVersionId, isDirectory);
+					return fileVersion;				
 				} else {
 					throw new RuntimeException("Unable to find filename in header: "+response.getHeaderString("content-disposition"));
 				}
 			}
 		} catch(Exception e) {
-			throw new FileProviderException(fileHandle, e);
+			throw new FileManagerException(fileVersionId, e);
 		}
 	}
 }

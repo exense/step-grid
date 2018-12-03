@@ -18,41 +18,10 @@
  *******************************************************************************/
 package step.grid.filemanager;
 
-import java.io.IOException;
+import java.io.File;
 
-public interface FileProvider {
+public interface FileVersionProvider {
 	
-	public TransportableFile getTransportableFile(String fileHandle) throws IOException;
+	public FileVersion saveFileVersionTo(FileVersionId fileVersionId, File container) throws FileManagerException;
 	
-	public static class TransportableFile {
-		
-		protected String name;
-		
-		protected boolean isDirectory;
-		
-		protected byte[] bytes;
-
-		public TransportableFile(String name, boolean isDirectory, byte[] bytes) {
-			super();
-			this.name = name;
-			this.isDirectory = isDirectory;
-			this.bytes = bytes;
-		}
-
-		public String getName() {
-			return name;
-		}
-
-		public void setName(String name) {
-			this.name = name;
-		}
-
-		public boolean isDirectory() {
-			return isDirectory;
-		}
-
-		public byte[] getBytes() {
-			return bytes;
-		}
-	}
 }

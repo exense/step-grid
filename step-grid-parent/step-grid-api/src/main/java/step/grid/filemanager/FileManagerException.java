@@ -16,26 +16,24 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with STEP.  If not, see <http://www.gnu.org/licenses/>.
  *******************************************************************************/
-package step.grid;
+package step.grid.filemanager;
 
-import java.io.File;
+@SuppressWarnings("serial")
+public class FileManagerException extends Exception {
 
-public interface GridFileService {
-
-	/**
-	 * Register a file into the GRID
-	 * 
-	 * @param file the file to be registered to the GRID
-	 * @return an handle to the registered file. This handle will be used to retrieve the registered file
-	 */
-	String registerFile(File file);
+	private final FileVersionId fileVersionId;
 	
-	/**
-	 * Get a file that has been previously registered to the GRID
-	 * 
-	 * @param fileHandle the handle returned at regitration
-	 * @return the registered file
-	 */
-	File getRegisteredFile(String fileHandle);
+	public FileManagerException(FileVersionId fileVersionId, Throwable cause) {
+		super(cause);
+		this.fileVersionId = fileVersionId;
+	}
+	
+	public FileManagerException(FileVersionId fileVersionId, String message, Throwable cause) {
+		super(message, cause);
+		this.fileVersionId = fileVersionId;
+	}
 
+	public FileVersionId getFileVersionId() {
+		return fileVersionId;
+	}
 }

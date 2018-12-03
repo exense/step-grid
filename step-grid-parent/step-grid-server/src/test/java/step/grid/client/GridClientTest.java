@@ -19,6 +19,7 @@
 package step.grid.client;
 
 import java.io.File;
+import java.io.FileWriter;
 import java.util.HashMap;
 
 import org.junit.Assert;
@@ -33,6 +34,7 @@ import step.grid.TokenWrapper;
 import step.grid.agent.AbstractGridTest;
 import step.grid.bootstrap.ResourceExtractor;
 import step.grid.client.GridClientImpl.AgentCallTimeoutException;
+import step.grid.filemanager.FileVersionId;
 import step.grid.io.OutputMessage;
 
 public class GridClientTest extends AbstractGridTest {
@@ -42,6 +44,11 @@ public class GridClientTest extends AbstractGridTest {
 		super.init();
 	}
 	
+	/**
+	 * Test the E2E FileManager process for a single file
+	 * 
+	 * @throws Exception
+	 */
 	@Test
 	public void testFileRegistration() throws Exception {
 		getClient(0,10000,10000);
@@ -50,15 +57,88 @@ public class GridClientTest extends AbstractGridTest {
 
 		File testFile = ResourceExtractor.extractResource(this.getClass().getClassLoader(), "TestFile.txt");
 
-		String fileHandle = client.registerFile(testFile);
+		// Register a single file
+		FileVersionId fileHandle = client.registerFile(testFile).getVersionId();
 		
-		JsonNode node = new ObjectMapper().createObjectNode().put("file", fileHandle).put("fileVersion", FileHelper.getLastModificationDateRecursive(testFile));
+		JsonNode node = new ObjectMapper().createObjectNode().put("file", fileHandle.getFileId()).put("fileVersion", fileHandle.getVersion());
 		
-		OutputMessage output = client.call(token, node, TestMessageHandler.class.getName(), null, new HashMap<>(), 10000);
+		// Call a simple test message handler that reads the content of the transfered file and returns it
+		OutputMessage output = client.call(token, node, TestMessageHandler.class.getName(), null, new HashMap<>(), 100000);
 		
+		// Assert the content of the file matches
 		Assert.assertEquals("TEST", output.getPayload().get("content").asText());
 	}
 
+	/**
+	 * Test the file manager with multiple versions of a single file
+	 * 
+	 * @throws Exception
+	 */
+	@Test
+	public void testMultipleVersionRegistration() throws Exception {
+		getClient(0,10000,10000);
+		
+		TokenWrapper token = selectToken();
+
+		// Create a simple directory structure
+		File tempDir = FileHelper.createTempFolder();
+
+		File file = new File(tempDir+"/File1");
+		file.createNewFile();
+		
+		try(FileWriter writer = new FileWriter(file)) {
+			writer.write("V1");
+		}
+		
+		// Register the directory
+		FileVersionId fileHandleVersion1 = client.registerFile(file).getVersionId();
+		
+		try(FileWriter writer = new FileWriter(file)) {
+			writer.write("V2");
+		}
+		FileVersionId fileHandleVersion2 = client.registerFile(file).getVersionId();
+		
+		JsonNode node = new ObjectMapper().createObjectNode().put("file", fileHandleVersion1.getFileId()).put("fileVersion", fileHandleVersion1.getVersion());
+		OutputMessage output = client.call(token, node, TestMessageHandler.class.getName(), null, new HashMap<>(), 100000);
+		Assert.assertEquals("V1", output.getPayload().get("content").asText());
+		
+		node = new ObjectMapper().createObjectNode().put("file", fileHandleVersion2.getFileId()).put("fileVersion", fileHandleVersion2.getVersion());
+		output = client.call(token, node, TestMessageHandler.class.getName(), null, new HashMap<>(), 100000);
+		Assert.assertEquals("V2", output.getPayload().get("content").asText());
+	}
+
+	
+	/**
+	 * Test the E2E FileManager process for a directory
+	 * 
+	 * @throws Exception
+	 */
+	@Test
+	public void testFolderRegistration() throws Exception {
+		getClient(0,10000,10000);
+		
+		TokenWrapper token = selectToken();
+
+		// Create a simple directory structure
+		File tempDir = FileHelper.createTempFolder();
+		File subFolder = new File(tempDir+"/SubFolder1");
+		subFolder.mkdirs();
+		File file = new File(subFolder+"/File1");
+		file.createNewFile();
+		File file2 = new File(tempDir+"/File1");
+		file2.createNewFile();
+		
+		// Register the directory
+		FileVersionId fileHandle = client.registerFile(tempDir).getVersionId();
+		
+		JsonNode node = new ObjectMapper().createObjectNode().put("folder", fileHandle.getFileId()).put("fileVersion", fileHandle.getVersion());
+		
+		// Call a simple test message handler that reads the structure of the transfered folder and returns it
+		OutputMessage output = client.call(token, node, TestMessageHandler.class.getName(), null, new HashMap<>(), 100000);
+		
+		Assert.assertEquals("File1;SubFolder1;", output.getPayload().get("content").asText());
+	}
+	
 	// AgentCallTimeout during reservation is currently impossible to test as we don't have any hook in the reservation where to inject a sleep
 	
 	@Test
@@ -104,6 +184,6 @@ public class GridClientTest extends AbstractGridTest {
 		gridClientConfiguration.setReadTimeoutOffset(readOffset);
 		gridClientConfiguration.setReserveSessionTimeout(reserveTimeout);
 		gridClientConfiguration.setReleaseSessionTimeout(releaseTimeout);
-		client = new GridClientImpl(gridClientConfiguration, grid, grid);
+		client = new GridClientImpl(gridClientConfiguration, grid, grid.getFileManagerServer());
 	}
 }

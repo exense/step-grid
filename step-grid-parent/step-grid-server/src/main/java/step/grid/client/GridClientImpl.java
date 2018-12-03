@@ -44,7 +44,6 @@ import com.fasterxml.jackson.jaxrs.json.JacksonJsonProvider;
 
 import step.grid.AgentRef;
 import step.grid.Grid;
-import step.grid.GridFileService;
 import step.grid.Token;
 import step.grid.TokenWrapper;
 import step.grid.agent.AgentTokenServices;
@@ -54,7 +53,10 @@ import step.grid.agent.handler.MessageHandlerPool;
 import step.grid.agent.tokenpool.AgentTokenWrapper;
 import step.grid.contextbuilder.ApplicationContextBuilder;
 import step.grid.filemanager.FileManagerClient;
-import step.grid.filemanager.FileManagerClient.FileVersionId;
+import step.grid.filemanager.FileManagerException;
+import step.grid.filemanager.FileManagerServer;
+import step.grid.filemanager.FileVersion;
+import step.grid.filemanager.FileVersionId;
 import step.grid.io.InputMessage;
 import step.grid.io.OutputMessage;
 import step.grid.tokenpool.Identity;
@@ -69,31 +71,32 @@ public class GridClientImpl implements GridClient {
 	
 	private final GridClientConfiguration gridClientConfiguration;
 	
-	private final GridFileService fileService;
-	
 	private final TokenRegistry tokenRegistry;
+	
+	private final FileManagerServer fileManagerServer;
 	
 	private final TokenLifecycleStrategy tokenLifecycleStrategy;
 	
 	private Client client;
 
-	public GridClientImpl(TokenRegistry tokenRegistry, GridFileService fileService) {
+	public GridClientImpl(TokenRegistry tokenRegistry, FileManagerServer fileManagerServer) {
 		// use default configuration
-		this(new GridClientConfiguration(), tokenRegistry, fileService);
+		this(new GridClientConfiguration(), tokenRegistry, fileManagerServer);
 	}
 	
-	public GridClientImpl(GridClientConfiguration gridClientConfiguration, TokenRegistry tokenRegistry, GridFileService fileService) {
-		this(gridClientConfiguration, tokenRegistry, new DefaultTokenLifecycleStrategy(), fileService);
+	public GridClientImpl(GridClientConfiguration gridClientConfiguration, TokenRegistry tokenRegistry, FileManagerServer fileManagerServer) {
+		this(gridClientConfiguration, tokenRegistry, new DefaultTokenLifecycleStrategy(), fileManagerServer);
 	}
 	
-	public GridClientImpl(GridClientConfiguration gridClientConfiguration, TokenRegistry tokenRegistry, TokenLifecycleStrategy tokenLifecycleStrategy, GridFileService fileService) {
+	public GridClientImpl(GridClientConfiguration gridClientConfiguration, TokenRegistry tokenRegistry, TokenLifecycleStrategy tokenLifecycleStrategy, FileManagerServer fileManagerServer) {
 		super();
 		
 		this.tokenLifecycleStrategy = tokenLifecycleStrategy;
 		
 		this.gridClientConfiguration = gridClientConfiguration;
 		this.tokenRegistry = tokenRegistry;
-		this.fileService = fileService;
+		
+		this.fileManagerServer = fileManagerServer;
 		
 		client = ClientBuilder.newClient();
 		client.register(ObjectMapperResolver.class);
@@ -110,22 +113,7 @@ public class GridClientImpl implements GridClient {
 	private void initLocalAgentServices() {
 		FileManagerClient fileManagerClient = new FileManagerClient() {
 			@Override
-			public File requestFile(String uid, long lastModified) {
-				return fileService.getRegisteredFile(uid);
-			}
-
-			@Override
-			public FileVersion requestFileVersion(String uid, long lastModified) {
-				FileVersion fileVersion = new FileVersion();
-				fileVersion.setFile(requestFile(uid, lastModified));
-				fileVersion.setFileId(uid);
-				fileVersion.setVersion(lastModified);
-				return fileVersion;
-			}
-
-			@Override
-			public String getDataFolderPath() {
-				// TODO Auto-generated method stub
+			public FileVersion requestFileVersion(FileVersionId fileVersionId) {
 				return null;
 			}
 		};
@@ -377,16 +365,13 @@ public class GridClientImpl implements GridClient {
 		}
 	}
 
-	public String registerFile(File file) {
-		return fileService.registerFile(file);
-	}
-	
-	public File getRegisteredFile(String fileHandle) {
-		return fileService.getRegisteredFile(fileHandle);
-	}
-
 	@Override
 	public void close() {
 		client.close();
+	}
+
+	@Override
+	public FileVersion registerFile(File file) throws FileManagerException {
+		return fileManagerServer.registerFileVersion(file, false);
 	}
 }

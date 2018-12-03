@@ -19,18 +19,20 @@
 package step.grid.client;
 
 import java.io.Closeable;
+import java.io.File;
 import java.util.Map;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
-import step.grid.GridFileService;
 import step.grid.TokenWrapper;
 import step.grid.client.GridClientImpl.AgentCommunicationException;
-import step.grid.filemanager.FileManagerClient.FileVersionId;
+import step.grid.filemanager.FileManagerException;
+import step.grid.filemanager.FileVersion;
+import step.grid.filemanager.FileVersionId;
 import step.grid.io.OutputMessage;
 import step.grid.tokenpool.Interest;
 
-public interface GridClient extends Closeable, GridFileService {
+public interface GridClient extends Closeable {
 
 	public TokenWrapper getLocalTokenHandle();
 	
@@ -39,6 +41,8 @@ public interface GridClient extends Closeable, GridFileService {
 	public OutputMessage call(TokenWrapper tokenWrapper, JsonNode argument, String handler, FileVersionId handlerPackage, Map<String,String> properties, int callTimeout) throws Exception;
 	
 	public void returnTokenHandle(TokenWrapper tokenWrapper) throws AgentCommunicationException;
+	
+	public FileVersion registerFile(File file) throws FileManagerException;
 	
 	public void close();
 }

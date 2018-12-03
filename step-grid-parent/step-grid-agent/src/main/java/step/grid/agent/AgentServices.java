@@ -52,7 +52,7 @@ import step.grid.agent.tokenpool.AgentTokenWrapper;
 import step.grid.bootstrap.BootstrapManager;
 import step.grid.contextbuilder.ApplicationContextBuilderException;
 import step.grid.filemanager.ControllerCallTimeout;
-import step.grid.filemanager.FileProviderException;
+import step.grid.filemanager.FileManagerException;
 import step.grid.io.AgentError;
 import step.grid.io.AgentErrorCode;
 import step.grid.io.Attachment;
@@ -192,11 +192,11 @@ public class AgentServices {
 	protected OutputMessage handleContextBuilderError(InputMessage inputMessage, ApplicationContextBuilderException e) {
 		Throwable cause = e.getCause();
 		AgentError error;
-		if(cause instanceof FileProviderException) {
-			FileProviderException fileProviderException = (FileProviderException) cause;
+		if(cause instanceof FileManagerException) {
+			FileManagerException fileProviderException = (FileManagerException) cause;
 			
 			Map<AgentErrorCode.Details, String> details = new HashMap<>();
-			details.put(AgentErrorCode.Details.FILE_HANDLE, fileProviderException.getFileHandle());
+			details.put(AgentErrorCode.Details.FILE_HANDLE, fileProviderException.getFileVersionId().getFileId());
 
 			Throwable fileProviderExceptionCause = fileProviderException.getCause();
 			if(fileProviderExceptionCause instanceof ControllerCallTimeout) {

@@ -30,6 +30,7 @@ import java.io.OutputStream;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.Scanner;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -44,6 +45,18 @@ public class FileHelper {
 	
 	private static final Logger logger = LoggerFactory.getLogger(FileHelper.class);
 
+	public static File createTempFolder() throws IOException {
+		File file = Files.createTempDirectory(null).toFile();
+		deleteFolderOnExit(file);
+		return file;
+	}
+	
+	public static File createTempFile() throws IOException {
+		File file = Files.createTempFile(null, null).toFile();
+		file.deleteOnExit();
+		return file;
+	}
+	
 	public static void deleteFolder(File folder) {
 		File[] files = folder.listFiles();
 		if (files != null) {
@@ -165,6 +178,15 @@ public class FileHelper {
 		zip(directory, directory, zos);
 		zos.close();
 		return out.toByteArray();
+	}
+	
+	public static final void zipDirectory(File directory, File target) throws IOException {
+		FileOutputStream fileOutputStream = new FileOutputStream(target);
+		ZipOutputStream zos = new ZipOutputStream(fileOutputStream);
+		zos.setLevel(ZipOutputStream.STORED);
+		zip(directory, directory, zos);
+		zos.close();
+		fileOutputStream.close();
 	}
 
 	private static final void zip(File directory, File base, ZipOutputStream zos) throws IOException {

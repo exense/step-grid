@@ -18,7 +18,10 @@
  *******************************************************************************/
 package step.grid;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 
 import javax.inject.Inject;
 import javax.ws.rs.Consumes;
@@ -26,13 +29,17 @@ import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
+import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.StreamingOutput;
 
+import step.commons.helpers.FileHelper;
 import step.grid.agent.RegistrationMessage;
-import step.grid.filemanager.FileProvider;
-import step.grid.filemanager.FileProvider.TransportableFile;
+import step.grid.filemanager.FileManagerException;
+import step.grid.filemanager.FileManagerServer;
+import step.grid.filemanager.FileVersion;
+import step.grid.filemanager.FileVersionId;
 
 @Path("/grid")
 public class GridServices {
@@ -41,7 +48,7 @@ public class GridServices {
 	Grid grid;
 	
 	@Inject
-	FileProvider fileManager;
+	FileManagerServer fileManager;
 
 	@POST
 	@Consumes(MediaType.APPLICATION_JSON)
@@ -51,18 +58,25 @@ public class GridServices {
 	}
 	
 	@GET
-    @Path("/file/{id}")
-	public Response getFile(@PathParam("id") String id) throws IOException {
-		TransportableFile file = fileManager.getTransportableFile(id);
+    @Path("/file/{id}/{version}")
+	public Response getFile(@PathParam("id") String id, @PathParam("version") long version) throws IOException, FileManagerException {
+		FileVersionId versionId = new FileVersionId(id, version);
+		FileVersion fileVersion = fileManager.requestFileVersion(versionId);
 
+		File file = fileVersion.getFile();
+		FileInputStream inputStream = new FileInputStream(file);
+		
 		StreamingOutput fileStream = new StreamingOutput() {
+			
 			@Override
-			public void write(java.io.OutputStream output) throws IOException {
-				output.write(file.getBytes());
+			public void write(OutputStream output) throws IOException, WebApplicationException {
+				// This buffer size doesn't seem to have a significant effect on the performance
+				FileHelper.copy(inputStream, output, 2048);
 				output.flush();
 			}
 		};
+		
 		return Response.ok(fileStream, MediaType.APPLICATION_OCTET_STREAM)
-				.header("content-disposition", "attachment; filename = "+file.getName()+"; type = "+(file.isDirectory()?"dir":"file")).build();
+				.header("content-disposition", "attachment; filename = "+file.getName()+"; type = "+(fileVersion.isDirectory()?"dir":"file")).build();
 	}
 }

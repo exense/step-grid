@@ -22,7 +22,7 @@ import java.util.Map;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
-import step.grid.filemanager.FileManagerClient.FileVersionId;
+import step.grid.filemanager.FileVersionId;
 
 public class InputMessage {
 

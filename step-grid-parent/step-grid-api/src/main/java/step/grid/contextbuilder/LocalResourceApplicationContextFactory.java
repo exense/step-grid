@@ -25,7 +25,7 @@ import java.util.List;
 
 import step.grid.bootstrap.ResourceExtractor;
 import step.grid.filemanager.FileManagerClient;
-import step.grid.filemanager.FileManagerClient.FileVersion;
+import step.grid.filemanager.FileVersion;
 
 public class LocalResourceApplicationContextFactory extends ApplicationContextFactory {
 

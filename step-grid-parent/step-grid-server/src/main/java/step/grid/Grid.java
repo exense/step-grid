@@ -18,7 +18,6 @@
  *******************************************************************************/
 package step.grid;
 
-import java.io.File;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.TimeoutException;
@@ -37,13 +36,12 @@ import com.fasterxml.jackson.jaxrs.json.JacksonJaxbJsonProvider;
 
 import step.grid.agent.RegistrationMessage;
 import step.grid.filemanager.FileManagerServer;
-import step.grid.filemanager.FileProvider;
 import step.grid.tokenpool.Identity;
 import step.grid.tokenpool.Token;
 import step.grid.tokenpool.TokenPool;
 import step.grid.tokenpool.TokenRegistry;
 
-public class Grid implements TokenRegistry, GridFileService {
+public class Grid implements TokenRegistry {
 
 	public static final String LOCAL_AGENT = "local";
 
@@ -57,18 +55,20 @@ public class Grid implements TokenRegistry, GridFileService {
 	
 	private Server server;
 	
-	private FileManagerServer fileManager = new FileManagerServer();
+	private final FileManagerServer fileManagerServer;
 	
-	public Grid(Integer port) {
+	public Grid(FileManagerServer fileManagerServer, Integer port) {
 		super();
 		this.port = port;
 		this.keepAliveTimeout = 60000;
+		this.fileManagerServer = fileManagerServer;
 	}
 	
-	public Grid(Integer port, Integer ttl) {
+	public Grid(FileManagerServer fileManagerServer, Integer port, Integer ttl) {
 		super();
 		this.port = port;
 		this.keepAliveTimeout = ttl;
+		this.fileManagerServer = fileManagerServer;
 	}
 
 	public void stop() throws Exception {
@@ -104,7 +104,7 @@ public class Grid implements TokenRegistry, GridFileService {
 			@Override
 			protected void configure() {
 				bind(grid).to(Grid.class);
-				bind(fileManager).to(FileProvider.class);
+				bind(fileManagerServer).to(FileManagerServer.class);
 			}
 		});
 		ServletContainer servletContainer = new ServletContainer(resourceConfig);
@@ -196,15 +196,9 @@ public class Grid implements TokenRegistry, GridFileService {
 			}
 		});
 	}
-
-	@Override
-	public String registerFile(File file) {
-		return fileManager.registerFile(file);
-	}
-
-	@Override
-	public File getRegisteredFile(String fileHandle) {
-		return fileManager.getFile(fileHandle);
+	
+	public FileManagerServer getFileManagerServer() {
+		return fileManagerServer;
 	}
 
 	@Override

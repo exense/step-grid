@@ -36,7 +36,7 @@ public class GridTest extends AbstractGridTest {
 		
 		GridClientConfiguration gridClientConfiguration = new GridClientConfiguration();
 		gridClientConfiguration.setNoMatchExistsTimeout(2000);
-		client = new GridClientImpl(gridClientConfiguration, grid, grid);
+		client = new GridClientImpl(gridClientConfiguration, grid, grid.getFileManagerServer());
 	}
 	
 	@Test
