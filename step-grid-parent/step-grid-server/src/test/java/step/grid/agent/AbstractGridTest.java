@@ -18,6 +18,7 @@
  *******************************************************************************/
 package step.grid.agent;
 
+import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -28,6 +29,7 @@ import org.junit.Before;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import step.commons.helpers.FileHelper;
 import step.grid.Grid;
 import step.grid.TokenWrapper;
 import step.grid.agent.conf.AgentConf;
@@ -58,7 +60,9 @@ public abstract class AbstractGridTest {
 
 	@Before
 	public void init() throws Exception {
-		grid = new Grid(0);
+		File fileManagerFolder = FileHelper.createTempFolder();
+		
+		grid = new Grid(fileManagerFolder, 0, 60000);
 		grid.start();
 				
 		agent = new Agent(new AgentConf("http://localhost:"+grid.getServerPort(), 0, null, 100));
@@ -67,7 +71,7 @@ public abstract class AbstractGridTest {
 		agent.start();
 		agent.addTokens(nTokens, attributes, null, null);
 
-		client = new GridClientImpl(grid, grid);
+		client = new GridClientImpl(grid);
 	}
 	
 	protected void addToken(int count, Map<String, String> attributes) {

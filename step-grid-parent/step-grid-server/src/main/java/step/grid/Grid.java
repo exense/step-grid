@@ -35,15 +35,16 @@ import org.glassfish.jersey.servlet.ServletContainer;
 
 import com.fasterxml.jackson.jaxrs.json.JacksonJaxbJsonProvider;
 
+import step.commons.helpers.FileHelper;
 import step.grid.agent.RegistrationMessage;
-import step.grid.filemanager.FileManagerServer;
-import step.grid.filemanager.FileProvider;
+import step.grid.filemanager.FileManager;
+import step.grid.filemanager.FileManagerImpl;
 import step.grid.tokenpool.Identity;
 import step.grid.tokenpool.Token;
 import step.grid.tokenpool.TokenPool;
 import step.grid.tokenpool.TokenRegistry;
 
-public class Grid implements TokenRegistry, GridFileService {
+public class Grid implements TokenRegistry {
 
 	public static final String LOCAL_AGENT = "local";
 
@@ -57,18 +58,21 @@ public class Grid implements TokenRegistry, GridFileService {
 	
 	private Server server;
 	
-	private FileManagerServer fileManager = new FileManagerServer();
+	private final FileManager fileManager;
 	
 	public Grid(Integer port) {
-		super();
-		this.port = port;
-		this.keepAliveTimeout = 60000;
+		this(FileHelper.createTempFolder("filemanager"), port, 60000);
 	}
 	
-	public Grid(Integer port, Integer ttl) {
+	public Grid(File fileManagerFolder, Integer port) {
+		this(fileManagerFolder, port, 60000);
+	}
+	
+	public Grid(File fileManagerFolder, Integer port, Integer ttl) {
 		super();
 		this.port = port;
 		this.keepAliveTimeout = ttl;
+		this.fileManager = new FileManagerImpl(fileManagerFolder);
 	}
 
 	public void stop() throws Exception {
@@ -104,7 +108,7 @@ public class Grid implements TokenRegistry, GridFileService {
 			@Override
 			protected void configure() {
 				bind(grid).to(Grid.class);
-				bind(fileManager).to(FileProvider.class);
+				bind(fileManager).to(FileManager.class);
 			}
 		});
 		ServletContainer servletContainer = new ServletContainer(resourceConfig);
@@ -198,16 +202,6 @@ public class Grid implements TokenRegistry, GridFileService {
 	}
 
 	@Override
-	public String registerFile(File file) {
-		return fileManager.registerFile(file);
-	}
-
-	@Override
-	public File getRegisteredFile(String fileHandle) {
-		return fileManager.getFile(fileHandle);
-	}
-
-	@Override
 	public List<Token<TokenWrapper>> getTokens() {
 		return tokenPool.getTokens();
 	}
@@ -218,5 +212,9 @@ public class Grid implements TokenRegistry, GridFileService {
 	
 	public int getServerPort() {
 		return ((ServerConnector)server.getConnectors()[0]).getLocalPort();
+	}
+
+	public FileManager getFileManager() {
+		return fileManager;
 	}
 }

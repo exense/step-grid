@@ -44,7 +44,6 @@ import com.fasterxml.jackson.jaxrs.json.JacksonJsonProvider;
 
 import step.grid.AgentRef;
 import step.grid.Grid;
-import step.grid.GridFileService;
 import step.grid.Token;
 import step.grid.TokenWrapper;
 import step.grid.agent.AgentTokenServices;
@@ -54,12 +53,13 @@ import step.grid.agent.handler.MessageHandlerPool;
 import step.grid.agent.tokenpool.AgentTokenWrapper;
 import step.grid.contextbuilder.ApplicationContextBuilder;
 import step.grid.filemanager.FileManagerClient;
-import step.grid.filemanager.FileManagerClient.FileVersionId;
+import step.grid.filemanager.FileManagerException;
+import step.grid.filemanager.FileVersion;
+import step.grid.filemanager.FileVersionId;
 import step.grid.io.InputMessage;
 import step.grid.io.OutputMessage;
 import step.grid.tokenpool.Identity;
 import step.grid.tokenpool.Interest;
-import step.grid.tokenpool.TokenRegistry;
 
 public class GridClientImpl implements GridClient {
 	
@@ -69,31 +69,29 @@ public class GridClientImpl implements GridClient {
 	
 	private final GridClientConfiguration gridClientConfiguration;
 	
-	private final GridFileService fileService;
-	
-	private final TokenRegistry tokenRegistry;
-	
 	private final TokenLifecycleStrategy tokenLifecycleStrategy;
+	
+	private final Grid grid;
 	
 	private Client client;
 
-	public GridClientImpl(TokenRegistry tokenRegistry, GridFileService fileService) {
+	public GridClientImpl(Grid grid) {
 		// use default configuration
-		this(new GridClientConfiguration(), tokenRegistry, fileService);
+		this(new GridClientConfiguration(), grid);
 	}
 	
-	public GridClientImpl(GridClientConfiguration gridClientConfiguration, TokenRegistry tokenRegistry, GridFileService fileService) {
-		this(gridClientConfiguration, tokenRegistry, new DefaultTokenLifecycleStrategy(), fileService);
+	public GridClientImpl(GridClientConfiguration gridClientConfiguration, Grid grid) {
+		this(gridClientConfiguration, new DefaultTokenLifecycleStrategy(), grid);
 	}
 	
-	public GridClientImpl(GridClientConfiguration gridClientConfiguration, TokenRegistry tokenRegistry, TokenLifecycleStrategy tokenLifecycleStrategy, GridFileService fileService) {
+	public GridClientImpl(GridClientConfiguration gridClientConfiguration, TokenLifecycleStrategy tokenLifecycleStrategy, Grid grid) {
 		super();
 		
 		this.tokenLifecycleStrategy = tokenLifecycleStrategy;
 		
 		this.gridClientConfiguration = gridClientConfiguration;
-		this.tokenRegistry = tokenRegistry;
-		this.fileService = fileService;
+		
+		this.grid = grid;
 		
 		client = ClientBuilder.newClient();
 		client.register(ObjectMapperResolver.class);
@@ -110,23 +108,8 @@ public class GridClientImpl implements GridClient {
 	private void initLocalAgentServices() {
 		FileManagerClient fileManagerClient = new FileManagerClient() {
 			@Override
-			public File requestFile(String uid, long lastModified) {
-				return fileService.getRegisteredFile(uid);
-			}
-
-			@Override
-			public FileVersion requestFileVersion(String uid, long lastModified) {
-				FileVersion fileVersion = new FileVersion();
-				fileVersion.setFile(requestFile(uid, lastModified));
-				fileVersion.setFileId(uid);
-				fileVersion.setVersion(lastModified);
-				return fileVersion;
-			}
-
-			@Override
-			public String getDataFolderPath() {
-				// TODO Auto-generated method stub
-				return null;
+			public FileVersion requestFileVersion(FileVersionId fileVersionId) throws FileManagerException {
+				return grid.getFileManager().requestFileVersion(fileVersionId);
 			}
 		};
 		
@@ -181,7 +164,7 @@ public class GridClientImpl implements GridClient {
 			throw e;
 		} finally {
 			if(!tokenWrapper.getToken().getAgentid().equals(Grid.LOCAL_AGENT)) {
-				tokenRegistry.returnToken(tokenWrapper);		
+				grid.returnToken(tokenWrapper);		
 			}			
 		}
 	}
@@ -215,7 +198,7 @@ public class GridClientImpl implements GridClient {
 	}
 
 	protected TokenLifecycleStrategyCallback getTokenLifecycleCallback(TokenWrapper tokenWrapper) {
-		return new TokenLifecycleStrategyCallback(tokenRegistry, tokenWrapper.getID());
+		return new TokenLifecycleStrategyCallback(grid, tokenWrapper.getID());
 	}
 
 	private OutputMessage callLocalToken(Token token, InputMessage message) throws Exception {
@@ -349,7 +332,7 @@ public class GridClientImpl implements GridClient {
 		TokenWrapper adapterToken = null;
 		try {
 			addThreadIdInterest(tokenPretender);
-			adapterToken = tokenRegistry.selectToken(tokenPretender, gridClientConfiguration.getMatchExistsTimeout(), gridClientConfiguration.getNoMatchExistsTimeout());
+			adapterToken = grid.selectToken(tokenPretender, gridClientConfiguration.getMatchExistsTimeout(), gridClientConfiguration.getNoMatchExistsTimeout());
 		} catch (TimeoutException e) {
 			StringBuilder interestList = new StringBuilder();
 			if(tokenPretender.getInterests()!=null) {
@@ -377,16 +360,18 @@ public class GridClientImpl implements GridClient {
 		}
 	}
 
-	public String registerFile(File file) {
-		return fileService.registerFile(file);
-	}
-	
-	public File getRegisteredFile(String fileHandle) {
-		return fileService.getRegisteredFile(fileHandle);
-	}
-
 	@Override
 	public void close() {
 		client.close();
+	}
+
+	@Override
+	public FileVersion registerFile(File file) throws FileManagerException {
+		return grid.getFileManager().registerFileVersion(file, false);
+	}
+
+	@Override
+	public FileVersion getRegisteredFile(FileVersionId fileVersionId) throws FileManagerException {
+		return grid.getFileManager().requestFileVersion(fileVersionId);
 	}
 }

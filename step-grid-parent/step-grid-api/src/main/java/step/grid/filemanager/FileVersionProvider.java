@@ -18,17 +18,10 @@
  *******************************************************************************/
 package step.grid.filemanager;
 
-@SuppressWarnings("serial")
-public class FileProviderException extends Exception {
+import java.io.File;
 
-	private final String fileHandle;
+public interface FileVersionProvider {
 	
-	public FileProviderException(String fileHandle, Throwable cause) {
-		super(cause);
-		this.fileHandle = fileHandle;
-	}
-
-	public String getFileHandle() {
-		return fileHandle;
-	}
+	public FileVersion saveFileVersionTo(FileVersionId fileVersionId, File container) throws FileManagerException;
+	
 }

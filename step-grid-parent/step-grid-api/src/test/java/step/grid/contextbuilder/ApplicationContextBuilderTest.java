@@ -26,7 +26,7 @@ import org.junit.Test;
 
 import junit.framework.Assert;
 import step.grid.contextbuilder.ApplicationContextBuilder.ApplicationContext;
-import step.grid.filemanager.FileProviderException;
+import step.grid.filemanager.FileManagerException;
 
 public class ApplicationContextBuilderTest {
 
@@ -74,7 +74,7 @@ public class ApplicationContextBuilderTest {
 		return new ApplicationContextFactory() {
 			
 			@Override
-			public boolean requiresReload() throws FileProviderException {
+			public boolean requiresReload() throws FileManagerException {
 				return false;
 			}
 			
@@ -84,7 +84,7 @@ public class ApplicationContextBuilderTest {
 			}
 			
 			@Override
-			public ClassLoader buildClassLoader(ClassLoader parentClassLoader) throws FileProviderException {
+			public ClassLoader buildClassLoader(ClassLoader parentClassLoader) throws FileManagerException {
 				try {
 					return new URLClassLoader(new URL[]{new URL(id)}, parentClassLoader);
 				} catch (MalformedURLException e) {

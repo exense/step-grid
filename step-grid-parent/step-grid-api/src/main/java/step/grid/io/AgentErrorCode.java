@@ -38,6 +38,8 @@ public enum AgentErrorCode {
 		
 		FILE_HANDLE,
 		
+		FILE_VERSION,
+		
 		TIMEOUT;
 	}
 }

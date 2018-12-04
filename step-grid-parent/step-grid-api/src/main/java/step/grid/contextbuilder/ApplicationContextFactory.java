@@ -18,14 +18,14 @@
  *******************************************************************************/
 package step.grid.contextbuilder;
 
-import step.grid.filemanager.FileProviderException;
+import step.grid.filemanager.FileManagerException;
 
 public abstract class ApplicationContextFactory {
 	
 	public abstract String getId();
 	
-	public abstract boolean requiresReload() throws FileProviderException;
+	public abstract boolean requiresReload() throws FileManagerException;
 	
-	public abstract ClassLoader buildClassLoader(ClassLoader parentClassLoader) throws FileProviderException;
+	public abstract ClassLoader buildClassLoader(ClassLoader parentClassLoader) throws FileManagerException;
 	
 }

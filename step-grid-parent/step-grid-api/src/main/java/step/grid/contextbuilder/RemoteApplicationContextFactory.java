@@ -23,9 +23,9 @@ import java.net.URLClassLoader;
 import java.util.List;
 
 import step.grid.filemanager.FileManagerClient;
-import step.grid.filemanager.FileManagerClient.FileVersion;
-import step.grid.filemanager.FileManagerClient.FileVersionId;
-import step.grid.filemanager.FileProviderException;
+import step.grid.filemanager.FileManagerException;
+import step.grid.filemanager.FileVersion;
+import step.grid.filemanager.FileVersionId;
 
 public class RemoteApplicationContextFactory extends ApplicationContextFactory {
 
@@ -45,17 +45,16 @@ public class RemoteApplicationContextFactory extends ApplicationContextFactory {
 	}
 
 	@Override
-	public boolean requiresReload() throws FileProviderException {
-		FileVersion localClassLoaderFolder = requestLatestClassPathFolder();
-		return localClassLoaderFolder.isModified();
+	public boolean requiresReload() throws FileManagerException {
+		return false;
 	}
 
-	private FileVersion requestLatestClassPathFolder() throws FileProviderException {
-		return fileManager.requestFileVersion(remoteClassLoaderFolder.getFileId(), remoteClassLoaderFolder.getVersion());			
+	private FileVersion requestLatestClassPathFolder() throws FileManagerException {
+		return fileManager.requestFileVersion(remoteClassLoaderFolder);			
 	}
 
 	@Override
-	public ClassLoader buildClassLoader(ClassLoader parentClassLoader) throws FileProviderException {
+	public ClassLoader buildClassLoader(ClassLoader parentClassLoader) throws FileManagerException {
 		FileVersion localClassLoaderFolder = requestLatestClassPathFolder();
 
 		List<URL> urls;

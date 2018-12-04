@@ -19,13 +19,14 @@
 package step.grid.client;
 
 import java.io.Closeable;
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 
 import step.grid.agent.handler.AbstractMessageHandler;
 import step.grid.agent.handler.context.OutputMessageBuilder;
 import step.grid.agent.tokenpool.AgentTokenWrapper;
+import step.grid.filemanager.FileVersion;
+import step.grid.filemanager.FileVersionId;
 import step.grid.io.InputMessage;
 import step.grid.io.OutputMessage;
 
@@ -36,9 +37,29 @@ public class TestMessageHandler extends AbstractMessageHandler {
 		
 		if(message.getPayload().has("file")) {
 			try {
-				File file = token.getServices().getFileManagerClient().requestFile(message.getPayload().get("file").asText(), message.getPayload().get("fileVersion").asInt());
+				FileVersionId version = new FileVersionId(message.getPayload().get("file").asText(), message.getPayload().get("fileVersion").asLong());
+				FileVersion fileVersion = token.getServices().getFileManagerClient().requestFileVersion(version);
 				OutputMessageBuilder builder = new OutputMessageBuilder();
-				builder.add("content", Files.readAllLines(file.toPath()).get(0));
+				builder.add("content", Files.readAllLines(fileVersion.getFile().getAbsoluteFile().toPath()).get(0));
+				return builder.build();
+			
+			} catch(Exception e) {
+				e.printStackTrace();
+			}
+		} else if(message.getPayload().has("folder")) {
+			try {
+				FileVersionId version = new FileVersionId(message.getPayload().get("folder").asText(), message.getPayload().get("fileVersion").asLong());
+				FileVersion fileVersion = token.getServices().getFileManagerClient().requestFileVersion(version);
+				OutputMessageBuilder builder = new OutputMessageBuilder();
+				
+				String content = "";
+				
+				
+				for(String file:fileVersion.getFile().list()) {
+					content += file+";";
+				}
+				
+				builder.add("content", content);
 				return builder.build();
 			
 			} catch(Exception e) {

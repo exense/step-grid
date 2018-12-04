@@ -26,7 +26,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import step.grid.GridFileService;
 import step.grid.TokenWrapper;
 import step.grid.client.GridClientImpl.AgentCommunicationException;
-import step.grid.filemanager.FileManagerClient.FileVersionId;
+import step.grid.filemanager.FileVersionId;
 import step.grid.io.OutputMessage;
 import step.grid.tokenpool.Interest;
 

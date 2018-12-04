@@ -28,8 +28,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import step.grid.filemanager.FileProviderException;
-import step.grid.io.InputMessage;
+import step.grid.filemanager.FileManagerException;
 
 /**
  * This class provides an API for the creation of hierarchical classloaders.
@@ -211,7 +210,7 @@ public class ApplicationContextBuilder {
 				context = new ApplicationContext();
 				try {
 					buildClassLoader(descriptor, context, parentContext);
-				} catch (FileProviderException e) {
+				} catch (FileManagerException e) {
 					throw new ApplicationContextBuilderException(e);
 				}
 				parentContext.childContexts.put(contextKey, context);
@@ -219,12 +218,12 @@ public class ApplicationContextBuilder {
 				context = parentContext.childContexts.get(contextKey);	
 				try {
 					if(descriptor.requiresReload()) {
-							buildClassLoader(descriptor, context, parentContext);
+						buildClassLoader(descriptor, context, parentContext);
 						context.contextObjects.clear();
 					} else {
 						
 					}
-				} catch (FileProviderException e) {
+				} catch (FileManagerException e) {
 					throw new ApplicationContextBuilderException(e);
 				}
 			}
@@ -232,7 +231,7 @@ public class ApplicationContextBuilder {
 		}
 	}
 
-	private void buildClassLoader(ApplicationContextFactory descriptor, ApplicationContext context,	ApplicationContext parentContext) throws FileProviderException {
+	private void buildClassLoader(ApplicationContextFactory descriptor, ApplicationContext context,	ApplicationContext parentContext) throws FileManagerException {
 		ClassLoader classLoader = descriptor.buildClassLoader(parentContext.classLoader);
 		context.classLoader = classLoader;
 	}

@@ -20,6 +20,10 @@ package step.grid;
 
 import java.io.File;
 
+import step.grid.filemanager.FileManagerException;
+import step.grid.filemanager.FileVersion;
+import step.grid.filemanager.FileVersionId;
+
 public interface GridFileService {
 
 	/**
@@ -27,15 +31,17 @@ public interface GridFileService {
 	 * 
 	 * @param file the file to be registered to the GRID
 	 * @return an handle to the registered file. This handle will be used to retrieve the registered file
+	 * @throws FileManagerException 
 	 */
-	String registerFile(File file);
+	FileVersion registerFile(File file) throws FileManagerException;
 	
 	/**
 	 * Get a file that has been previously registered to the GRID
 	 * 
-	 * @param fileHandle the handle returned at regitration
+	 * @param fileVersionId the handle returned at regitration
 	 * @return the registered file
+	 * @throws FileManagerException 
 	 */
-	File getRegisteredFile(String fileHandle);
+	FileVersion getRegisteredFile(FileVersionId fileVersionId) throws FileManagerException;
 
 }
