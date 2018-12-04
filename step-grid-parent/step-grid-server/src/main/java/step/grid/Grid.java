@@ -18,6 +18,7 @@
  *******************************************************************************/
 package step.grid;
 
+import java.io.File;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.TimeoutException;
@@ -34,8 +35,10 @@ import org.glassfish.jersey.servlet.ServletContainer;
 
 import com.fasterxml.jackson.jaxrs.json.JacksonJaxbJsonProvider;
 
+import step.commons.helpers.FileHelper;
 import step.grid.agent.RegistrationMessage;
-import step.grid.filemanager.FileManagerServer;
+import step.grid.filemanager.FileManager;
+import step.grid.filemanager.FileManagerImpl;
 import step.grid.tokenpool.Identity;
 import step.grid.tokenpool.Token;
 import step.grid.tokenpool.TokenPool;
@@ -55,20 +58,21 @@ public class Grid implements TokenRegistry {
 	
 	private Server server;
 	
-	private final FileManagerServer fileManagerServer;
+	private final FileManager fileManager;
 	
-	public Grid(FileManagerServer fileManagerServer, Integer port) {
-		super();
-		this.port = port;
-		this.keepAliveTimeout = 60000;
-		this.fileManagerServer = fileManagerServer;
+	public Grid(Integer port) {
+		this(FileHelper.createTempFolder("filemanager"), port, 60000);
 	}
 	
-	public Grid(FileManagerServer fileManagerServer, Integer port, Integer ttl) {
+	public Grid(File fileManagerFolder, Integer port) {
+		this(fileManagerFolder, port, 60000);
+	}
+	
+	public Grid(File fileManagerFolder, Integer port, Integer ttl) {
 		super();
 		this.port = port;
 		this.keepAliveTimeout = ttl;
-		this.fileManagerServer = fileManagerServer;
+		this.fileManager = new FileManagerImpl(fileManagerFolder);
 	}
 
 	public void stop() throws Exception {
@@ -104,7 +108,7 @@ public class Grid implements TokenRegistry {
 			@Override
 			protected void configure() {
 				bind(grid).to(Grid.class);
-				bind(fileManagerServer).to(FileManagerServer.class);
+				bind(fileManager).to(FileManager.class);
 			}
 		});
 		ServletContainer servletContainer = new ServletContainer(resourceConfig);
@@ -196,10 +200,6 @@ public class Grid implements TokenRegistry {
 			}
 		});
 	}
-	
-	public FileManagerServer getFileManagerServer() {
-		return fileManagerServer;
-	}
 
 	@Override
 	public List<Token<TokenWrapper>> getTokens() {
@@ -212,5 +212,9 @@ public class Grid implements TokenRegistry {
 	
 	public int getServerPort() {
 		return ((ServerConnector)server.getConnectors()[0]).getLocalPort();
+	}
+
+	public FileManager getFileManager() {
+		return fileManager;
 	}
 }

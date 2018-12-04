@@ -37,7 +37,7 @@ import javax.ws.rs.core.StreamingOutput;
 import step.commons.helpers.FileHelper;
 import step.grid.agent.RegistrationMessage;
 import step.grid.filemanager.FileManagerException;
-import step.grid.filemanager.FileManagerServer;
+import step.grid.filemanager.FileManager;
 import step.grid.filemanager.FileVersion;
 import step.grid.filemanager.FileVersionId;
 
@@ -48,7 +48,7 @@ public class GridServices {
 	Grid grid;
 	
 	@Inject
-	FileManagerServer fileManager;
+	FileManager fileManager;
 
 	@POST
 	@Consumes(MediaType.APPLICATION_JSON)

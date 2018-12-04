@@ -35,8 +35,6 @@ import step.grid.TokenWrapper;
 import step.grid.agent.conf.AgentConf;
 import step.grid.client.GridClientImpl;
 import step.grid.client.GridClientImpl.AgentCommunicationException;
-import step.grid.filemanager.FileManagerServer;
-import step.grid.filemanager.FileManagerImpl;
 import step.grid.io.AgentErrorCode;
 import step.grid.io.OutputMessage;
 import step.grid.tokenpool.Interest;
@@ -63,9 +61,8 @@ public abstract class AbstractGridTest {
 	@Before
 	public void init() throws Exception {
 		File fileManagerFolder = FileHelper.createTempFolder();
-		FileManagerServer fileManagerServer = new FileManagerImpl(fileManagerFolder);
 		
-		grid = new Grid(fileManagerServer, 0);
+		grid = new Grid(fileManagerFolder, 0, 60000);
 		grid.start();
 				
 		agent = new Agent(new AgentConf("http://localhost:"+grid.getServerPort(), 0, null, 100));
@@ -74,7 +71,7 @@ public abstract class AbstractGridTest {
 		agent.start();
 		agent.addTokens(nTokens, attributes, null, null);
 
-		client = new GridClientImpl(grid, fileManagerServer);
+		client = new GridClientImpl(grid);
 	}
 	
 	protected void addToken(int count, Map<String, String> attributes) {

@@ -197,7 +197,8 @@ public class AgentServices {
 			
 			Map<AgentErrorCode.Details, String> details = new HashMap<>();
 			details.put(AgentErrorCode.Details.FILE_HANDLE, fileProviderException.getFileVersionId().getFileId());
-
+			details.put(AgentErrorCode.Details.FILE_VERSION, Long.toString(fileProviderException.getFileVersionId().getVersion()));
+			
 			Throwable fileProviderExceptionCause = fileProviderException.getCause();
 			if(fileProviderExceptionCause instanceof ControllerCallTimeout) {
 				error = new AgentError(AgentErrorCode.CONTEXT_BUILDER_FILE_PROVIDER_CALL_TIMEOUT);

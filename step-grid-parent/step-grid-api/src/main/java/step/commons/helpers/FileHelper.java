@@ -45,10 +45,19 @@ public class FileHelper {
 	
 	private static final Logger logger = LoggerFactory.getLogger(FileHelper.class);
 
-	public static File createTempFolder() throws IOException {
-		File file = Files.createTempDirectory(null).toFile();
-		deleteFolderOnExit(file);
-		return file;
+	public static File createTempFolder() {
+		return createTempFolder(null);
+	}
+	
+	public static File createTempFolder(String prefix) {
+		File file;
+		try {
+			file = Files.createTempDirectory(prefix).toFile();
+			deleteFolderOnExit(file);
+			return file;
+		} catch (IOException e) {
+			throw new RuntimeException("Error while creating temporary folder",e);
+		}
 	}
 	
 	public static File createTempFile() throws IOException {

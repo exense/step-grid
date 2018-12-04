@@ -25,7 +25,7 @@ import step.commons.helpers.FileHelper;
  * This cache enables the registration, caching and retrieval of different versions of files.
  *
  */
-public class FileManagerImpl implements FileManagerServer, FileManagerClient {
+public class FileManagerImpl implements FileManager {
 
 	private static final Logger logger = LoggerFactory.getLogger(FileManagerImpl.class);
 	
@@ -66,40 +66,42 @@ public class FileManagerImpl implements FileManagerServer, FileManagerClient {
 	
 	private void loadCache() {
 		logger.info("Loading file manager client cache from data folder: "+cacheFolder.getAbsolutePath());
-		for(File file:cacheFolder.listFiles()) {
-			try {
-				if(file.isDirectory()) {
-					for(File container:file.listFiles()) {
-						String fileId = file.getName();
-						String versionStr = container.getName();
-						if(container.isDirectory()) {
-							long version = Long.parseLong(versionStr);
-							FileVersionId fileVersionId = new FileVersionId(fileId, version);
-							
-							Properties metaProperties = getMetaProperties(fileVersionId);
-							boolean isDirectory = Boolean.parseBoolean(metaProperties.getProperty(DIRECTORY_PROPERTY));
-							String originalFilePath = metaProperties.getProperty(ORIGINAL_FILE_PATH_PROPERTY);
-							
-							if(originalFilePath != null) {
-								File originalFile = new File(originalFilePath);
-								fileIdRegistry.put(originalFile, fileId);
+		if(cacheFolder.exists() && cacheFolder.isDirectory()) {
+			for(File file:cacheFolder.listFiles()) {
+				try {
+					if(file.isDirectory()) {
+						for(File container:file.listFiles()) {
+							String fileId = file.getName();
+							String versionStr = container.getName();
+							if(container.isDirectory()) {
+								long version = Long.parseLong(versionStr);
+								FileVersionId fileVersionId = new FileVersionId(fileId, version);
+								
+								Properties metaProperties = getMetaProperties(fileVersionId);
+								boolean isDirectory = Boolean.parseBoolean(metaProperties.getProperty(DIRECTORY_PROPERTY));
+								String originalFilePath = metaProperties.getProperty(ORIGINAL_FILE_PATH_PROPERTY);
+								
+								if(originalFilePath != null) {
+									File originalFile = new File(originalFilePath);
+									fileIdRegistry.put(originalFile, fileId);
+								}
+								
+								File dataFile = getDataFile(fileVersionId);
+								FileVersion fileVersion = new FileVersion(dataFile, fileVersionId, isDirectory);
+								logger.debug("Adding file to cache. file id: "+fileId+" and version "+Long.toString(version));
+								
+								Map<FileVersionId, FileVersion> fileVersions = fileHandleCache.computeIfAbsent(fileId, f->new HashMap<FileVersionId, FileVersion>());
+								fileVersions.put(fileVersionId, fileVersion);
+							} else {
+								logger.error("The file "+file.getAbsolutePath()+" is not a directory!");
 							}
-							
-							File dataFile = getDataFile(fileVersionId);
-							FileVersion fileVersion = new FileVersion(dataFile, fileVersionId, isDirectory);
-							logger.debug("Adding file to cache. file id: "+fileId+" and version "+Long.toString(version));
-							
-							Map<FileVersionId, FileVersion> fileVersions = fileHandleCache.computeIfAbsent(fileId, f->new HashMap<FileVersionId, FileVersion>());
-							fileVersions.put(fileVersionId, fileVersion);
-						} else {
-							logger.error("The file "+file.getAbsolutePath()+" is not a directory!");
 						}
+					} else {
+						logger.error("The file "+file.getAbsolutePath()+" is not a directory!");
 					}
-				} else {
-					logger.error("The file "+file.getAbsolutePath()+" is not a directory!");
+				} catch(Exception e) {
+					logger.error("Error while loading file manager client cache for file "+file.getAbsolutePath(), e);
 				}
-			} catch(Exception e) {
-				logger.error("Error while loading file manager client cache for file "+file.getAbsolutePath(), e);
 			}
 		}
 	}

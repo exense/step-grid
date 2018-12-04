@@ -2,9 +2,9 @@ package step.grid.filemanager;
 
 public class FileVersionId {
 	
-	String fileId;
+	protected String fileId;
 	
-	long version;
+	protected long version;
 
 	public FileVersionId() {
 		super();

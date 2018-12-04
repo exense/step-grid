@@ -2,7 +2,7 @@ package step.grid.filemanager;
 
 import java.io.File;
 
-public interface FileManagerServer {
+public interface FileManager extends FileManagerClient {
 
 	/**
 	 * Cache the content of the file provided as argument under a specific version for later retrieval

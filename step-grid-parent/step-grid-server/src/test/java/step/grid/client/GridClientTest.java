@@ -184,6 +184,6 @@ public class GridClientTest extends AbstractGridTest {
 		gridClientConfiguration.setReadTimeoutOffset(readOffset);
 		gridClientConfiguration.setReserveSessionTimeout(reserveTimeout);
 		gridClientConfiguration.setReleaseSessionTimeout(releaseTimeout);
-		client = new GridClientImpl(gridClientConfiguration, grid, grid.getFileManagerServer());
+		client = new GridClientImpl(gridClientConfiguration, grid);
 	}
 }

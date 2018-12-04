@@ -16,29 +16,32 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with STEP.  If not, see <http://www.gnu.org/licenses/>.
  *******************************************************************************/
-package step.grid.client;
+package step.grid;
 
-import java.io.Closeable;
-import java.util.Map;
+import java.io.File;
 
-import com.fasterxml.jackson.databind.JsonNode;
-
-import step.grid.GridFileService;
-import step.grid.TokenWrapper;
-import step.grid.client.GridClientImpl.AgentCommunicationException;
+import step.grid.filemanager.FileManagerException;
+import step.grid.filemanager.FileVersion;
 import step.grid.filemanager.FileVersionId;
-import step.grid.io.OutputMessage;
-import step.grid.tokenpool.Interest;
 
-public interface GridClient extends Closeable, GridFileService {
+public interface GridFileService {
 
-	public TokenWrapper getLocalTokenHandle();
+	/**
+	 * Register a file into the GRID
+	 * 
+	 * @param file the file to be registered to the GRID
+	 * @return an handle to the registered file. This handle will be used to retrieve the registered file
+	 * @throws FileManagerException 
+	 */
+	FileVersion registerFile(File file) throws FileManagerException;
 	
-	public TokenWrapper getTokenHandle(Map<String, String> attributes, Map<String, Interest> interests, boolean createSession) throws AgentCommunicationException;
-	
-	public OutputMessage call(TokenWrapper tokenWrapper, JsonNode argument, String handler, FileVersionId handlerPackage, Map<String,String> properties, int callTimeout) throws Exception;
-	
-	public void returnTokenHandle(TokenWrapper tokenWrapper) throws AgentCommunicationException;
-	
-	public void close();
+	/**
+	 * Get a file that has been previously registered to the GRID
+	 * 
+	 * @param fileVersionId the handle returned at regitration
+	 * @return the registered file
+	 * @throws FileManagerException 
+	 */
+	FileVersion getRegisteredFile(FileVersionId fileVersionId) throws FileManagerException;
+
 }
