@@ -35,7 +35,7 @@ public class FileManagerImplTest {
 		writeFileContent(testFile, "V2");
 
 		FileVersionId handle2 = f.registerFileVersion(testFile, false).getVersionId();
-		// Registering twice (this should'nt throw any error)
+		// Registering twice (this shouldn't throw any error)
 		handle2 = f.registerFileVersion(testFile, false).getVersionId();
 		
 		Assert.assertFalse(handle2.equals(handle));
@@ -84,6 +84,11 @@ public class FileManagerImplTest {
 	}
 
 	private void writeFileContent(File testFile, String content) throws IOException {
+		// Sleep 100ms to ensure that the file lastmodification's date get updated
+		try {
+			Thread.sleep(100);
+		} catch (InterruptedException e) {}
+		
 		try(FileWriter w = new FileWriter(testFile)) {
 			w.write(content);
 		}
