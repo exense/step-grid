@@ -20,6 +20,7 @@ package step.grid.client;
 
 import java.io.File;
 import java.io.FileWriter;
+import java.io.IOException;
 import java.util.HashMap;
 
 import org.junit.Assert;
@@ -86,16 +87,12 @@ public class GridClientTest extends AbstractGridTest {
 		File file = new File(tempDir+"/File1");
 		file.createNewFile();
 		
-		try(FileWriter writer = new FileWriter(file)) {
-			writer.write("V1");
-		}
+		writeFile(file, "V1");
 		
 		// Register the directory
 		FileVersionId fileHandleVersion1 = client.registerFile(file).getVersionId();
 		
-		try(FileWriter writer = new FileWriter(file)) {
-			writer.write("V2");
-		}
+		writeFile(file, "V2");
 		FileVersionId fileHandleVersion2 = client.registerFile(file).getVersionId();
 		
 		JsonNode node = new ObjectMapper().createObjectNode().put("file", fileHandleVersion1.getFileId()).put("fileVersion", fileHandleVersion1.getVersion());
@@ -105,6 +102,16 @@ public class GridClientTest extends AbstractGridTest {
 		node = new ObjectMapper().createObjectNode().put("file", fileHandleVersion2.getFileId()).put("fileVersion", fileHandleVersion2.getVersion());
 		output = client.call(token, node, TestMessageHandler.class.getName(), null, new HashMap<>(), 100000);
 		Assert.assertEquals("V2", output.getPayload().get("content").asText());
+	}
+
+	private void writeFile(File file, String content) throws IOException {
+		// Sleep 100ms to ensure that the file lastmodification's date get updated
+		try {
+			Thread.sleep(100);
+		} catch (InterruptedException e) {}
+		try(FileWriter writer = new FileWriter(file)) {
+			writer.write(content);
+		}
 	}
 
 	
