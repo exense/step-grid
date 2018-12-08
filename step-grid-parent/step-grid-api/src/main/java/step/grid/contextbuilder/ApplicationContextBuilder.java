@@ -152,6 +152,18 @@ public class ApplicationContextBuilder {
 		branches.values().forEach(branch->branch.reset());
 	}
 
+	/**
+	 * Reset the context of the specified branch for this thread.
+	 * 
+	 * After calling this method the current context will point to
+	 * the root context of each branches.
+	 * 
+	 * @param branchName the name of the branch for each the context should be reseted
+	 */
+	public void resetContext(String branchName) {
+		getBranch(branchName).reset();
+	}
+	
 	private Branch getBranch(String branchName) {
 		Branch branch = branches.get(branchName);
 		if(branch == null) {
