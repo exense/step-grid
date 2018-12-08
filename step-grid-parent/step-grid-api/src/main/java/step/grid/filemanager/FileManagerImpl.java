@@ -103,6 +103,8 @@ public class FileManagerImpl implements FileManager {
 					logger.error("Error while loading file manager client cache for file "+file.getAbsolutePath(), e);
 				}
 			}
+		} else if(!cacheFolder.exists()) {
+			cacheFolder.mkdirs();
 		}
 	}
 	
