@@ -155,8 +155,8 @@ public class ApplicationContextBuilder {
 	/**
 	 * Reset the context of the specified branch for this thread.
 	 * 
-	 * After calling this method the current context will point to
-	 * the root context of each branches.
+	 * After calling this method the current context of this thread will point to
+	 * the root context of the specified branch
 	 * 
 	 * @param branchName the name of the branch for each the context should be reseted
 	 */
