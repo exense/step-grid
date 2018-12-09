@@ -56,6 +56,7 @@ public class LocalResourceApplicationContextFactory extends ApplicationContextFa
 	@Override
 	public ClassLoader buildClassLoader(ClassLoader parentClassLoader) {
 		File jar = ResourceExtractor.extractResource(resourceClassLoader, resourceName);
+		jar.deleteOnExit();
 		List<URL> urls = ClassPathHelper.forSingleFile(jar);
 		URL[] urlArray = urls.toArray(new URL[urls.size()]);
 		URLClassLoader cl = new URLClassLoader(urlArray, parentClassLoader);
