@@ -28,6 +28,7 @@ import org.junit.Before;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import step.commons.helpers.FileHelper;
 import step.grid.Grid;
@@ -94,7 +95,7 @@ public abstract class AbstractGridTest {
 		client.close();
 	}
 	
-	protected JsonNode newDummyJson() {
+	protected ObjectNode newDummyJson() {
 		return new ObjectMapper().createObjectNode().put("a", "b");
 	}
 	
@@ -125,9 +126,13 @@ public abstract class AbstractGridTest {
 	}
 
 	protected TokenWrapper selectToken() throws AgentCommunicationException {
+		return selectToken(true);
+	}
+	
+	protected TokenWrapper selectToken(boolean createSession) throws AgentCommunicationException {
 		Map<String, Interest> interests = new HashMap<>();
 		interests.put("att1", new Interest(Pattern.compile("val.*"), true));
-		TokenWrapper token = client.getTokenHandle(null, interests, true);
+		TokenWrapper token = client.getTokenHandle(null, interests, createSession);
 		return token;
 	}
 }

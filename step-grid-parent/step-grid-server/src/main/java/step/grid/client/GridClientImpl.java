@@ -23,6 +23,7 @@ import java.net.SocketTimeoutException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
 import java.util.regex.Pattern;
@@ -51,6 +52,7 @@ import step.grid.agent.ObjectMapperResolver;
 import step.grid.agent.handler.MessageHandler;
 import step.grid.agent.handler.MessageHandlerPool;
 import step.grid.agent.tokenpool.AgentTokenWrapper;
+import step.grid.agent.tokenpool.TokenReservationSession;
 import step.grid.contextbuilder.ApplicationContextBuilder;
 import step.grid.filemanager.FileManagerClient;
 import step.grid.filemanager.FileManagerException;
@@ -74,6 +76,9 @@ public class GridClientImpl implements GridClient {
 	private final Grid grid;
 	
 	private Client client;
+	
+	// This map is used to store the Sessions of local tokens
+	protected ConcurrentHashMap<String, TokenReservationSession> localTokenSessions = new ConcurrentHashMap<>();
 
 	public GridClientImpl(Grid grid) {
 		// use default configuration
@@ -124,11 +129,15 @@ public class GridClientImpl implements GridClient {
 	@Override
 	public TokenWrapper getLocalTokenHandle() {
 		Token localToken = new Token();
-		localToken.setId(UUID.randomUUID().toString());
+		String tokenId = UUID.randomUUID().toString();
+		localToken.setId(tokenId);
 		localToken.setAgentid(Grid.LOCAL_AGENT);		
 		localToken.setAttributes(new HashMap<String, String>());
 		localToken.setSelectionPatterns(new HashMap<String, Interest>());
 		TokenWrapper tokenWrapper = new TokenWrapper(localToken, new AgentRef(Grid.LOCAL_AGENT, "localhost", "default"));
+		tokenWrapper.setHasSession(true);
+		// Store the Session to the local map
+		localTokenSessions.put(tokenId, new TokenReservationSession());
 		return tokenWrapper;
 	}
 	
@@ -157,16 +166,26 @@ public class GridClientImpl implements GridClient {
 		try {
 			if(tokenWrapper.hasSession()) {
 				//tokenWrapper.setHasSession(false);
-				releaseSession(tokenWrapper.getAgent(),tokenWrapper.getToken());			
+				if(isLocal(tokenWrapper)) {
+					// Remove the Session from the local store and close it
+					TokenReservationSession session = localTokenSessions.remove(tokenWrapper.getID());
+					session.close();
+				} else {
+					releaseSession(tokenWrapper.getAgent(),tokenWrapper.getToken());			
+				}
 			}			
 		} catch(Exception e) {
 			tokenLifecycleStrategy.afterTokenReleaseError(getTokenLifecycleCallback(tokenWrapper), tokenWrapper, e);
 			throw e;
 		} finally {
-			if(!tokenWrapper.getToken().getAgentid().equals(Grid.LOCAL_AGENT)) {
+			if(!isLocal(tokenWrapper)) {
 				grid.returnToken(tokenWrapper);		
 			}			
 		}
+	}
+
+	protected boolean isLocal(TokenWrapper tokenWrapper) {
+		return tokenWrapper.getToken().isLocal();
 	}
 	
 	@Override
@@ -202,9 +221,15 @@ public class GridClientImpl implements GridClient {
 	}
 
 	private OutputMessage callLocalToken(Token token, InputMessage message) throws Exception {
+		TokenReservationSession tokenReservationContext = localTokenSessions.get(token.getId());
+		if(tokenReservationContext == null) {
+			throw new Exception("The local token "+token.getId()+" is invalid or has already been returned to the pool. Please call getLocalTokenHandle() first.");
+		}
+		
 		OutputMessage output;
 		AgentTokenWrapper agentTokenWrapper = new AgentTokenWrapper(token);
 		agentTokenWrapper.setServices(localAgentTokenServices);
+		agentTokenWrapper.setTokenReservationSession(tokenReservationContext);
 		
 		localAgentTokenServices.getApplicationContextBuilder().resetContext();
 		

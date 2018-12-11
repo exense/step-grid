@@ -65,19 +65,19 @@ public class TestMessageHandler extends AbstractMessageHandler {
 			} catch(Exception e) {
 				e.printStackTrace();
 			}
-		}
-		
-		token.getTokenReservationSession().put("myObject", new Closeable() {
-			
-			@Override
-			public void close() throws IOException {
-				try {
-					Thread.sleep(10);
-				} catch (InterruptedException e) {
-
+		} else if(message.getPayload().has("testAgentCallTimeoutDuringRelease")) {
+			token.getTokenReservationSession().put("myObject", new Closeable() {
+				
+				@Override
+				public void close() throws IOException {
+					try {
+						Thread.sleep(10);
+					} catch (InterruptedException e) {
+						
+					}
 				}
-			}
-		});
+			});
+		}
 		
 		try {
 			Thread.sleep(10);
@@ -85,7 +85,10 @@ public class TestMessageHandler extends AbstractMessageHandler {
 
 		}
 		
-		return null;
+		OutputMessageBuilder builder = new OutputMessageBuilder();
+		builder.add("Result", "OK");
+		
+		return builder.build();
 	}
 
 }
