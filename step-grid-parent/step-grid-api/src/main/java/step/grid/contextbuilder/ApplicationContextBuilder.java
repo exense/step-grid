@@ -57,7 +57,7 @@ import step.grid.filemanager.FileManagerException;
  * the master branch (the default one) and the branch called "newBranchName"
  * This branches can be selected for execution using builder.runInContext("branchName",...)
  * 
- * @author Jérôme Comte
+ * @author Jerome Comte
  *
  */
 public class ApplicationContextBuilder {
@@ -271,7 +271,7 @@ public class ApplicationContextBuilder {
 	 * Execute the callable passed as argument in the current context of this thread on the branch specified as input
 	 * 
 	 * @param branchName the name of the branch to be used for execution
-	 * @param callable the callable to be executed
+	 * @param runnable the callable to be executed
 	 * @return the result of the callable
 	 * @throws Exception
 	 */
