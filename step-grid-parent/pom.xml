@@ -1,28 +1,65 @@
-<!--
-    (C) Copyright 2018 Jerome Comte and Dorian Cransac
-   
-    This file is part of STEP
-   
-    STEP is free software: you can redistribute it and/or modify
-    it under the terms of the GNU Affero General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-     
-    STEP is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU Affero General Public License for more details.
-   
-    You should have received a copy of the GNU Affero General Public License
-    along with STEP.  If not, see <http://www.gnu.org/licenses/>.
- -->
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<!-- (C) Copyright 2018 Jerome Comte and Dorian Cransac This file is part 
+	of STEP STEP is free software: you can redistribute it and/or modify it under 
+	the terms of the GNU Affero General Public License as published by the Free 
+	Software Foundation, either version 3 of the License, or (at your option) 
+	any later version. STEP is distributed in the hope that it will be useful, 
+	but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY 
+	or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License 
+	for more details. You should have received a copy of the GNU Affero General 
+	Public License along with STEP. If not, see <http://www.gnu.org/licenses/>. -->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
 	<groupId>ch.exense.step</groupId>
 	<artifactId>step-grid-parent</artifactId>
-	<version>0.9.0</version>
+	<version>0.9.0-SNAPSHOT</version>
 	<packaging>pom</packaging>
+
+	<name>Step Grid</name>
+	<description>
+		Step Grid
+	</description>
+	<url>http://exense.ch/</url>
+	<licenses>
+		<license>
+			<name>The GNU Affero General Public License 3.0</name>
+			<url>http://www.gnu.org/licenses/</url>
+		</license>
+	</licenses>
+	<developers>
+		<developer>
+			<name>Jerome Comte</name>
+			<email>jerome.comte@exense.ch</email>
+			<organization>Exense</organization>
+			<organizationUrl>http://exense.ch</organizationUrl>
+			<url>http://step.exense.ch/</url>
+		</developer>
+		<developer>
+			<name>Dorian Cransac</name>
+			<email>dorian.cransac@exense.ch</email>
+			<organization>Exense</organization>
+			<organizationUrl>http://exense.ch</organizationUrl>
+			<url>http://step.exense.ch/</url>
+		</developer>
+	</developers>
+	<scm>
+		<connection>scm:git:https://github.com/exense/step-grid/</connection>
+		<developerConnection>scm:git:https://github.com/exense/step-grid.git</developerConnection>
+		<url>https://github.com/exense/step-grid/</url>
+	</scm>
+
+	<distributionManagement>
+		<snapshotRepository>
+			<id>snapshot-nexus</id>
+			<url>https://nexus-enterprise.exense.ch/repository/exense-snapshots/</url>
+		</snapshotRepository>
+		<repository>
+			<id>ossrh</id>
+			<url>https://oss.sonatype.org/content/repositories/snapshots</url>
+		</repository>
+	</distributionManagement>
 
 	<properties>
 		<junit.version>4.8.1</junit.version>
@@ -34,8 +71,7 @@
 		<module>step-grid-agent</module>
 		<module>step-grid-api</module>
 	</modules>
-	
-	
+
 	<dependencies>
 		<dependency>
 			<groupId>org.slf4j</groupId>
@@ -47,7 +83,7 @@
 			<artifactId>junit</artifactId>
 			<version>${junit.version}</version>
 			<scope>test</scope>
-		</dependency>	
+		</dependency>
 	</dependencies>
 
 	<build>
@@ -77,26 +113,11 @@
 							<goal>report</goal>
 						</goals>
 					</execution>
-<!-- 					<execution>
-						<id>default-check</id>
-						<goals>
-							<goal>check</goal>
-						</goals>
-						<configuration>
-							<rules>
-								<rule implementation="org.jacoco.maven.RuleConfiguration">
-									<element>BUNDLE</element>
-									<limits>
-										<limit implementation="org.jacoco.report.check.Limit">
-											<counter>COMPLEXITY</counter>
-											<value>COVEREDRATIO</value>
-											<minimum>0.50</minimum>
-										</limit>
-									</limits>
-								</rule>
-							</rules>
-						</configuration>
-					</execution> -->
+					<!-- <execution> <id>default-check</id> <goals> <goal>check</goal> </goals> 
+						<configuration> <rules> <rule implementation="org.jacoco.maven.RuleConfiguration"> 
+						<element>BUNDLE</element> <limits> <limit implementation="org.jacoco.report.check.Limit"> 
+						<counter>COMPLEXITY</counter> <value>COVEREDRATIO</value> <minimum>0.50</minimum> 
+						</limit> </limits> </rule> </rules> </configuration> </execution> -->
 				</executions>
 			</plugin>
 			<plugin>
@@ -116,6 +137,67 @@
 					</systemPropertyVariables>
 				</configuration>
 			</plugin>
-		</plugins>	
+			<!-- Deployment -->
+			<plugin>
+				<groupId>org.sonatype.plugins</groupId>
+				<artifactId>nexus-staging-maven-plugin</artifactId>
+				<version>1.6.7</version>
+				<extensions>true</extensions>
+				<configuration>
+					<serverId>ossrh</serverId>
+					<nexusUrl>https://oss.sonatype.org/</nexusUrl>
+					<autoReleaseAfterClose>false</autoReleaseAfterClose>
+				</configuration>
+			</plugin>
+			<!-- Signature -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-gpg-plugin</artifactId>
+				<version>1.6</version>
+				<executions>
+					<execution>
+						<id>sign-artifacts</id>
+						<phase>verify</phase>
+						<goals>
+							<goal>sign</goal>
+						</goals>
+						<configuration>
+							<gpgArguments>
+								<arg>--pinentry-mode</arg>
+								<arg>loopback</arg>
+							</gpgArguments>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+			<!-- Source -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-source-plugin</artifactId>
+				<version>3.0.1</version>
+				<executions>
+					<execution>
+						<id>attach-sources</id>
+						<goals>
+							<goal>jar-no-fork</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+			<!-- Javadoc -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-javadoc-plugin</artifactId>
+				<version>2.9.1</version>
+				<executions>
+					<execution>
+						<id>attach-javadocs</id>
+						<goals>
+							<goal>jar</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
 	</build>
 </project>
