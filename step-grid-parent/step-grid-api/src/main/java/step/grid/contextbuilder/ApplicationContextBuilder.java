@@ -138,7 +138,16 @@ public class ApplicationContextBuilder {
 	 * of this class as root {@link ClassLoader}
 	 */
 	public ApplicationContextBuilder() {
-		ApplicationContext rootContext = new ApplicationContext(this.getClass().getClassLoader());
+		this(ApplicationContextBuilder.class.getClassLoader());
+	}
+	
+	/**
+	 * Creates a new instance of {@link ApplicationContextBuilder} using the specified {@link ClassLoader} 
+	 * 
+	 * @param rootClassLoader the {@link ClassLoader} to be used as root of this context
+	 */
+	public ApplicationContextBuilder(ClassLoader rootClassLoader) {
+		ApplicationContext rootContext = new ApplicationContext(rootClassLoader);
 		Branch branch = new Branch(rootContext);
 		branches.put(MASTER, branch);
 	}
