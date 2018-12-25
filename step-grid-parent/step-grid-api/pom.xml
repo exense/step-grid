@@ -24,7 +24,7 @@
 	<parent>
 		<groupId>ch.exense.step</groupId>
 		<artifactId>step-grid-parent</artifactId>
-		<version>0.9.0</version>
+		<version>0.9.1</version>
 	</parent>
 
 	<dependencies>
