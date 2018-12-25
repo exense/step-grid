@@ -136,8 +136,12 @@ public class GridClientImpl implements GridClient {
 		localToken.setSelectionPatterns(new HashMap<String, Interest>());
 		TokenWrapper tokenWrapper = new TokenWrapper(localToken, new AgentRef(Grid.LOCAL_AGENT, "localhost", "default"));
 		tokenWrapper.setHasSession(true);
+
+		// Attach the session to the token so that it can be accessed by client after token selection
+		TokenReservationSession tokenReservationSession = new TokenReservationSession();
+		tokenWrapper.getToken().attachObject(TokenWrapper.TOKEN_RESERVATION_SESSION, tokenReservationSession);
 		// Store the Session to the local map
-		localTokenSessions.put(tokenId, new TokenReservationSession());
+		localTokenSessions.put(tokenId, tokenReservationSession);
 		return tokenWrapper;
 	}
 	

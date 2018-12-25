@@ -39,6 +39,8 @@ public class TokenWrapper implements Identity {
 	
 	private boolean hasSession = false;
 	
+	public static final String TOKEN_RESERVATION_SESSION = "tokenReservationSession";
+	
 	public TokenWrapper() {
 		super();
 	}
