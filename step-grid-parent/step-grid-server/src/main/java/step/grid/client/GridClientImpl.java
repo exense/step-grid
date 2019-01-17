@@ -114,7 +114,12 @@ public class GridClientImpl implements GridClient {
 		FileManagerClient fileManagerClient = new FileManagerClient() {
 			@Override
 			public FileVersion requestFileVersion(FileVersionId fileVersionId) throws FileManagerException {
-				return grid.getFileManager().requestFileVersion(fileVersionId);
+				return grid.getFileManager().getFileVersion(fileVersionId);
+			}
+
+			@Override
+			public void removeFileVersionFromCache(FileVersionId fileVersionId) {
+				// nothing to be done here as we're accessing the FileManagerServer directly (without cache)
 			}
 		};
 		
@@ -401,6 +406,11 @@ public class GridClientImpl implements GridClient {
 
 	@Override
 	public FileVersion getRegisteredFile(FileVersionId fileVersionId) throws FileManagerException {
-		return grid.getFileManager().requestFileVersion(fileVersionId);
+		return grid.getFileManager().getFileVersion(fileVersionId);
+	}
+
+	@Override
+	public void unregisterFile(FileVersionId fileVersionId) throws FileManagerException {
+		grid.getFileManager().unregisterFileVersion(fileVersionId);
 	}
 }

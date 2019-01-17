@@ -38,10 +38,19 @@ public interface GridFileService {
 	/**
 	 * Get a file that has been previously registered to the GRID
 	 * 
-	 * @param fileVersionId the handle returned at regitration
+	 * @param fileVersionId the handle returned at registration
 	 * @return the registered file
 	 * @throws FileManagerException 
 	 */
 	FileVersion getRegisteredFile(FileVersionId fileVersionId) throws FileManagerException;
 
+	
+	/**
+	 * Unregister a file from the GRID.
+	 * 
+	 * @param fileVersionId the {@link FileVersionId} of the file
+	 * @throws FileManagerException
+	 */
+	void unregisterFile(FileVersionId fileVersionId) throws FileManagerException;
+	
 }
