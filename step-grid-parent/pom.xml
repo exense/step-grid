@@ -12,7 +12,7 @@
 
 	<groupId>ch.exense.step</groupId>
 	<artifactId>step-grid-parent</artifactId>
-	<version>0.9.3-SNAPSHOT</version>
+	<version>0.9.3</version>
 	<packaging>pom</packaging>
 
 	<name>Step Grid</name>
@@ -46,7 +46,7 @@
 		<connection>scm:git:https://github.com/exense/step-grid/</connection>
 		<developerConnection>scm:git:https://github.com/exense/step-grid.git</developerConnection>
 		<url>https://github.com/exense/step-grid/</url>
-	  <tag>HEAD</tag>
+	  <tag>0.9.3</tag>
   </scm>
 
 	<distributionManagement>
