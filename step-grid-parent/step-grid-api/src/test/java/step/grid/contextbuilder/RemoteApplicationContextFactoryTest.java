@@ -21,11 +21,6 @@ public class RemoteApplicationContextFactoryTest {
 			public FileVersion requestFileVersion(FileVersionId fileVersionId) throws FileManagerException {
 				return new FileVersion(new File(""), fileVersionId, false);
 			}
-			
-			@Override
-			public void removeFileVersionFromCache(FileVersionId fileVersionId) {
-				
-			}
 		};
 		RemoteApplicationContextFactory f1 = new RemoteApplicationContextFactory(fileManagerClient, fileVersionId);
 		ClassLoader cl = f1.buildClassLoader(this.getClass().getClassLoader());
