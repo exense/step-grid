@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.Assert;
 import org.junit.Before;
@@ -28,7 +29,7 @@ public class FileManagerImplTest {
 		
 		FileVersionId handle = f.registerFileVersion(testFile, false).getVersionId();
 		
-		FileVersion registeredFile = f.getFileVersion(handle);
+		FileVersion registeredFile = f.requestFileVersion(handle);
 		Assert.assertNotNull(registeredFile);
 		
 		writeFileContent(testFile, "V2");
@@ -39,8 +40,8 @@ public class FileManagerImplTest {
 		
 		Assert.assertFalse(handle2.equals(handle));
 		
-		FileVersion registeredFileHandle1 = f.getFileVersion(handle);
-		FileVersion registeredFileHandle2 = f.getFileVersion(handle2);
+		FileVersion registeredFileHandle1 = f.requestFileVersion(handle);
+		FileVersion registeredFileHandle2 = f.requestFileVersion(handle2);
 		Assert.assertNotNull(registeredFileHandle2);
 		
 		Assert.assertEquals(registeredFileHandle1, registeredFile);
@@ -63,48 +64,25 @@ public class FileManagerImplTest {
 		testFile.delete();
 		
 		// Assert the first version is still available
-		FileVersion fileVersion1 = f.getFileVersion(version1);
+		FileVersion fileVersion1 = f.requestFileVersion(version1);
 		Assert.assertEquals("", new String(Files.readAllBytes(fileVersion1.getFile().toPath())));
 		
 		// Retrieve the version 2
-		FileVersion fileVersion2 = f.getFileVersion(version2);
+		FileVersion fileVersion2 = f.requestFileVersion(version2);
 		Assert.assertEquals("V2", new String(Files.readAllBytes(fileVersion2.getFile().toPath())));
 		
 		// Register a third version of the file and DELETE the other versions
 		writeFileContent(testFile, "V3");
 		FileVersionId version3 = f.registerFileVersion(testFile, true).getVersionId();
 		
-		FileVersion fileVersion3 = f.getFileVersion(version3);
+		FileVersion fileVersion3 = f.requestFileVersion(version3);
 		Assert.assertEquals("V3", new String(Files.readAllBytes(fileVersion3.getFile().toPath())));
 
 		// the old versions should have been deleted
-		Assert.assertNull(f.getFileVersion(version1));
-		Assert.assertNull(f.getFileVersion(version2));
+		Assert.assertNull(f.requestFileVersion(version1));
+		Assert.assertNull(f.requestFileVersion(version2));
 	}
 
-	@Test
-	public void testUnregistration() throws IOException, FileManagerException {
-		// Create a single empty file
-		File testFile = FileHelper.createTempFile();
-		
-		// Register a first version of the file
-		FileVersionId version1 = f.registerFileVersion(testFile, false).getVersionId();
-		
-		// Register the same file a second time
-		FileVersionId version2 = f.registerFileVersion(testFile, false).getVersionId();
-		
-		// Delete the source file. As soon as registered, it shouldn't be needed anymore
-		testFile.delete();
-		
-		Assert.assertEquals(version1, version2);
-		
-		// Request deletion of the the file version
-		f.unregisterFileVersion(version1);
-			
-		// The file is still not available anymore
-		Assert.assertNull(f.getFileVersion(version1));
-	}
-	
 	private void writeFileContent(File testFile, String content) throws IOException {
 		// Sleep 100ms to ensure that the file lastmodification's date get updated
 		try {
@@ -123,7 +101,7 @@ public class FileManagerImplTest {
 		
 		FileVersionId handle = f.registerFileVersion(testFile, false).getVersionId();
 		
-		FileVersion file = f.getFileVersion(handle);
+		FileVersion file = f.requestFileVersion(handle);
 		Assert.assertNotNull(file);
 	}
 	
@@ -149,12 +127,45 @@ public class FileManagerImplTest {
 		FileVersion fileVersion2 = f.registerFileVersion(testFolder, false);
 		
 		f = new FileManagerImpl(registryFolder);
-		FileVersion fileVersionActual1 = f.getFileVersion(fileVersion1.getVersionId());
-		FileVersion fileVersionActual2 = f.getFileVersion(fileVersion2.getVersionId());
+		FileVersion fileVersionActual1 = f.requestFileVersion(fileVersion1.getVersionId());
+		FileVersion fileVersionActual2 = f.requestFileVersion(fileVersion2.getVersionId());
 		
 		Assert.assertEquals(fileVersion1, fileVersionActual1);
 		Assert.assertEquals(fileVersion2, fileVersionActual2);
 	}
 	
+	/**
+	 * Test the {@link FileManagerImpl} with a {@link FileVersionProvider} which 
+	 * is responsible for the retrieval of the FileVersion if absent of the cache
+	 * 
+	 * @throws FileManagerException
+	 * @throws IOException
+	 */
+	@Test
+	public void testFileProvider() throws FileManagerException, IOException {
+		File tempFolder = FileHelper.createTempFolder();
+		
+		File tempFile1 = FileHelper.createTempFile();
+		FileVersionId fileVersionId1 = new FileVersionId("f1", 1);
+		FileVersion fileVersion1 = new FileVersion(tempFile1, new FileVersionId("f1", 1), false);
+		
+		AtomicInteger callCount = new AtomicInteger();
+		FileVersionProvider fileProvider = new FileVersionProvider() {
+			
+			@Override
+			public FileVersion saveFileVersionTo(FileVersionId fileVersionId, File file) throws FileManagerException {
+				callCount.incrementAndGet();
+				return fileVersion1;
+			}
+		};
+		
+		FileManagerImpl c = new FileManagerImpl(tempFolder, fileProvider);
+		FileVersion fileVersionActual1 = c.requestFileVersion(fileVersionId1);
+		Assert.assertEquals(fileVersion1, fileVersionActual1);
+		
+		fileVersionActual1 = c.requestFileVersion(fileVersionId1);
+		Assert.assertEquals(fileVersion1, fileVersionActual1);
+		Assert.assertEquals(1, callCount.get());		
+	}
 	
 }

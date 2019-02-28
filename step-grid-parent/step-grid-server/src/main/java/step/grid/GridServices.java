@@ -61,7 +61,7 @@ public class GridServices {
     @Path("/file/{id}/{version}")
 	public Response getFile(@PathParam("id") String id, @PathParam("version") long version) throws IOException, FileManagerException {
 		FileVersionId versionId = new FileVersionId(id, version);
-		FileVersion fileVersion = fileManager.getFileVersion(versionId);
+		FileVersion fileVersion = fileManager.requestFileVersion(versionId);
 
 		File file = fileVersion.getFile();
 		FileInputStream inputStream = new FileInputStream(file);
@@ -70,13 +70,9 @@ public class GridServices {
 			
 			@Override
 			public void write(OutputStream output) throws IOException, WebApplicationException {
-				try {
-					// This buffer size doesn't seem to have a significant effect on the performance
-					FileHelper.copy(inputStream, output, 2048);
-					output.flush();
-				} finally {
-					inputStream.close();
-				}
+				// This buffer size doesn't seem to have a significant effect on the performance
+				FileHelper.copy(inputStream, output, 2048);
+				output.flush();
 			}
 		};
 		

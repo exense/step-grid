@@ -2,13 +2,7 @@ package step.grid.filemanager;
 
 import java.io.File;
 
-/**
- * A file-based cache for {@link FileVersion} objects. 
- * 
- * This cache enables the registration, caching and retrieval of different versions of files.
- *
- */
-public interface FileManager {
+public interface FileManager extends FileManagerClient {
 
 	/**
 	 * Cache the content of the file provided as argument under a specific version for later retrieval
@@ -24,20 +18,13 @@ public interface FileManager {
 	public FileVersion registerFileVersion(File file, boolean deletePreviousVersions) throws FileManagerException;
 	
 	/**
-	 * Delete a specific version of a file from the cache
-	 * 
-	 * @param fileVersionId the version of the File to be removed from the cache
-	 */
-	void unregisterFileVersion(FileVersionId fileVersionId);
-	
-	/**
-	 * Get the specific version of a file.
+	 * Request the specific version of a file.
 	 * 
 	 * @param fileVersionId the version of the File to be retrieved
 	 * @return the {@link FileVersion} corresponding to the version specified or <code>null</code> if the version isn't available
 	 * @throws FileManagerException
 	 */
-	public FileVersion getFileVersion(FileVersionId fileVersionId) throws FileManagerException;
+	public FileVersion requestFileVersion(FileVersionId fileVersionId) throws FileManagerException;
 	
 	/**
 	 * Removes all cache entries of this cache

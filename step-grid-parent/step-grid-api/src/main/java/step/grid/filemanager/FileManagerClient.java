@@ -18,15 +18,6 @@
  *******************************************************************************/
 package step.grid.filemanager;
 
-/**
- * Interface for {@link FileManager} clients 
- * 
- * A {@link FileManagerClient} is responsible for the retrieval and caching of 
- * {@link FileVersion} objects on the client side.
- * 
- * On the server side, {@link FileVersion} objects are served by a {@link FileManager}
- *
- */
 public interface FileManagerClient {
 
 	/**
@@ -37,12 +28,5 @@ public interface FileManagerClient {
 	 * @throws FileManagerException
 	 */
 	FileVersion requestFileVersion(FileVersionId fileVersionId) throws FileManagerException;
-	
-	/**
-	 * Delete a specific version of a file from the cache
-	 * 
-	 * @param fileVersionId the version of the File to be removed from the cache
-	 */
-	void removeFileVersionFromCache(FileVersionId fileVersionId);
 
 }
