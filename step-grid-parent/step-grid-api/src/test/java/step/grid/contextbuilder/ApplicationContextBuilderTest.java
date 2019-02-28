@@ -53,7 +53,9 @@ public class ApplicationContextBuilderTest {
 		ApplicationContext context = builder.getCurrentContext();
 				
 		Assert.assertEquals(new URL("file://context2"), ((URLClassLoader)context.getClassLoader()).getURLs()[0]);
-		Assert.assertEquals(new URL("file://context1"), ((URLClassLoader)context.getClassLoader().getParent()).getURLs()[0]);
+		ClassLoader classloaderContext2 = context.getClassLoader();
+		ClassLoader classloaderContext1 = classloaderContext2.getParent();
+		Assert.assertEquals(new URL("file://context1"), ((URLClassLoader)classloaderContext1).getURLs()[0]);
 		Assert.assertEquals("myValue", context.get("myKey"));
 		
 		ApplicationContext contextBranch2 = builder.getCurrentContext("branch2");
@@ -68,6 +70,14 @@ public class ApplicationContextBuilderTest {
 		Assert.assertEquals(rootClassloader, builder.getCurrentContext().getClassLoader());
 		Assert.assertEquals(rootClassloader, builder.getCurrentContext("branch2").getClassLoader());
 		Assert.assertEquals(new URL("file://context1"), ((URLClassLoader)builder.getCurrentContext("branch3").getClassLoader()).getURLs()[0]);
+		
+		builder.pushContext(newApplicationContextFactory("file://context1"));
+		// Assert that the classloader hasn't been created again i.e. that the classloader created during the first
+		// push of the context1 has been reused
+		Assert.assertTrue(classloaderContext1 == builder.getCurrentContext().getClassLoader());
+		builder.pushContext(newApplicationContextFactory("file://context2"));
+		// Assert the same for the context2
+		Assert.assertTrue(classloaderContext2 == builder.getCurrentContext().getClassLoader());
 	}
 
 	private ApplicationContextFactory newApplicationContextFactory(String id) {

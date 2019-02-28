@@ -41,7 +41,7 @@ public class RemoteApplicationContextFactory extends ApplicationContextFactory {
 
 	@Override
 	public String getId() {
-		return remoteClassLoaderFolder.getFileId();
+		return remoteClassLoaderFolder.getFileId()+"_"+remoteClassLoaderFolder.getVersion();
 	}
 
 	@Override
