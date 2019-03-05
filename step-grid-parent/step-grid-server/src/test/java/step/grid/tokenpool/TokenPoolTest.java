@@ -24,6 +24,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -255,6 +256,7 @@ public class TokenPoolTest {
 		token.addAttribute("color", "red");
 		//token.addInterest(new Se)
 		
+		// Offer one token to the pool
 		pool.offerToken(token);
 		
 		final IdentityImpl pretender = new IdentityImpl();
@@ -262,11 +264,15 @@ public class TokenPoolTest {
 		
 		IdentityImpl selectedIdentityImpl = null;
 		Exception e1 = null;
+
+		// Select the unique token of the pool and keep it reserved
 		try {
 			selectedIdentityImpl = pool.selectToken(pretender, 10);
 		} catch (Exception e) {
 			e1 = e;
 		}
+		
+		// Asserts that the token could be selected
 		Assert.assertNotNull(selectedIdentityImpl);
 		Assert.assertNull(e1);
 		
@@ -274,14 +280,19 @@ public class TokenPoolTest {
 		
 		final AtomicBoolean tokenInvalidated = new AtomicBoolean(false);
 		
+		Semaphore s = new Semaphore(0);
 		Thread t = new Thread() {
 
 			@Override
 			public void run() {
+				// notify the thread start
+				s.release();
 				try {
+					// Select a token and wait indefinitely (matchExsistsTimeout=0)
 					pool.selectToken(pretender, 0, 1);
 				} catch (TimeoutException e) {
 					if(tokenInvalidated.get()) {
+						// This is the expected path
 						l.add(e);
 					} else {
 						l.add(new Exception("Timeout occurred before token invalidation"));
@@ -294,11 +305,18 @@ public class TokenPoolTest {
 		};
 		
 		t.start();
+		
+		// wait for the thread to start
+		s.acquire();
+		
 		Thread.sleep(10);
 		tokenInvalidated.set(true);
+		// Invalidate the token => this should lead to a timeout in the token selection as no match exists anymore after 
+		// token invalidation
 		pool.invalidateToken(token);
 		pool.returnToken(token);
 		Thread.sleep(100);
+		// Asserts that the TimeoutException has been thrown
 		Assert.assertEquals(1, l.size());
 		Assert.assertTrue(l.get(0) instanceof TimeoutException);
 		
