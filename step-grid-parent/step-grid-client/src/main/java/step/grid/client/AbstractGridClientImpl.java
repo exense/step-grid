@@ -1,24 +1,7 @@
-/*******************************************************************************
- * (C) Copyright 2018 Jerome Comte and Dorian Cransac
- *
- * This file is part of STEP
- *
- * STEP is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *  
- * STEP is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with STEP.  If not, see <http://www.gnu.org/licenses/>.
- *******************************************************************************/
 package step.grid.client;
 
 import java.io.File;
+import java.io.InputStream;
 import java.net.SocketTimeoutException;
 import java.util.HashMap;
 import java.util.Map;
@@ -48,7 +31,6 @@ import step.grid.Grid;
 import step.grid.Token;
 import step.grid.TokenWrapper;
 import step.grid.agent.AgentTokenServices;
-import step.grid.agent.ObjectMapperResolver;
 import step.grid.agent.handler.MessageHandler;
 import step.grid.agent.handler.MessageHandlerPool;
 import step.grid.agent.tokenpool.AgentTokenWrapper;
@@ -60,12 +42,16 @@ import step.grid.filemanager.FileVersion;
 import step.grid.filemanager.FileVersionId;
 import step.grid.io.InputMessage;
 import step.grid.io.OutputMessage;
-import step.grid.tokenpool.Identity;
 import step.grid.tokenpool.Interest;
 
-public class GridClientImpl implements GridClient {
-	
-	private static final Logger logger = LoggerFactory.getLogger(GridClientImpl.class);
+public abstract class AbstractGridClientImpl implements GridClient {
+
+	private static final Logger logger = LoggerFactory.getLogger(AbstractGridClientImpl.class);
+
+	protected Client client;
+	protected ConcurrentHashMap<String, TokenReservationSession> localTokenSessions = new ConcurrentHashMap<>();
+	protected AgentTokenServices localAgentTokenServices;
+	protected MessageHandlerPool localMessageHandlerPool;
 	
 	public static final String SELECTION_CRITERION_THREAD = "#THREADID#";
 	
@@ -74,28 +60,13 @@ public class GridClientImpl implements GridClient {
 	private final TokenLifecycleStrategy tokenLifecycleStrategy;
 	
 	private final Grid grid;
-	
-	private Client client;
-	
-	// This map is used to store the Sessions of local tokens
-	protected ConcurrentHashMap<String, TokenReservationSession> localTokenSessions = new ConcurrentHashMap<>();
 
-	public GridClientImpl(Grid grid) {
-		// use default configuration
-		this(new GridClientConfiguration(), grid);
-	}
-	
-	public GridClientImpl(GridClientConfiguration gridClientConfiguration, Grid grid) {
-		this(gridClientConfiguration, new DefaultTokenLifecycleStrategy(), grid);
-	}
-	
-	public GridClientImpl(GridClientConfiguration gridClientConfiguration, TokenLifecycleStrategy tokenLifecycleStrategy, Grid grid) {
+
+	public AbstractGridClientImpl(GridClientConfiguration gridClientConfiguration,
+			TokenLifecycleStrategy tokenLifecycleStrategy, Grid grid) {
 		super();
-		
-		this.tokenLifecycleStrategy = tokenLifecycleStrategy;
-		
 		this.gridClientConfiguration = gridClientConfiguration;
-		
+		this.tokenLifecycleStrategy = tokenLifecycleStrategy;
 		this.grid = grid;
 		
 		client = ClientBuilder.newClient();
@@ -105,33 +76,28 @@ public class GridClientImpl implements GridClient {
 		initLocalAgentServices();
 		initLocalMessageHandlerPool();
 	}
-	
-	protected AgentTokenServices localAgentTokenServices;
-	
-	protected MessageHandlerPool localMessageHandlerPool;
-	
-	private void initLocalAgentServices() {
+
+	protected void initLocalAgentServices() {
 		FileManagerClient fileManagerClient = new FileManagerClient() {
 			@Override
 			public FileVersion requestFileVersion(FileVersionId fileVersionId) throws FileManagerException {
-				return grid.getFileManager().getFileVersion(fileVersionId);
+				return getRegisteredFile(fileVersionId);
 			}
-
+	
 			@Override
 			public void removeFileVersionFromCache(FileVersionId fileVersionId) {
-				// nothing to be done here as we're accessing the FileManagerServer directly (without cache)
+				unregisterFile(fileVersionId);
 			}
 		};
 		
 		localAgentTokenServices = new AgentTokenServices(fileManagerClient);
 		localAgentTokenServices.setApplicationContextBuilder(new ApplicationContextBuilder());
 	}
-	
-	private void initLocalMessageHandlerPool() {
+
+	protected void initLocalMessageHandlerPool() {
 		localMessageHandlerPool = new MessageHandlerPool(localAgentTokenServices);
 	}
-	
-	@Override
+
 	public TokenWrapper getLocalTokenHandle() {
 		Token localToken = new Token();
 		String tokenId = UUID.randomUUID().toString();
@@ -141,7 +107,7 @@ public class GridClientImpl implements GridClient {
 		localToken.setSelectionPatterns(new HashMap<String, Interest>());
 		TokenWrapper tokenWrapper = new TokenWrapper(localToken, new AgentRef(Grid.LOCAL_AGENT, "localhost", "default"));
 		tokenWrapper.setHasSession(true);
-
+	
 		// Attach the session to the token so that it can be accessed by client after token selection
 		TokenReservationSession tokenReservationSession = new TokenReservationSession();
 		tokenWrapper.getToken().attachObject(TokenWrapper.TOKEN_RESERVATION_SESSION, tokenReservationSession);
@@ -149,11 +115,14 @@ public class GridClientImpl implements GridClient {
 		localTokenSessions.put(tokenId, tokenReservationSession);
 		return tokenWrapper;
 	}
+
+	protected boolean isLocal(TokenWrapper tokenWrapper) {
+		return tokenWrapper.getToken().isLocal();
+	}
 	
 	@Override
 	public TokenWrapper getTokenHandle(Map<String, String> attributes, Map<String, Interest> interests, boolean createSession) throws AgentCommunicationException {
-		TokenPretender tokenPretender = new TokenPretender(attributes, interests);
-		TokenWrapper tokenWrapper = getToken(tokenPretender);
+		TokenWrapper tokenWrapper = getToken(attributes, interests);
 		
 		if(createSession) {
 			try {
@@ -193,10 +162,6 @@ public class GridClientImpl implements GridClient {
 		}
 	}
 
-	protected boolean isLocal(TokenWrapper tokenWrapper) {
-		return tokenWrapper.getToken().isLocal();
-	}
-	
 	@Override
 	public OutputMessage call(TokenWrapper tokenWrapper, JsonNode argument, String handler, FileVersionId handlerPackage, Map<String,String> properties, int callTimeout) throws Exception {
 		Token token = tokenWrapper.getToken();
@@ -362,18 +327,18 @@ public class GridClientImpl implements GridClient {
 		}
 	}
 
-	private TokenWrapper getToken(final Identity tokenPretender) {
+	private TokenWrapper getToken(Map<String, String> attributes, Map<String, Interest> interests) {
 		TokenWrapper adapterToken = null;
 		try {
-			addThreadIdInterest(tokenPretender);
-			adapterToken = grid.selectToken(tokenPretender, gridClientConfiguration.getMatchExistsTimeout(), gridClientConfiguration.getNoMatchExistsTimeout());
+			addThreadIdInterest(interests);
+			adapterToken = grid.selectToken(attributes, interests, gridClientConfiguration.getMatchExistsTimeout(), gridClientConfiguration.getNoMatchExistsTimeout());
 		} catch (TimeoutException e) {
 			StringBuilder interestList = new StringBuilder();
-			if(tokenPretender.getInterests()!=null) {
-				tokenPretender.getInterests().forEach((k,v)->{interestList.append(k+"="+v+" and ");});				
+			if(interests!=null) {
+				interests.forEach((k,v)->{interestList.append(k+"="+v+" and ");});				
 			}
 			
-			String desc = " selection criteria " + interestList.toString() + " accepting attributes " + tokenPretender.getAttributes();
+			String desc = " selection criteria " + interestList.toString() + " accepting attributes " + attributes;
 			throw new RuntimeException("Not able to find any agent token matching " + desc);
 		} catch (InterruptedException e) {
 			throw new RuntimeException(e);
@@ -388,12 +353,12 @@ public class GridClientImpl implements GridClient {
 		}
 	}
 
-	private void addThreadIdInterest(final Identity tokenPretender) {
-		if(tokenPretender.getInterests()!=null) {
-			tokenPretender.getInterests().put(SELECTION_CRITERION_THREAD, new Interest(Pattern.compile("^"+Long.toString(Thread.currentThread().getId())+"$"), false));				
+	private void addThreadIdInterest(final Map<String, Interest> interests) {
+		if(interests!=null) {
+			interests.put(SELECTION_CRITERION_THREAD, new Interest(Pattern.compile("^"+Long.toString(Thread.currentThread().getId())+"$"), false));				
 		}
 	}
-
+	
 	@Override
 	public void close() {
 		client.close();
@@ -401,16 +366,22 @@ public class GridClientImpl implements GridClient {
 
 	@Override
 	public FileVersion registerFile(File file) throws FileManagerException {
-		return grid.getFileManager().registerFileVersion(file, false);
+		return grid.registerFile(file);
 	}
 
+	@Override
+	public FileVersion registerFile(InputStream inputStream, String fileName, boolean isDirectory) throws FileManagerException {
+		return grid.registerFile(inputStream, fileName, isDirectory);
+	}
+	
 	@Override
 	public FileVersion getRegisteredFile(FileVersionId fileVersionId) throws FileManagerException {
-		return grid.getFileManager().getFileVersion(fileVersionId);
+		return grid.getRegisteredFile(fileVersionId);
 	}
 
 	@Override
-	public void unregisterFile(FileVersionId fileVersionId) throws FileManagerException {
-		grid.getFileManager().unregisterFileVersion(fileVersionId);
+	public void unregisterFile(FileVersionId fileVersionId) {
+		grid.unregisterFile(fileVersionId);
 	}
+
 }

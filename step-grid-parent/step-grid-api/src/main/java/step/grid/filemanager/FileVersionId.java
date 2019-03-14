@@ -4,13 +4,13 @@ public class FileVersionId {
 	
 	protected String fileId;
 	
-	protected long version;
+	protected String version;
 
 	public FileVersionId() {
 		super();
 	}
 
-	public FileVersionId(String fileId, long version) {
+	public FileVersionId(String fileId, String version) {
 		super();
 		this.fileId = fileId;
 		this.version = version;
@@ -24,11 +24,11 @@ public class FileVersionId {
 		this.fileId = fileId;
 	}
 
-	public long getVersion() {
+	public String getVersion() {
 		return version;
 	}
 
-	public void setVersion(long version) {
+	public void setVersion(String version) {
 		this.version = version;
 	}
 
@@ -42,7 +42,7 @@ public class FileVersionId {
 		final int prime = 31;
 		int result = 1;
 		result = prime * result + ((fileId == null) ? 0 : fileId.hashCode());
-		result = prime * result + (int) (version ^ (version >>> 32));
+		result = prime * result + ((version == null) ? 0 : version.hashCode());
 		return result;
 	}
 
@@ -60,7 +60,10 @@ public class FileVersionId {
 				return false;
 		} else if (!fileId.equals(other.fileId))
 			return false;
-		if (version != other.version)
+		if (version == null) {
+			if (other.version != null)
+				return false;
+		} else if (!version.equals(other.version))
 			return false;
 		return true;
 	}

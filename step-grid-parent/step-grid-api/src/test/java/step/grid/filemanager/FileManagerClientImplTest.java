@@ -22,8 +22,8 @@ public class FileManagerClientImplTest {
 	@Before
 	public void before() throws IOException {
 		File tempFile1 = FileHelper.createTempFile();
-		fileVersionId1 = new FileVersionId("f1", 1);
-		fileVersion1 = new FileVersion(tempFile1, new FileVersionId("f1", 1), false);
+		fileVersionId1 = new FileVersionId("f1", "1");
+		fileVersion1 = new FileVersion(tempFile1, new FileVersionId("f1", "1"), false);
 		
 		registryFolder = FileHelper.createTempFolder();
 		

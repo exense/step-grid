@@ -24,7 +24,7 @@ import org.junit.Test;
 
 import step.grid.agent.AbstractGridTest;
 import step.grid.client.GridClientConfiguration;
-import step.grid.client.GridClientImpl;
+import step.grid.client.LocalGridClientImpl;
 import step.grid.io.AgentErrorCode;
 import step.grid.io.OutputMessage;
 
@@ -36,7 +36,7 @@ public class GridTest extends AbstractGridTest {
 		
 		GridClientConfiguration gridClientConfiguration = new GridClientConfiguration();
 		gridClientConfiguration.setNoMatchExistsTimeout(2000);
-		client = new GridClientImpl(gridClientConfiguration, grid);
+		client = new LocalGridClientImpl(gridClientConfiguration, grid);
 	}
 	
 	@Test

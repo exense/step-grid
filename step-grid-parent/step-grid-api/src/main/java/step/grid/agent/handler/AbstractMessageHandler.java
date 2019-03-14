@@ -50,7 +50,7 @@ public abstract class AbstractMessageHandler implements MessageHandler, AgentCon
 		String key = properyName+".id";
 		if(properties.containsKey(key)) {
 			String transferFileId = properties.get(key);
-			long transferFileVersion = Long.parseLong(properties.get(properyName+".version"));
+			String transferFileVersion = properties.get(properyName+".version");
 			return new FileVersionId(transferFileId, transferFileVersion);			
 		} else {
 			return null;

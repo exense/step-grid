@@ -14,7 +14,7 @@ public class RemoteApplicationContextFactoryTest {
 
 	@Test
 	public void test() throws FileManagerException {
-		final FileVersionId fileVersionId = new FileVersionId("id1", 1);
+		final FileVersionId fileVersionId = new FileVersionId("id1", "1");
 		FileManagerClient fileManagerClient = new FileManagerClient() {
 			
 			@Override
@@ -32,13 +32,13 @@ public class RemoteApplicationContextFactoryTest {
 		Assert.assertNotNull(cl);
 		
 		// Same ID but different version
-		final FileVersionId fileVersionId2 = new FileVersionId("id1", 2);
+		final FileVersionId fileVersionId2 = new FileVersionId("id1", "2");
 		RemoteApplicationContextFactory f2 = new RemoteApplicationContextFactory(fileManagerClient, fileVersionId2);
 		
 		Assert.assertNotSame(f2.getId(), f1.getId());
 		
 		// Different ID but same version
-		final FileVersionId fileVersionId3 = new FileVersionId("id2", 1);
+		final FileVersionId fileVersionId3 = new FileVersionId("id2", "1");
 		RemoteApplicationContextFactory f3 = new RemoteApplicationContextFactory(fileManagerClient, fileVersionId3);
 		
 		Assert.assertNotSame(f3.getId(), f1.getId());

@@ -31,11 +31,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import step.commons.helpers.FileHelper;
-import step.grid.Grid;
+import step.grid.GridImpl;
 import step.grid.TokenWrapper;
 import step.grid.agent.conf.AgentConf;
-import step.grid.client.GridClientImpl;
-import step.grid.client.GridClientImpl.AgentCommunicationException;
+import step.grid.client.AbstractGridClientImpl.AgentCommunicationException;
+import step.grid.client.GridClient;
+import step.grid.client.LocalGridClientImpl;
+import step.grid.client.RemoteGridClientImpl;
 import step.grid.io.AgentErrorCode;
 import step.grid.io.OutputMessage;
 import step.grid.tokenpool.Interest;
@@ -44,9 +46,9 @@ public abstract class AbstractGridTest {
 
 	protected Agent agent;
 	
-	protected Grid grid;
+	protected GridImpl grid;
 	
-	protected GridClientImpl client;
+	protected GridClient client;
 	
 	int nTokens = 1;
 
@@ -63,7 +65,7 @@ public abstract class AbstractGridTest {
 	public void init() throws Exception {
 		File fileManagerFolder = FileHelper.createTempFolder();
 		
-		grid = new Grid(fileManagerFolder, 0, 60000);
+		grid = new GridImpl(fileManagerFolder, 0, 60000);
 		grid.start();
 				
 		agent = new Agent(new AgentConf("http://localhost:"+grid.getServerPort(), 0, null, 100));
@@ -71,8 +73,6 @@ public abstract class AbstractGridTest {
 		attributes.put("att1", "val1");
 		agent.start();
 		agent.addTokens(nTokens, attributes, null, null);
-
-		client = new GridClientImpl(grid);
 	}
 	
 	protected void addToken(int count, Map<String, String> attributes) {

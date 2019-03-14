@@ -1,6 +1,7 @@
 package step.grid.filemanager;
 
 import java.io.File;
+import java.io.InputStream;
 
 /**
  * A file-based cache for {@link FileVersion} objects. 
@@ -10,6 +11,21 @@ import java.io.File;
  */
 public interface FileManager {
 
+	/**
+	 * Cache the content of the file provided as argument under a specific version for later retrieval
+	 * The content of the file is persisted under the version returned. Multiple versions of the same file 
+	 * can be registered using this method. If the file changed between registrations a new version will be
+	 * returned.
+	 * 
+	 * @param inputStream the {@link InputStream} of the resource to be registered
+	 * @param fileName the file name of the resource to be registered
+	 * @param isDirectory if the resource is a directory (i.e. is zipped) or not
+	 * @param deletePreviousVersions if the previous versions of this file should be deleted
+	 * @return the {@link FileVersion} of the registered file. The {@link FileVersionId} can be used for later retrival of this version
+	 * @throws FileManagerException
+	 */
+	public FileVersion registerFileVersion(InputStream inputStream, String fileName, boolean isDirectory, boolean deletePreviousVersions) throws FileManagerException;
+	
 	/**
 	 * Cache the content of the file provided as argument under a specific version for later retrieval
 	 * The content of the file is persisted under the version returned. Multiple versions of the same file 

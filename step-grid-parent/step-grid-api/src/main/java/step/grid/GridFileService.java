@@ -19,6 +19,7 @@
 package step.grid;
 
 import java.io.File;
+import java.io.InputStream;
 
 import step.grid.filemanager.FileManagerException;
 import step.grid.filemanager.FileVersion;
@@ -49,8 +50,18 @@ public interface GridFileService {
 	 * Unregister a file from the GRID.
 	 * 
 	 * @param fileVersionId the {@link FileVersionId} of the file
+	 */
+	void unregisterFile(FileVersionId fileVersionId);
+
+	/**
+	 * Register a content into the GRID
+	 * 
+	 * @param inputStream the {@link InputStream} of the content to be registered
+	 * @param fileName the file name of the resource to be registered
+	 * @param isDirectory if the resource is a zipped directory or not
+	 * @return an handle to the registered file. This handle will be used to retrieve the registered file
 	 * @throws FileManagerException
 	 */
-	void unregisterFile(FileVersionId fileVersionId) throws FileManagerException;
+	FileVersion registerFile(InputStream inputStream, String fileName, boolean isDirectory) throws FileManagerException;
 	
 }

@@ -2,14 +2,20 @@ package step.grid.filemanager;
 
 import java.io.File;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 public class FileVersion {
 	
-	protected final File file;
+	protected File file;
 	
-	protected final FileVersionId versionId;
+	protected FileVersionId versionId;
 
-	protected final boolean directory;
+	protected boolean directory;
 	
+	public FileVersion() {
+		this(null, null, false);
+	}
+
 	public FileVersion(File file, FileVersionId versionId, boolean directory) {
 		super();
 		this.file = file;
@@ -21,6 +27,7 @@ public class FileVersion {
 		return versionId;
 	}
 
+	@JsonIgnore
 	public String getFileId() {
 		return versionId.getFileId();
 	}
@@ -29,12 +36,25 @@ public class FileVersion {
 		return file;
 	}
 
-	public long getVersion() {
+	@JsonIgnore
+	public String getVersion() {
 		return versionId.getVersion();
 	}
 
 	public boolean isDirectory() {
 		return directory;
+	}
+
+	public void setFile(File file) {
+		this.file = file;
+	}
+
+	public void setVersionId(FileVersionId versionId) {
+		this.versionId = versionId;
+	}
+
+	public void setDirectory(boolean directory) {
+		this.directory = directory;
 	}
 
 	@Override

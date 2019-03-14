@@ -48,6 +48,42 @@ public class FileManagerImplTest {
 	}
 	
 	@Test
+	public void testStream() throws IOException, FileManagerException {
+		FileVersionId handle = f.registerFileVersion(this.getClass().getResourceAsStream("TestFile.txt"),"TestFile", false, false).getVersionId();;
+		
+		FileVersion fileVersion = f.getFileVersion(handle);
+		FileVersion registeredFile = fileVersion;
+		Assert.assertNotNull(registeredFile);
+		
+		// register a different content under the same name "TestFile"
+		FileVersionId handle2 = f.registerFileVersion(this.getClass().getResourceAsStream("TestFile2.txt"),"TestFile", false, false).getVersionId();
+		
+		// register the same content under a different name
+		FileVersionId handle3 = f.registerFileVersion(this.getClass().getResourceAsStream("TestFile.txt"),"AnotherResourceName", false, false).getVersionId();;
+		
+		Assert.assertFalse(handle2.equals(handle));
+		Assert.assertFalse(handle3.equals(handle));
+		
+		FileVersion registeredFileHandle1 = fileVersion;
+		FileVersion registeredFileHandle2 = f.getFileVersion(handle2);
+		FileVersion registeredFileHandle3 = f.getFileVersion(handle3);
+		Assert.assertNotNull(registeredFileHandle2);
+		Assert.assertFalse(registeredFileHandle2.isDirectory());
+		Assert.assertEquals("Dummy content 2",Files.readAllLines(registeredFileHandle2.getFile().toPath()).get(0));
+		
+		Assert.assertNotNull(registeredFileHandle3);
+		Assert.assertFalse(registeredFileHandle3.isDirectory());
+		Assert.assertEquals("Dummy content 1",Files.readAllLines(registeredFileHandle3.getFile().toPath()).get(0));
+		
+		Assert.assertEquals(registeredFileHandle1, registeredFile);
+		Assert.assertFalse(registeredFileHandle1.equals(registeredFileHandle2));
+		
+		f.unregisterFileVersion(handle);
+		registeredFileHandle1 = f.getFileVersion(handle);
+		Assert.assertNull(registeredFileHandle1);
+	}
+	
+	@Test
 	public void testMultipleVersions() throws IOException, FileManagerException {
 		// Create a single empty file
 		File testFile = FileHelper.createTempFile();

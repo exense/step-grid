@@ -39,9 +39,8 @@ public class AbstractFileManager {
 					if(file.isDirectory()) {
 						for(File container:file.listFiles()) {
 							String fileId = file.getName();
-							String versionStr = container.getName();
+							String version = container.getName();
 							if(container.isDirectory()) {
-								long version = Long.parseLong(versionStr);
 								FileVersionId fileVersionId = new FileVersionId(fileId, version);
 								
 								Properties metaProperties = getMetaProperties(fileVersionId);
@@ -49,13 +48,12 @@ public class AbstractFileManager {
 								String originalFilePath = metaProperties.getProperty(ORIGINAL_FILE_PATH_PROPERTY);
 								
 								if(originalFilePath != null) {
-									File originalFile = new File(originalFilePath);
-									onFileLoad(originalFile, fileId);
+									onFileLoad(originalFilePath, fileId);
 								}
 								
 								File dataFile = getDataFile(fileVersionId);
 								FileVersion fileVersion = new FileVersion(dataFile, fileVersionId, isDirectory);
-								logger.debug("Adding file to cache. file id: "+fileId+" and version "+Long.toString(version));
+								logger.debug("Adding file to cache. file id: "+fileId+" and version "+version);
 								
 								Map<FileVersionId, FileVersion> fileVersions = fileHandleCache.computeIfAbsent(fileId, f->new HashMap<FileVersionId, FileVersion>());
 								fileVersions.put(fileVersionId, fileVersion);
@@ -75,7 +73,7 @@ public class AbstractFileManager {
 		}
 	}
 	
-	protected void onFileLoad(File file, String fileId) {
+	protected void onFileLoad(String registryIndex, String fileId) {
 		
 	}
 	
@@ -99,12 +97,12 @@ public class AbstractFileManager {
 		return container;
 	}
 	
-	protected void createMetaFile(File source, FileVersion fileVersion) throws FileManagerException {
+	protected void createMetaFile(String registryIndex, FileVersion fileVersion) throws FileManagerException {
 		File metaFile = getMetaFile(fileVersion.getVersionId());
 		Properties metaProperties = new Properties();
 		metaProperties.setProperty(DIRECTORY_PROPERTY, Boolean.toString(fileVersion.isDirectory()));
-		if(source!=null) {
-			metaProperties.setProperty(ORIGINAL_FILE_PATH_PROPERTY, source.getPath());
+		if(registryIndex!=null) {
+			metaProperties.setProperty(ORIGINAL_FILE_PATH_PROPERTY, registryIndex);
 		}
 		try (FileWriter writer = new FileWriter(metaFile)) {
 			metaProperties.store(writer, "");
@@ -143,4 +141,9 @@ public class AbstractFileManager {
 			throw new FileManagerException(fileVersionId, "More than one data file found in " + container, null);
 		}
 	}
+	
+	protected String getRegistryIndex(File file) {
+		return file.getAbsolutePath();
+	}
+
 }

@@ -19,8 +19,10 @@
 package step.grid;
 
 import java.io.File;
+import java.io.InputStream;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeoutException;
 
 import org.eclipse.jetty.server.Handler;
@@ -30,6 +32,7 @@ import org.eclipse.jetty.server.handler.ContextHandlerCollection;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
+import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.servlet.ServletContainer;
 
@@ -38,15 +41,16 @@ import com.fasterxml.jackson.jaxrs.json.JacksonJaxbJsonProvider;
 import step.commons.helpers.FileHelper;
 import step.grid.agent.RegistrationMessage;
 import step.grid.filemanager.FileManager;
+import step.grid.filemanager.FileManagerException;
 import step.grid.filemanager.FileManagerImpl;
+import step.grid.filemanager.FileVersion;
+import step.grid.filemanager.FileVersionId;
 import step.grid.tokenpool.Identity;
+import step.grid.tokenpool.Interest;
 import step.grid.tokenpool.Token;
 import step.grid.tokenpool.TokenPool;
-import step.grid.tokenpool.TokenRegistry;
 
-public class Grid implements TokenRegistry {
-
-	public static final String LOCAL_AGENT = "local";
+public class GridImpl implements Grid {
 
 	private ExpiringMap<String, AgentRef> agentRefs;
 	
@@ -60,15 +64,15 @@ public class Grid implements TokenRegistry {
 	
 	private final FileManager fileManager;
 	
-	public Grid(Integer port) {
+	public GridImpl(Integer port) {
 		this(FileHelper.createTempFolder("filemanager"), port, 60000);
 	}
 	
-	public Grid(File fileManagerFolder, Integer port) {
+	public GridImpl(File fileManagerFolder, Integer port) {
 		this(fileManagerFolder, port, 60000);
 	}
 	
-	public Grid(File fileManagerFolder, Integer port, Integer ttl) {
+	public GridImpl(File fileManagerFolder, Integer port, Integer ttl) {
 		super();
 		this.port = port;
 		this.keepAliveTimeout = ttl;
@@ -102,12 +106,13 @@ public class Grid implements TokenRegistry {
 		ResourceConfig resourceConfig = new ResourceConfig();
 		resourceConfig.packages(GridServices.class.getPackage().getName());
 		resourceConfig.register(JacksonJaxbJsonProvider.class);
-		final Grid grid = this;
+		resourceConfig.register(MultiPartFeature.class);
+		final GridImpl grid = this;
 		
 		resourceConfig.register(new AbstractBinder() {	
 			@Override
 			protected void configure() {
-				bind(grid).to(Grid.class);
+				bind(grid).to(GridImpl.class);
 				bind(fileManager).to(FileManager.class);
 			}
 		});
@@ -138,9 +143,10 @@ public class Grid implements TokenRegistry {
 	}
 	
 	@Override
-	public TokenWrapper selectToken(Identity pretender, long matchTimeout, long noMatchTimeout)
+	public TokenWrapper selectToken(Map<String, String> attributes, Map<String, Interest> interests, long matchTimeout, long noMatchTimeout)
 			throws TimeoutException, InterruptedException {
-		TokenWrapper tokenWrapper = tokenPool.selectToken(pretender, matchTimeout, noMatchTimeout);
+		TokenPretender tokenPretender = new TokenPretender(attributes, interests);
+		TokenWrapper tokenWrapper = tokenPool.selectToken(tokenPretender, matchTimeout, noMatchTimeout);
 		tokenWrapper.setState(TokenWrapperState.IN_USE);
 		return tokenWrapper;
 	}
@@ -214,7 +220,23 @@ public class Grid implements TokenRegistry {
 		return ((ServerConnector)server.getConnectors()[0]).getLocalPort();
 	}
 
-	public FileManager getFileManager() {
-		return fileManager;
+	@Override
+	public FileVersion registerFile(InputStream inputStream, String fileName, boolean isDirectory) throws FileManagerException {
+		return fileManager.registerFileVersion(inputStream, fileName, isDirectory, false);
+	}
+	
+	@Override
+	public FileVersion registerFile(File file) throws FileManagerException {
+		return fileManager.registerFileVersion(file, false);
+	}
+
+	@Override
+	public FileVersion getRegisteredFile(FileVersionId fileVersionId) throws FileManagerException {
+		return fileManager.getFileVersion(fileVersionId);
+	}
+
+	@Override
+	public void unregisterFile(FileVersionId fileVersionId) {
+		fileManager.unregisterFileVersion(fileVersionId);
 	}
 }

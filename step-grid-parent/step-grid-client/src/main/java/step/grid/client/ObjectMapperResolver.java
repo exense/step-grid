@@ -1,3 +1,4 @@
+package step.grid.client;
 /*******************************************************************************
  * (C) Copyright 2018 Jerome Comte and Dorian Cransac
  *
@@ -16,45 +17,29 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with STEP.  If not, see <http://www.gnu.org/licenses/>.
  *******************************************************************************/
-package step.grid.client;
-
-import java.util.Map;
-
-import step.grid.tokenpool.Identity;
-import step.grid.tokenpool.Interest;
 
 
-public class TokenPretender implements Identity {
+import javax.ws.rs.Consumes;
+import javax.ws.rs.Produces;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.ext.ContextResolver;
+import javax.ws.rs.ext.Provider;
 
-	final Map<String, String> selectionAttributes;
-	
-	final Map<String, Interest> interests;
-	
-	public TokenPretender(Map<String, String> selectionAttributes, Map<String, Interest> interests) {
-		super();
-		this.selectionAttributes = selectionAttributes;
-		this.interests = interests;
-	}
+import com.fasterxml.jackson.databind.ObjectMapper;
 
-	@Override
-	public String getID() {
-		// TODO Auto-generated method stub
-		return null;
-	}
+@Provider
+@Consumes(MediaType.APPLICATION_JSON)
+@Produces(MediaType.APPLICATION_JSON)
+public class ObjectMapperResolver implements ContextResolver<ObjectMapper> {
 
-	@Override
-	public Map<String, String> getAttributes() {
-		return selectionAttributes;
-	}
+    private final ObjectMapper mapper;
 
-	@Override
-	public Map<String, Interest> getInterests() {
-		return interests;
-	}	
+    public ObjectMapperResolver() {
+        mapper = new ObjectMapper();
+    }
 
-	@Override
-	public String toString() {
-		return "AdapterTokenPretender [attributes="
-				+ selectionAttributes + ", selectionCriteria=" + interests + "]";
-	}
+    @Override
+    public ObjectMapper getContext(Class<?> type) {
+        return mapper;
+    }
 }

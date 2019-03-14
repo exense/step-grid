@@ -23,17 +23,25 @@ import java.util.Map;
 import java.util.regex.Pattern;
 
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import step.grid.TokenWrapper;
+import step.grid.client.LocalGridClientImpl;
 import step.grid.io.AgentErrorCode;
 import step.grid.io.OutputMessage;
 import step.grid.tokenpool.Interest;
 
 public class AgentTest extends AbstractGridTest {
+	
+	@Before
+	public void init() throws Exception {
+		super.init();
+		client = new LocalGridClientImpl(grid);
+	}
 	
 	@Test
 	public void test() throws Exception {

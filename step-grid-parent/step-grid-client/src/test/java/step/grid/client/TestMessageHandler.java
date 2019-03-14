@@ -37,7 +37,7 @@ public class TestMessageHandler extends AbstractMessageHandler {
 		
 		if(message.getPayload().has("file")) {
 			try {
-				FileVersionId version = new FileVersionId(message.getPayload().get("file").asText(), message.getPayload().get("fileVersion").asLong());
+				FileVersionId version = new FileVersionId(message.getPayload().get("file").asText(), message.getPayload().get("fileVersion").asText());
 				FileVersion fileVersion = token.getServices().getFileManagerClient().requestFileVersion(version);
 				OutputMessageBuilder builder = new OutputMessageBuilder();
 				builder.add("content", Files.readAllLines(fileVersion.getFile().getAbsoluteFile().toPath()).get(0));
@@ -48,7 +48,7 @@ public class TestMessageHandler extends AbstractMessageHandler {
 			}
 		} else if(message.getPayload().has("folder")) {
 			try {
-				FileVersionId version = new FileVersionId(message.getPayload().get("folder").asText(), message.getPayload().get("fileVersion").asLong());
+				FileVersionId version = new FileVersionId(message.getPayload().get("folder").asText(), message.getPayload().get("fileVersion").asText());
 				FileVersion fileVersion = token.getServices().getFileManagerClient().requestFileVersion(version);
 				OutputMessageBuilder builder = new OutputMessageBuilder();
 				

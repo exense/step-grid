@@ -16,29 +16,45 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with STEP.  If not, see <http://www.gnu.org/licenses/>.
  *******************************************************************************/
-package step.grid.client;
+package step.grid;
 
-import java.io.Closeable;
 import java.util.Map;
 
-import com.fasterxml.jackson.databind.JsonNode;
-
-import step.grid.GridFileService;
-import step.grid.TokenWrapper;
-import step.grid.client.GridClientImpl.AgentCommunicationException;
-import step.grid.filemanager.FileVersionId;
-import step.grid.io.OutputMessage;
+import step.grid.tokenpool.Identity;
 import step.grid.tokenpool.Interest;
 
-public interface GridClient extends Closeable, GridFileService {
 
-	public TokenWrapper getLocalTokenHandle();
+public class TokenPretender implements Identity {
+
+	final Map<String, String> selectionAttributes;
 	
-	public TokenWrapper getTokenHandle(Map<String, String> attributes, Map<String, Interest> interests, boolean createSession) throws AgentCommunicationException;
+	final Map<String, Interest> interests;
 	
-	public OutputMessage call(TokenWrapper tokenWrapper, JsonNode argument, String handler, FileVersionId handlerPackage, Map<String,String> properties, int callTimeout) throws Exception;
-	
-	public void returnTokenHandle(TokenWrapper tokenWrapper) throws AgentCommunicationException;
-	
-	public void close();
+	public TokenPretender(Map<String, String> selectionAttributes, Map<String, Interest> interests) {
+		super();
+		this.selectionAttributes = selectionAttributes;
+		this.interests = interests;
+	}
+
+	@Override
+	public String getID() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public Map<String, String> getAttributes() {
+		return selectionAttributes;
+	}
+
+	@Override
+	public Map<String, Interest> getInterests() {
+		return interests;
+	}	
+
+	@Override
+	public String toString() {
+		return "AdapterTokenPretender [attributes="
+				+ selectionAttributes + ", selectionCriteria=" + interests + "]";
+	}
 }

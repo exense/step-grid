@@ -12,7 +12,7 @@ public class TestMessageHandler implements MessageHandler {
 
 	@Override
 	public OutputMessage handle(AgentTokenWrapper token, InputMessage message) throws Exception {
-		throw new ApplicationContextBuilderException(new FileManagerException(new FileVersionId("fileId", 1), null));
+		throw new ApplicationContextBuilderException(new FileManagerException(new FileVersionId("fileId", "1"), null));
 	}
 
 }

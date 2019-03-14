@@ -21,7 +21,11 @@ package step.grid;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.file.Files;
+import java.util.List;
+import java.util.concurrent.TimeoutException;
 
 import javax.inject.Inject;
 import javax.ws.rs.Consumes;
@@ -29,23 +33,29 @@ import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
+import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.StreamingOutput;
 
+import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
+import org.glassfish.jersey.media.multipart.FormDataParam;
+
 import step.commons.helpers.FileHelper;
 import step.grid.agent.RegistrationMessage;
-import step.grid.filemanager.FileManagerException;
 import step.grid.filemanager.FileManager;
+import step.grid.filemanager.FileManagerException;
 import step.grid.filemanager.FileVersion;
 import step.grid.filemanager.FileVersionId;
+import step.grid.tokenpool.Token;
 
 @Path("/grid")
 public class GridServices {
 
 	@Inject
-	Grid grid;
+	GridImpl grid;
 	
 	@Inject
 	FileManager fileManager;
@@ -59,7 +69,7 @@ public class GridServices {
 	
 	@GET
     @Path("/file/{id}/{version}")
-	public Response getFile(@PathParam("id") String id, @PathParam("version") long version) throws IOException, FileManagerException {
+	public Response getFile(@PathParam("id") String id, @PathParam("version") String version) throws IOException, FileManagerException {
 		FileVersionId versionId = new FileVersionId(id, version);
 		FileVersion fileVersion = fileManager.getFileVersion(versionId);
 
@@ -82,5 +92,67 @@ public class GridServices {
 		
 		return Response.ok(fileStream, MediaType.APPLICATION_OCTET_STREAM)
 				.header("content-disposition", "attachment; filename = "+file.getName()+"; type = "+(fileVersion.isDirectory()?"dir":"file")).build();
+	}
+	
+	@POST
+    @Path("/token/select")
+	public TokenWrapper selectToken(SelectTokenArgument argument) throws TimeoutException, InterruptedException {
+		return grid.selectToken(argument.attributes, argument.interests, argument.matchTimeout, argument.noMatchTimeout);
+	}
+
+	@POST
+    @Path("/token/return")
+	public void returnToken(TokenWrapper object) {
+		grid.returnToken(object);
+	}
+
+	@GET
+    @Path("/token/list")
+	public List<Token<TokenWrapper>> getTokens() {
+		return grid.getTokens();
+	}
+
+	@POST
+    @Path("/token/{id}/error/add")
+	public void markTokenAsFailing(@PathParam("id") String tokenId, String errorMessage) {
+		grid.markTokenAsFailing(tokenId, errorMessage, null);
+	}
+
+	@POST
+	@Path("/file/register")
+	@Consumes(MediaType.MULTIPART_FORM_DATA)
+	@Produces(MediaType.APPLICATION_JSON)
+	public FileVersion registerFile(@FormDataParam("file") InputStream uploadedInputStream,
+			@FormDataParam("file") FormDataContentDisposition fileDetail, @QueryParam("type") String contentType) throws FileManagerException {
+		if (uploadedInputStream == null || fileDetail == null)
+			throw new RuntimeException("Invalid arguments");
+		
+		return grid.registerFile(uploadedInputStream, fileDetail.getFileName(), contentType!=null && contentType.equals("dir"));
+	}
+	
+	@POST
+	@Path("/file/content")
+	@Consumes(MediaType.APPLICATION_JSON)
+	public Response getRegisteredFile(FileVersionId fileVersionId) throws FileManagerException {
+		FileVersion registeredFile = grid.getRegisteredFile(fileVersionId);
+		StreamingOutput fileStream = new StreamingOutput() {
+			@Override
+			public void write(java.io.OutputStream output) throws IOException {
+				Files.copy(registeredFile.getFile().toPath(), output);
+			}
+		};
+		
+		String resourceName = registeredFile.getFile().getName();
+		String mimeType = "application/octet-stream";
+		String contentDisposition = "attachment";
+		String headerValue = String.format(contentDisposition+"; filename=\"%s\"", resourceName);
+		return Response.ok(fileStream, mimeType).header("content-disposition", headerValue).build();
+	}
+
+	@POST
+	@Path("/file/unregister")
+	@Consumes(MediaType.APPLICATION_JSON)
+	public void unregisterFile(FileVersionId fileVersionId) throws FileManagerException {
+		grid.unregisterFile(fileVersionId);
 	}
 }

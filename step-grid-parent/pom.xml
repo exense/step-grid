@@ -70,6 +70,7 @@
 
 	<modules>
 		<module>step-grid-server</module>
+		<module>step-grid-client</module>
 		<module>step-grid-agent</module>
 		<module>step-grid-api</module>
 	</modules>

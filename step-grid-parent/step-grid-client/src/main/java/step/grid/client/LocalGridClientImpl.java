@@ -16,23 +16,23 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with STEP.  If not, see <http://www.gnu.org/licenses/>.
  *******************************************************************************/
-package step.grid.tokenpool;
+package step.grid.client;
 
-import java.util.List;
-import java.util.concurrent.TimeoutException;
+import step.grid.Grid;
 
-import step.grid.TokenWrapper;
-
-
-public interface TokenRegistry {
-
-	TokenWrapper selectToken(Identity pretender, long matchTimeout, long noMatchTimeout)
-			throws TimeoutException, InterruptedException;
-
-	void returnToken(TokenWrapper object);
-
-	List<step.grid.tokenpool.Token<TokenWrapper>> getTokens();
+public class LocalGridClientImpl extends AbstractGridClientImpl implements GridClient {
 	
-	void markTokenAsFailing(String tokenId, String errorMessage, Exception e);
+	public LocalGridClientImpl(Grid grid) {
+		// use default configuration
+		this(new GridClientConfiguration(), grid);
+	}
+	
+	public LocalGridClientImpl(GridClientConfiguration gridClientConfiguration, Grid grid) {
+		this(gridClientConfiguration, new DefaultTokenLifecycleStrategy(), grid);
+	}
+	
+	public LocalGridClientImpl(GridClientConfiguration gridClientConfiguration, TokenLifecycleStrategy tokenLifecycleStrategy, Grid grid) {
+		super(gridClientConfiguration, tokenLifecycleStrategy, grid);
+	}
 
 }

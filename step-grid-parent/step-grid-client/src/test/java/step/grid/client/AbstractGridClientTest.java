@@ -25,7 +25,6 @@ import java.util.HashMap;
 
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Test;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -35,24 +34,20 @@ import step.commons.helpers.FileHelper;
 import step.grid.TokenWrapper;
 import step.grid.agent.AbstractGridTest;
 import step.grid.bootstrap.ResourceExtractor;
-import step.grid.client.GridClientImpl.AgentCallTimeoutException;
+import step.grid.client.AbstractGridClientImpl.AgentCallTimeoutException;
+import step.grid.client.AbstractGridClientImpl.AgentCommunicationException;
+import step.grid.filemanager.FileManagerException;
 import step.grid.filemanager.FileVersionId;
 import step.grid.io.OutputMessage;
 
-public class GridClientTest extends AbstractGridTest {
+public abstract class AbstractGridClientTest extends AbstractGridTest {
 	
 	@Before
 	public void init() throws Exception {
 		super.init();
 	}
-	
-	/**
-	 * Test the E2E FileManager process for a single file
-	 * 
-	 * @throws Exception
-	 */
-	@Test
-	public void testFileRegistration() throws Exception {
+
+	protected void testFileRegistration() throws AgentCommunicationException, FileManagerException, Exception {
 		getClient(0,10000,10000);
 		
 		TokenWrapper token = selectToken();
@@ -74,13 +69,8 @@ public class GridClientTest extends AbstractGridTest {
 		client.returnTokenHandle(token);
 	}
 
-	/**
-	 * Test the file manager with multiple versions of a single file
-	 * 
-	 * @throws Exception
-	 */
-	@Test
-	public void testMultipleVersionRegistration() throws Exception {
+	protected void testMultipleVersionRegistration()
+			throws AgentCommunicationException, IOException, FileManagerException, Exception {
 		getClient(0,10000,10000);
 		
 		TokenWrapper token = selectToken();
@@ -127,8 +117,7 @@ public class GridClientTest extends AbstractGridTest {
 	 * 
 	 * @throws Exception
 	 */
-	@Test
-	public void testFolderRegistration() throws Exception {
+	protected void testFolderRegistration() throws Exception {
 		getClient(0,10000,10000);
 		
 		TokenWrapper token = selectToken();
@@ -158,8 +147,7 @@ public class GridClientTest extends AbstractGridTest {
 	
 	// AgentCallTimeout during reservation is currently impossible to test as we don't have any hook in the reservation where to inject a sleep
 	
-	@Test
-	public void testAgentCallTimeoutDuringRelease() throws Exception {
+	protected void testAgentCallTimeoutDuringRelease() throws Exception {
 		getClient(0,10000,1);
 		
 		TokenWrapper token = selectToken();
@@ -178,8 +166,7 @@ public class GridClientTest extends AbstractGridTest {
 		Assert.assertTrue(actualException instanceof AgentCallTimeoutException);
 	}
 	      
-	@Test
-	public void testAgentCallTimeoutException() throws Exception {
+	protected void testAgentCallTimeoutException() throws Exception {
 		getClient(0, 10000, 10000);
 		
 		TokenWrapper token = selectToken(false);
@@ -199,21 +186,21 @@ public class GridClientTest extends AbstractGridTest {
 		Assert.assertTrue(actualException instanceof AgentCallTimeoutException);
 	}
 	
-	@Test
-	public void testHappyPathWithoutSession() throws Exception {
+	protected void testHappyPathWithoutSession() throws Exception {
 		getClient(0, 10000, 10000);
 		
 		// Select a token without session
 		TokenWrapper token = selectToken(false);
 		
 		JsonNode o = newDummyJson();
-		OutputMessage outputMessage = client.call(token, o, TestMessageHandler.class.getName(), null, null, 10000);			
+		OutputMessage outputMessage = client.call(token, o, TestMessageHandler.class.getName(), null, null, 10000);	
+		
+		client.returnTokenHandle(token);
 		
 		Assert.assertEquals("OK", outputMessage.getPayload().get("Result").asText());
 	}
-	
-	@Test
-	public void testHappyPathWithSession() throws Exception {
+
+	protected void testHappyPathWithSession() throws AgentCommunicationException, Exception {
 		getClient(0, 10000, 10000);
 		
 		// Select a token with session
@@ -229,8 +216,7 @@ public class GridClientTest extends AbstractGridTest {
 		client.returnTokenHandle(token);
 	}
 	
-	@Test
-	public void testLocalTokens() throws Exception {
+	protected void testLocalTokens() throws Exception {
 		getClient(0, 10000, 10000);
 		
 		TokenWrapper token = client.getLocalTokenHandle();
@@ -262,11 +248,5 @@ public class GridClientTest extends AbstractGridTest {
 		client.returnTokenHandle(token);
 	}
 
-	protected void getClient(int readOffset, int reserveTimeout, int releaseTimeout) {
-		GridClientConfiguration gridClientConfiguration = new GridClientConfiguration();
-		gridClientConfiguration.setReadTimeoutOffset(readOffset);
-		gridClientConfiguration.setReserveSessionTimeout(reserveTimeout);
-		gridClientConfiguration.setReleaseSessionTimeout(releaseTimeout);
-		client = new GridClientImpl(gridClientConfiguration, grid);
-	}
+	protected abstract void getClient(int readOffset, int reserveTimeout, int releaseTimeout);
 }
