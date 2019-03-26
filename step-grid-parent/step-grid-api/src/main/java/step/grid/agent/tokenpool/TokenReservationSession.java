@@ -18,6 +18,8 @@
  *******************************************************************************/
 package step.grid.agent.tokenpool;
 
+import step.functions.io.AbstractSession;
+
 public class TokenReservationSession extends AbstractSession {
 	
 }

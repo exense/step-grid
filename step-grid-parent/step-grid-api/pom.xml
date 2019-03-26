@@ -48,7 +48,12 @@
 		    <artifactId>commons-codec</artifactId>
 		    <version>1.12</version>
 		</dependency>
-		
+		<dependency>
+		    <groupId>ch.exense.step</groupId>
+		    <artifactId>step-api-reporting</artifactId>
+		    <version>${step-api.version}</version>
+		</dependency>
+				
 	</dependencies>
 
 	<build>

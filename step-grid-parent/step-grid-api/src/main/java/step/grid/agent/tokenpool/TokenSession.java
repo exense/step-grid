@@ -21,6 +21,8 @@ package step.grid.agent.tokenpool;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import step.functions.io.AbstractSession;
+
 public class TokenSession extends AbstractSession {
 	
 	protected static final Logger logger = LoggerFactory.getLogger(TokenSession.class);
