@@ -25,7 +25,7 @@ import java.util.regex.Pattern;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import step.grid.agent.ArgumentParser;
+import ch.exense.commons.app.ArgumentParser;
 
 public class AgentConfParser {
 	

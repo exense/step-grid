@@ -45,6 +45,7 @@ import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.jaxrs.json.JacksonJsonProvider;
 
+import ch.exense.commons.app.ArgumentParser;
 import step.grid.Token;
 import step.grid.agent.conf.AgentConf;
 import step.grid.agent.conf.AgentConfParser;

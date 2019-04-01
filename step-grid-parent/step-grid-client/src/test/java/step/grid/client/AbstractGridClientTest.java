@@ -30,7 +30,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
-import step.commons.helpers.FileHelper;
+import ch.exense.commons.io.FileHelper;
 import step.grid.TokenWrapper;
 import step.grid.agent.AbstractGridTest;
 import step.grid.bootstrap.ResourceExtractor;

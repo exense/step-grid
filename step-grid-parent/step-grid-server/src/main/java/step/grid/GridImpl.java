@@ -19,6 +19,7 @@
 package step.grid;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.Collection;
 import java.util.List;
@@ -38,11 +39,12 @@ import org.glassfish.jersey.servlet.ServletContainer;
 
 import com.fasterxml.jackson.jaxrs.json.JacksonJaxbJsonProvider;
 
-import step.commons.helpers.FileHelper;
+import ch.exense.commons.io.FileHelper;
 import step.grid.agent.RegistrationMessage;
 import step.grid.filemanager.FileManager;
 import step.grid.filemanager.FileManagerException;
 import step.grid.filemanager.FileManagerImpl;
+import step.grid.filemanager.FileManagerImpl.FileManagerImplConfig;
 import step.grid.filemanager.FileVersion;
 import step.grid.filemanager.FileVersionId;
 import step.grid.tokenpool.Identity;
@@ -64,20 +66,82 @@ public class GridImpl implements Grid {
 	
 	private final FileManager fileManager;
 	
-	public GridImpl(Integer port) {
-		this(FileHelper.createTempFolder("filemanager"), port, 60000);
+	public GridImpl(Integer port) throws IOException {
+		this(FileHelper.createTempFolder("filemanager"), port);
 	}
 	
 	public GridImpl(File fileManagerFolder, Integer port) {
-		this(fileManagerFolder, port, 60000);
+		this(fileManagerFolder, port, new GridImplConfig());
 	}
 	
-	public GridImpl(File fileManagerFolder, Integer port, Integer ttl) {
+	public GridImpl(File fileManagerFolder, Integer port, GridImplConfig gridConfig) {
 		super();
 		this.port = port;
-		this.keepAliveTimeout = ttl;
-		this.fileManager = new FileManagerImpl(fileManagerFolder);
+		this.keepAliveTimeout = gridConfig.getTtl();
+		FileManagerImplConfig config = new FileManagerImplConfig();
+		config.setFileLastModificationCacheConcurrencyLevel(gridConfig.getFileLastModificationCacheConcurrencyLevel());
+		config.setFileLastModificationCacheExpireAfter(gridConfig.getFileLastModificationCacheExpireAfter());
+		config.setFileLastModificationCacheMaximumsize(gridConfig.getFileLastModificationCacheMaximumsize());
+		this.fileManager = new FileManagerImpl(fileManagerFolder, config);
 	}
+	
+	public static class GridImplConfig {
+
+		int ttl = 60000;
+		
+		int fileLastModificationCacheConcurrencyLevel = 4;
+		int fileLastModificationCacheMaximumsize = 1000;
+		int fileLastModificationCacheExpireAfter = 500;
+		
+		public GridImplConfig() {
+			super();
+		}
+
+		public GridImplConfig(int fileLastModificationCacheConcurrencyLevel,
+				int fileLastModificationCacheMaximumsize, int fileLastModificationCacheExpireAfter) {
+			super();
+			this.fileLastModificationCacheConcurrencyLevel = fileLastModificationCacheConcurrencyLevel;
+			this.fileLastModificationCacheMaximumsize = fileLastModificationCacheMaximumsize;
+			this.fileLastModificationCacheExpireAfter = fileLastModificationCacheExpireAfter;
+		}
+		
+		public int getTtl() {
+			return ttl;
+		}
+
+		public void setTtl(int ttl) {
+			this.ttl = ttl;
+		}
+
+		public int getFileLastModificationCacheConcurrencyLevel() {
+			return fileLastModificationCacheConcurrencyLevel;
+		}
+		
+		public void setFileLastModificationCacheConcurrencyLevel(int fileLastModificationCacheConcurrencyLevel) {
+			this.fileLastModificationCacheConcurrencyLevel = fileLastModificationCacheConcurrencyLevel;
+		}
+		
+		public int getFileLastModificationCacheMaximumsize() {
+			return fileLastModificationCacheMaximumsize;
+		}
+		
+		public void setFileLastModificationCacheMaximumsize(int fileLastModificationCacheMaximumsize) {
+			this.fileLastModificationCacheMaximumsize = fileLastModificationCacheMaximumsize;
+		}
+		
+		public int getFileLastModificationCacheExpireAfter() {
+			return fileLastModificationCacheExpireAfter;
+		}
+		
+		/**
+		 * Specifies the expiration duration of the last modification cache entries 
+		 * @param fileLastModificationCacheExpireAfter the expiration duration in ms. A 0 value disables the caching.
+		 */
+		public void setFileLastModificationCacheExpireAfter(int fileLastModificationCacheExpireAfter) {
+			this.fileLastModificationCacheExpireAfter = fileLastModificationCacheExpireAfter;
+		}
+	}
+
 
 	public void stop() throws Exception {
 		server.stop();

@@ -11,13 +11,19 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
 import org.apache.commons.codec.digest.DigestUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import step.commons.helpers.FileHelper;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
+
+import ch.exense.commons.io.FileHelper;
 
 /**
  * Default implementation of {@link FileManager} which stores registered {@link FileVersion} objects
@@ -29,10 +35,72 @@ public class FileManagerImpl extends AbstractFileManager implements FileManager 
 	private static final Logger logger = LoggerFactory.getLogger(FileManagerImpl.class);
 
 	protected ConcurrentHashMap<String, String> fileIdRegistry = new ConcurrentHashMap<>();
+	private LoadingCache<File, Long> fileModificationCache;
 	
 	public FileManagerImpl(File cacheFolder) {
+		this(cacheFolder, new FileManagerImplConfig());
+	}
+	
+	public FileManagerImpl(File cacheFolder, FileManagerImplConfig config) {
 		super(cacheFolder);
 		loadCache();
+		
+		fileModificationCache = CacheBuilder.newBuilder()
+					.concurrencyLevel(config.getFileLastModificationCacheConcurrencyLevel())
+					.maximumSize(config.getFileLastModificationCacheMaximumsize())
+					.expireAfterWrite(config.getFileLastModificationCacheExpireAfter(), TimeUnit.MILLISECONDS)
+					.build(new CacheLoader<File, Long>() {
+						public Long load(File file) {
+							return FileHelper.getLastModificationDateRecursive(file);
+						}
+					});
+	}
+	
+	public static class FileManagerImplConfig {
+		
+		int fileLastModificationCacheConcurrencyLevel = 4;
+		int fileLastModificationCacheMaximumsize = 1000;
+		int fileLastModificationCacheExpireAfter = 500;
+		
+		public FileManagerImplConfig() {
+			super();
+		}
+
+		public FileManagerImplConfig(int fileLastModificationCacheConcurrencyLevel,
+				int fileLastModificationCacheMaximumsize, int fileLastModificationCacheExpireAfter) {
+			super();
+			this.fileLastModificationCacheConcurrencyLevel = fileLastModificationCacheConcurrencyLevel;
+			this.fileLastModificationCacheMaximumsize = fileLastModificationCacheMaximumsize;
+			this.fileLastModificationCacheExpireAfter = fileLastModificationCacheExpireAfter;
+		}
+		
+		public int getFileLastModificationCacheConcurrencyLevel() {
+			return fileLastModificationCacheConcurrencyLevel;
+		}
+		
+		public void setFileLastModificationCacheConcurrencyLevel(int fileLastModificationCacheConcurrencyLevel) {
+			this.fileLastModificationCacheConcurrencyLevel = fileLastModificationCacheConcurrencyLevel;
+		}
+		
+		public int getFileLastModificationCacheMaximumsize() {
+			return fileLastModificationCacheMaximumsize;
+		}
+		
+		public void setFileLastModificationCacheMaximumsize(int fileLastModificationCacheMaximumsize) {
+			this.fileLastModificationCacheMaximumsize = fileLastModificationCacheMaximumsize;
+		}
+		
+		public int getFileLastModificationCacheExpireAfter() {
+			return fileLastModificationCacheExpireAfter;
+		}
+		
+		/**
+		 * Specifies the expiration duration of the last modification cache entries 
+		 * @param fileLastModificationCacheExpireAfter the expiration duration in ms. A 0 value disables the caching.
+		 */
+		public void setFileLastModificationCacheExpireAfter(int fileLastModificationCacheExpireAfter) {
+			this.fileLastModificationCacheExpireAfter = fileLastModificationCacheExpireAfter;
+		}
 	}
 
 	@Override
@@ -140,7 +208,7 @@ public class FileManagerImpl extends AbstractFileManager implements FileManager 
 			isDirectory = false;
 		} else {
 			target = new File(container.getPath()+"/"+source.getName()+".zip");
-			FileHelper.zipDirectory(source, target);
+			FileHelper.zip(source, target);
 			isDirectory = true;
 		}
 		
@@ -165,9 +233,14 @@ public class FileManagerImpl extends AbstractFileManager implements FileManager 
 		createMetaFile(fileName, fileVersion);
 		return fileVersion;
 	}
+	
 
 	private String computeFileVersion(File file) {
-		return Long.toString(FileHelper.getLastModificationDateRecursive(file));
+		try {
+			return Long.toString(fileModificationCache.get(file));
+		} catch (ExecutionException e) {
+			throw new RuntimeException("Error while getting last modification date for file '"+file.getAbsolutePath()+"' from cache",e);
+		}
 	}
 	
 	@Override

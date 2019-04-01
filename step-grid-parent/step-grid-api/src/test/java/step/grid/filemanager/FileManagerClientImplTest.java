@@ -5,15 +5,17 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import step.commons.helpers.FileHelper;
+import ch.exense.commons.io.FileHelper;
+
 
 public class FileManagerClientImplTest {
 
-	protected File registryFolder;
+	protected File fileManagerFolder;
 	protected FileManagerClientImpl f;
 	protected AtomicInteger callCount;
 	protected FileVersionId fileVersionId1;
@@ -24,8 +26,6 @@ public class FileManagerClientImplTest {
 		File tempFile1 = FileHelper.createTempFile();
 		fileVersionId1 = new FileVersionId("f1", "1");
 		fileVersion1 = new FileVersion(tempFile1, new FileVersionId("f1", "1"), false);
-		
-		registryFolder = FileHelper.createTempFolder();
 		
 		callCount = new AtomicInteger();
 		FileVersionProvider fileProvider = new FileVersionProvider() {
@@ -43,8 +43,13 @@ public class FileManagerClientImplTest {
 			}
 		};
 		
-		File tempFolder = FileHelper.createTempFolder();
-		f = new FileManagerClientImpl(tempFolder, fileProvider);
+		fileManagerFolder = FileHelper.createTempFolder();
+		f = new FileManagerClientImpl(fileManagerFolder, fileProvider);
+	}
+	
+	@After
+	public void after() throws IOException {
+		FileHelper.deleteFolder(fileManagerFolder);
 	}
 	
 	/**

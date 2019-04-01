@@ -39,7 +39,7 @@ import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.jaxrs.json.JacksonJsonProvider;
 
-import step.commons.helpers.FileHelper;
+import ch.exense.commons.io.FileHelper;
 import step.grid.filemanager.ControllerCallException;
 import step.grid.filemanager.ControllerCallTimeout;
 import step.grid.filemanager.FileManagerException;
@@ -121,7 +121,7 @@ public class RegistrationClient implements FileVersionProvider {
 					long t2 = System.currentTimeMillis();
 					File file = new File(container+"/"+filename);
 					if(isDirectory) {
-						FileHelper.extractFolder(in, file);
+						FileHelper.unzip(in, file);
 					} else {
 						BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(file));
 						FileHelper.copy(in, bos, 1024);

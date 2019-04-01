@@ -43,7 +43,7 @@ import javax.ws.rs.core.StreamingOutput;
 import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
 import org.glassfish.jersey.media.multipart.FormDataParam;
 
-import step.commons.helpers.FileHelper;
+import ch.exense.commons.io.FileHelper;
 import step.grid.agent.RegistrationMessage;
 import step.grid.filemanager.FileManager;
 import step.grid.filemanager.FileManagerException;

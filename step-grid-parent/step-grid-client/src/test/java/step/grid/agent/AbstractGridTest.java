@@ -30,14 +30,13 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
-import step.commons.helpers.FileHelper;
+import ch.exense.commons.io.FileHelper;
 import step.grid.GridImpl;
+import step.grid.GridImpl.GridImplConfig;
 import step.grid.TokenWrapper;
 import step.grid.agent.conf.AgentConf;
 import step.grid.client.AbstractGridClientImpl.AgentCommunicationException;
 import step.grid.client.GridClient;
-import step.grid.client.LocalGridClientImpl;
-import step.grid.client.RemoteGridClientImpl;
 import step.grid.io.AgentErrorCode;
 import step.grid.io.OutputMessage;
 import step.grid.tokenpool.Interest;
@@ -65,7 +64,10 @@ public abstract class AbstractGridTest {
 	public void init() throws Exception {
 		File fileManagerFolder = FileHelper.createTempFolder();
 		
-		grid = new GridImpl(fileManagerFolder, 0, 60000);
+		GridImplConfig gridConfig = new GridImplConfig();
+		// disable last modification cache
+		gridConfig.setFileLastModificationCacheExpireAfter(0);
+		grid = new GridImpl(fileManagerFolder, 0, gridConfig);
 		grid.start();
 				
 		agent = new Agent(new AgentConf("http://localhost:"+grid.getServerPort(), 0, null, 100));

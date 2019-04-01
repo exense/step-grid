@@ -5,11 +5,13 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import step.commons.helpers.FileHelper;
+import ch.exense.commons.io.FileHelper;
+import step.grid.filemanager.FileManagerImpl.FileManagerImplConfig;
 
 public class FileManagerImplTest {
 
@@ -19,7 +21,15 @@ public class FileManagerImplTest {
 	@Before
 	public void before() throws IOException {
 		registryFolder = FileHelper.createTempFolder();
-		f = new FileManagerImpl(registryFolder);
+		FileManagerImplConfig config = new FileManagerImplConfig();
+		// disable caching
+		config.setFileLastModificationCacheExpireAfter(0);
+		f = new FileManagerImpl(registryFolder, config);
+	}
+	
+	@After
+	public void after() throws IOException {
+		FileHelper.deleteFolder(registryFolder);
 	}
 	
 	@Test

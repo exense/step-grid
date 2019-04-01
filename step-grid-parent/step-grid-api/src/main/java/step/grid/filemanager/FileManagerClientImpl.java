@@ -6,7 +6,7 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import step.commons.helpers.FileHelper;
+import ch.exense.commons.io.FileHelper;
 
 /**
  * Default implementation of {@link FileManagerClient} which delegates the retrieval of {@link FileVersion} to

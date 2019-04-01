@@ -21,15 +21,13 @@ package step.grid.client;
 public class GridClientConfiguration {
 
 	private long noMatchExistsTimeout = 10000;
-	
 	private long matchExistsTimeout = 60000;
 	
 	private int releaseSessionTimeout = 60000;
-	
 	private int reserveSessionTimeout = 10000;
 	
 	private int readTimeoutOffset = 3000;
-
+	
 	public long getNoMatchExistsTimeout() {
 		return noMatchExistsTimeout;
 	}

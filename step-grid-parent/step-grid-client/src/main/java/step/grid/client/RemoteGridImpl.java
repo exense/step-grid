@@ -46,7 +46,7 @@ import org.glassfish.jersey.media.multipart.file.StreamDataBodyPart;
 
 import com.fasterxml.jackson.jaxrs.json.JacksonJsonProvider;
 
-import step.commons.helpers.FileHelper;
+import ch.exense.commons.io.FileHelper;
 import step.grid.Grid;
 import step.grid.SelectTokenArgument;
 import step.grid.TokenWrapper;
@@ -153,7 +153,7 @@ public class RemoteGridImpl implements Grid {
 			File tempFile;
 			try {
 				tempFile = Files.createTempFile(file.getName(), "").toFile();
-				FileHelper.zipDirectory(file, tempFile);
+				FileHelper.zip(file, tempFile);
 			} catch (IOException e) {
 				throw new FileManagerException(null, "Error while creating zio of directory "+file.getAbsolutePath(), e);
 			}
