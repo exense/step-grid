@@ -315,7 +315,9 @@ public class TokenPoolTest {
 		// token invalidation
 		pool.invalidateToken(token);
 		pool.returnToken(token);
-		Thread.sleep(100);
+		
+		t.join();
+		
 		// Asserts that the TimeoutException has been thrown
 		Assert.assertEquals(1, l.size());
 		Assert.assertTrue(l.get(0) instanceof TimeoutException);

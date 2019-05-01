@@ -96,28 +96,33 @@ public class AgentTest extends AbstractGridTest {
 		Assert.assertEquals(AgentErrorCode.TIMEOUT_REQUEST_INTERRUPTED,outputMessage.getAgentError().getErrorCode());
 	}
 	
+	/**
+	 * Test the token execution interruption in {@link AgentServices}
+	 * @throws Exception
+	 */
 	@Test
-	public void testTimeoutNoTokenReturn() throws Exception {		
-		JsonNode o = new ObjectMapper().createObjectNode().put("delay", 500).put("notInterruptable", true);
+	public void testTimeoutNoTokenReturn() throws Exception {
+		// the argument list: set the thread as uninterruptible the sleep delay (in ms) and set   
+		JsonNode o = new ObjectMapper().createObjectNode().put("delay", 5000).put("notInterruptable", true);
 		
 		TokenWrapper token = client.getTokenHandle(null, null, true);
 		OutputMessage outputMessage = client.call(token, o, TestTokenHandler.class.getName(), null, null, 100);
 		
+		// assert that the call was not interrupted:
 		Assert.assertEquals(AgentErrorCode.TIMEOUT_REQUEST_NOT_INTERRUPTED,outputMessage.getAgentError().getErrorCode());
 		Assert.assertTrue(outputMessage.getAttachments().get(0).getName().equals("stacktrace_before_interruption.log"));
-
 		
 		// check if the token has been returned to the pool. In this case the second call should return the same error
 		outputMessage = client.call(token, o, TestTokenHandler.class.getName(), null, null, 10);
 		// we are now allowing for "stuck" tokens to be reused, which means we're potentially letting threads leak on the agent.
 		//Assert.assertTrue(outputMessage.getError().contains("already in use"));
 		
-		Thread.sleep(1000);
 		o = newDummyJson();
 		
-		// After "delayAfterInterruption" the token should have been returned to the pool
-		outputMessage = client.call(token, o, TestTokenHandler.class.getName(), null, null, 10);
-		Assert.assertEquals(outputMessage.getPayload(), o);;
+		// the token should have been returned to the pool after execution 
+		outputMessage = client.call(token, o, TestTokenHandler.class.getName(), null, null, 100);
+		Assert.assertEquals(null, outputMessage.getAgentError());
+		Assert.assertEquals(o, outputMessage.getPayload());
 	}
 
 	@Test

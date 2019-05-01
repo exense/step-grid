@@ -61,7 +61,7 @@ public class ExpiringMapTest {
 	
 	@Test
 	public void testEntrySet() throws InterruptedException {
-		ExpiringMap<String, String> m = new ExpiringMap<>(10, 1);
+		ExpiringMap<String, String> m = new ExpiringMap<>(1000, 1);
 		
 		m.put("test", "value");
 		m.put("test2", "value");
@@ -79,6 +79,7 @@ public class ExpiringMapTest {
 		
 		m.put("test", "value");
 		Collection<String> values = m.values();
+		// expected:<1> but was:<0>
 		Assert.assertEquals(1, values.size());
 		values.contains("value");
 	}
