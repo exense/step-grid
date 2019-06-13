@@ -82,7 +82,7 @@ public class AgentTest extends AbstractGridTest {
 	
 	@Test
 	public void testTimeout() throws Exception {		
-		JsonNode o = new ObjectMapper().createObjectNode().put("delay", 4000);
+		JsonNode o = new ObjectMapper().createObjectNode().put("delay", 5000);
 		
 		TokenWrapper token = client.getTokenHandle(null, null, true);
 		OutputMessage outputMessage = client.call(token, o, TestTokenHandler.class.getName(), null, null, 100);
