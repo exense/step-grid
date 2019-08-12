@@ -155,7 +155,7 @@ public class RemoteGridImpl implements Grid {
 				tempFile = Files.createTempFile(file.getName(), "").toFile();
 				FileHelper.zip(file, tempFile);
 			} catch (IOException e) {
-				throw new FileManagerException(null, "Error while creating zio of directory "+file.getAbsolutePath(), e);
+				throw new FileManagerException(null, "Error while creating zip of directory "+file.getAbsolutePath(), e);
 			}
 			fileToBeSent = tempFile;
 			isDirectory = true;
