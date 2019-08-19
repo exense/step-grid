@@ -16,18 +16,17 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with STEP.  If not, see <http://www.gnu.org/licenses/>.
  *******************************************************************************/
-package step.grid;
+package step.grid.tokenpool.affinityevaluator.capacityaware;
 
-import step.grid.tokenpool.Identity;
-import step.grid.tokenpool.SimpleAffinityEvaluator;
+import java.io.File;
 
-public class TokenWrapperAffinityEvaluatorImpl extends SimpleAffinityEvaluator<Identity, TokenWrapper> {
+import com.fasterxml.jackson.databind.ObjectMapper;
 
-	public int getAffinityScore(Identity i1, TokenWrapper i2) {
-		if(i2.getState().equals(TokenWrapperState.ERROR)||i2.getState().equals(TokenWrapperState.MAINTENANCE)) {
-			return -1;
-		} else {
-			return super.getAffinityScore(i1, i2);
-		}
+public class CapacityAwareTokenWrapperAffinityEvaluatorConfParser {
+	
+	protected ObjectMapper mapper = new ObjectMapper();
+	
+	public CapacityAwareTokenWrapperAffinityEvaluatorConf parse(File file) throws Exception {
+		return mapper.reader(CapacityAwareTokenWrapperAffinityEvaluatorConf.class).readValue(file);
 	}
 }

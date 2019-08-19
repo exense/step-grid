@@ -1,0 +1,4 @@
+{"agents":[
+{"hostname":"agent1","capacity":1},
+{"hostname":"agent2","capacity":2}
+]}

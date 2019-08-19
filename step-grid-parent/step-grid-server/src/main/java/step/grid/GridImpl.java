@@ -49,8 +49,11 @@ import step.grid.filemanager.FileVersion;
 import step.grid.filemanager.FileVersionId;
 import step.grid.tokenpool.Identity;
 import step.grid.tokenpool.Interest;
+import step.grid.tokenpool.SimpleAffinityEvaluator;
 import step.grid.tokenpool.Token;
 import step.grid.tokenpool.TokenPool;
+import step.grid.tokenpool.affinityevaluator.TokenPoolAware;
+import step.grid.tokenpool.affinityevaluator.TokenWrapperAffinityEvaluatorImpl;
 
 public class GridImpl implements Grid {
 
@@ -65,6 +68,8 @@ public class GridImpl implements Grid {
 	private Server server;
 	
 	private final FileManager fileManager;
+	
+	private final GridImplConfig gridConfig;
 	
 	public GridImpl(Integer port) throws IOException {
 		this(FileHelper.createTempFolder("filemanager"), port);
@@ -83,6 +88,7 @@ public class GridImpl implements Grid {
 		config.setFileLastModificationCacheExpireAfter(gridConfig.getFileLastModificationCacheExpireAfter());
 		config.setFileLastModificationCacheMaximumsize(gridConfig.getFileLastModificationCacheMaximumsize());
 		this.fileManager = new FileManagerImpl(fileManagerFolder, config);
+		this.gridConfig = gridConfig;
 	}
 	
 	public static class GridImplConfig {
@@ -92,6 +98,10 @@ public class GridImpl implements Grid {
 		int fileLastModificationCacheConcurrencyLevel = 4;
 		int fileLastModificationCacheMaximumsize = 1000;
 		int fileLastModificationCacheExpireAfter = 500;
+		
+		String tokenAffinityEvaluatorClass;
+		
+		Map<String, String> tokenAffinityEvaluatorProperties;
 		
 		public GridImplConfig() {
 			super();
@@ -140,6 +150,22 @@ public class GridImpl implements Grid {
 		public void setFileLastModificationCacheExpireAfter(int fileLastModificationCacheExpireAfter) {
 			this.fileLastModificationCacheExpireAfter = fileLastModificationCacheExpireAfter;
 		}
+
+		public String getTokenAffinityEvaluatorClass() {
+			return tokenAffinityEvaluatorClass;
+		}
+
+		public void setTokenAffinityEvaluatorClass(String tokenAffinityEvaluatorClass) {
+			this.tokenAffinityEvaluatorClass = tokenAffinityEvaluatorClass;
+		}
+
+		public Map<String, String> getTokenAffinityEvaluatorProperties() {
+			return tokenAffinityEvaluatorProperties;
+		}
+
+		public void setTokenAffinityEvaluatorProperties(Map<String, String> tokenAffinityEvaluatorProperties) {
+			this.tokenAffinityEvaluatorProperties = tokenAffinityEvaluatorProperties;
+		}
 	}
 
 
@@ -161,8 +187,30 @@ public class GridImpl implements Grid {
 		agentRefs = new ExpiringMap<>(keepAliveTimeout);
 	}
 	
-	private void initializeTokenPool() {
-		tokenPool = new TokenPool<>(new TokenWrapperAffinityEvaluatorImpl());
+	private void initializeTokenPool() throws Exception {
+		String tokenAffinityEvaluatorClass = gridConfig.getTokenAffinityEvaluatorClass();
+		SimpleAffinityEvaluator<Identity, TokenWrapper> tokenAffinityEvaluator;
+		if(tokenAffinityEvaluatorClass != null) {
+			try {
+				@SuppressWarnings("unchecked")
+				Class<? extends SimpleAffinityEvaluator<Identity, TokenWrapper>> class_ = (Class<? extends SimpleAffinityEvaluator<Identity, TokenWrapper>>) Class.forName(tokenAffinityEvaluatorClass);
+				tokenAffinityEvaluator = class_.newInstance();
+			} catch (Exception e) {
+				throw new Exception("Error while creating affinity evaluator using class '"+tokenAffinityEvaluatorClass+"'", e);
+			}
+		} else {
+			tokenAffinityEvaluator = new TokenWrapperAffinityEvaluatorImpl(); 
+		}
+		//CapacityAwareTokenWrapperAffinityEvaluatorImpl affinityEvaluatorImpl = new CapacityAwareTokenWrapperAffinityEvaluatorImpl();
+		tokenPool = new TokenPool<>(tokenAffinityEvaluator);
+		
+		if(tokenAffinityEvaluator instanceof TokenPoolAware) {
+			((TokenPoolAware)tokenAffinityEvaluator).setTokenPool(tokenPool);
+		}
+		
+		// Parse and set token affinity evaluator properties
+		tokenAffinityEvaluator.setProperties(gridConfig.getTokenAffinityEvaluatorProperties());
+		
 		tokenPool.setKeepaliveTimeout(keepAliveTimeout);
 	}
 	

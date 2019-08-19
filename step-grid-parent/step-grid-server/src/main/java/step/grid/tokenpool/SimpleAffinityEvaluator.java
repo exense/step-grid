@@ -18,6 +18,7 @@
  *******************************************************************************/
 package step.grid.tokenpool;
 
+import java.util.Map;
 import java.util.regex.Matcher;
 
 import org.slf4j.Logger;
@@ -26,6 +27,8 @@ import org.slf4j.LoggerFactory;
 public class SimpleAffinityEvaluator<P extends Identity, F extends Identity> implements AffinityEvaluator<P, F> {
 
 	private final static Logger logger = LoggerFactory.getLogger(SimpleAffinityEvaluator.class);
+	
+	protected Map<String, String> properties;
 	
 	@Override
 	public int getAffinityScore(P i1, F i2) {
@@ -75,6 +78,11 @@ public class SimpleAffinityEvaluator<P extends Identity, F extends Identity> imp
 			}
 		}
 		return score;
+	}
+
+	@Override
+	public void setProperties(Map<String, String> properties) {
+		this.properties = properties;
 	}
 
 }
