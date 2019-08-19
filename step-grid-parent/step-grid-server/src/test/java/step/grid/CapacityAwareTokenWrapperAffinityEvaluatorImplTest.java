@@ -1,5 +1,6 @@
 package step.grid;
 
+import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.UUID;
 import java.util.concurrent.TimeoutException;
@@ -17,8 +18,8 @@ import step.grid.tokenpool.affinityevaluator.capacityaware.CapacityAwareTokenWra
 public class CapacityAwareTokenWrapperAffinityEvaluatorImplTest {
 
 	@Test
-	public void test() throws TimeoutException, InterruptedException {
-		String conf = this.getClass().getResource("TokenAffinityEvaluatorTest.json").getFile();
+	public void test() throws TimeoutException, InterruptedException, URISyntaxException {
+		String conf = this.getClass().getResource("TokenAffinityEvaluatorTest.json").toURI().getPath();
 		
 		HashMap<String, String> properties = new HashMap<String, String>();
 		properties.put("configuration", conf);
