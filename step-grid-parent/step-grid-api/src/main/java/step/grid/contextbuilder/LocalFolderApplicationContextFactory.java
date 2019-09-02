@@ -1,9 +1,9 @@
 package step.grid.contextbuilder;
 
 import java.io.File;
-import java.net.URL;
-import java.net.URLClassLoader;
-import java.util.List;
+import java.io.IOException;
+
+import step.grid.filemanager.FileManagerException;
 
 /**
  * This {@link ApplicationContextFactory} builds a classloader based on a folder
@@ -31,12 +31,12 @@ public class LocalFolderApplicationContextFactory extends ApplicationContextFact
 	}
 
 	@Override
-	public ClassLoader buildClassLoader(ClassLoader parentClassLoader) {
-		List<URL> urls = ClassPathHelper.forAllJarsInFolder(libFolder);
-		
-		URL[] urlArray = urls.toArray(new URL[urls.size()]);
-		ClassLoader classLoader = new URLClassLoader(urlArray, parentClassLoader);
-		return classLoader;
+	public ClassLoader buildClassLoader(ClassLoader parentClassLoader) throws FileManagerException {
+		try {
+			return new JavaLibrariesClassLoader(libFolder, parentClassLoader);
+		} catch (IOException e) {
+			throw new FileManagerException(null, e);
+		}
 	}
 
 }

@@ -19,49 +19,41 @@
 package step.grid.contextbuilder;
 
 import java.io.File;
-import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.URLClassLoader;
 
-import step.grid.filemanager.FileManagerClient;
 import step.grid.filemanager.FileManagerException;
-import step.grid.filemanager.FileVersion;
-import step.grid.filemanager.FileVersionId;
 
-public class RemoteApplicationContextFactory extends ApplicationContextFactory {
+public class LocalFileApplicationContextFactory extends ApplicationContextFactory {
 
-	protected FileVersionId remoteClassLoaderFolder;
+	private File jarFile;
 	
-	protected FileManagerClient fileManager;
-
-	public RemoteApplicationContextFactory(FileManagerClient fileManager, FileVersionId remoteClassLoaderFolder) {
+	public LocalFileApplicationContextFactory(File jarFile) {
 		super();
-		this.fileManager = fileManager;
-		this.remoteClassLoaderFolder = remoteClassLoaderFolder;
+		this.jarFile = jarFile;
 	}
 
 	@Override
 	public String getId() {
-		return remoteClassLoaderFolder.getFileId()+"_"+remoteClassLoaderFolder.getVersion();
+		return jarFile.getAbsolutePath();
 	}
 
 	@Override
-	public boolean requiresReload() throws FileManagerException {
+	public boolean requiresReload() {
 		return false;
-	}
-
-	private FileVersion requestLatestClassPathFolder() throws FileManagerException {
-		return fileManager.requestFileVersion(remoteClassLoaderFolder);			
 	}
 
 	@Override
 	public ClassLoader buildClassLoader(ClassLoader parentClassLoader) throws FileManagerException {
-		FileVersion fileVersion = requestLatestClassPathFolder();
-		File file = fileVersion.getFile();
-
+		URL[] urlArray;
 		try {
-			return new JavaLibrariesClassLoader(file, parentClassLoader);
-		} catch (IOException e) {
-			throw new FileManagerException(fileVersion.getVersionId(), e);
+			urlArray = new URL[] {jarFile.toURI().toURL()};
+		} catch (MalformedURLException e) {
+			throw new FileManagerException(null, e);
 		}
+		URLClassLoader cl = new URLClassLoader(urlArray, parentClassLoader);
+		return cl;	
 	}
 
 }
