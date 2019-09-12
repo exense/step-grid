@@ -31,7 +31,7 @@
 		<dependency>
 			<groupId>ch.exense</groupId>
 			<artifactId>exense-commons</artifactId>
-			<version>1.0.0-SNAPSHOT</version>
+			<version>${exense-commons.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>javax.activation</groupId>
