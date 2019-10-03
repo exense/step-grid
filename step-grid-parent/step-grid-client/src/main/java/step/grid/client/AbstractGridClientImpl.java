@@ -30,6 +30,7 @@ import step.grid.AgentRef;
 import step.grid.Grid;
 import step.grid.Token;
 import step.grid.TokenWrapper;
+import step.grid.TokenWrapperOwner;
 import step.grid.agent.AgentTokenServices;
 import step.grid.agent.handler.MessageHandler;
 import step.grid.agent.handler.MessageHandlerPool;
@@ -50,6 +51,9 @@ public abstract class AbstractGridClientImpl implements GridClient {
 
 	protected Client client;
 	protected ConcurrentHashMap<String, TokenReservationSession> localTokenSessions = new ConcurrentHashMap<>();
+	
+	protected ConcurrentHashMap<String, TokenReservation> reservedTokens = new ConcurrentHashMap<>();
+	
 	protected AgentTokenServices localAgentTokenServices;
 	protected MessageHandlerPool localMessageHandlerPool;
 	
@@ -60,7 +64,6 @@ public abstract class AbstractGridClientImpl implements GridClient {
 	private final TokenLifecycleStrategy tokenLifecycleStrategy;
 	
 	private final Grid grid;
-
 
 	public AbstractGridClientImpl(GridClientConfiguration gridClientConfiguration,
 			TokenLifecycleStrategy tokenLifecycleStrategy, Grid grid) {
@@ -75,6 +78,26 @@ public abstract class AbstractGridClientImpl implements GridClient {
 		
 		initLocalAgentServices();
 		initLocalMessageHandlerPool();
+	}
+
+	private static class TokenReservation {
+		
+		private TokenWrapper tokenWrapper;
+		private boolean hasSession;
+		
+		public TokenReservation(TokenWrapper tokenWrapper, boolean hasSession) {
+			super();
+			this.tokenWrapper = tokenWrapper;
+			this.hasSession = hasSession;
+		}
+
+		public TokenWrapper getTokenWrapper() {
+			return tokenWrapper;
+		}
+
+		public boolean hasSession() {
+			return hasSession;
+		}
 	}
 
 	protected void initLocalAgentServices() {
@@ -106,8 +129,8 @@ public abstract class AbstractGridClientImpl implements GridClient {
 		localToken.setAttributes(new HashMap<String, String>());
 		localToken.setSelectionPatterns(new HashMap<String, Interest>());
 		TokenWrapper tokenWrapper = new TokenWrapper(localToken, new AgentRef(Grid.LOCAL_AGENT, "localhost", "default"));
-		tokenWrapper.setHasSession(true);
-	
+		trackTokenReservation(tokenWrapper, true);
+		
 		// Attach the session to the token so that it can be accessed by client after token selection
 		TokenReservationSession tokenReservationSession = new TokenReservationSession();
 		tokenWrapper.getToken().attachObject(TokenWrapper.TOKEN_RESERVATION_SESSION, tokenReservationSession);
@@ -116,23 +139,39 @@ public abstract class AbstractGridClientImpl implements GridClient {
 		return tokenWrapper;
 	}
 
+	/**
+	 * Keep track of the {@link TokenWrapper} that have been reserved (local or remote)
+	 */
+	protected void trackTokenReservation(TokenWrapper tokenWrapper, boolean hasSession) {
+		reservedTokens.put(tokenWrapper.getID(), new TokenReservation(tokenWrapper, hasSession));
+	}
+
 	protected boolean isLocal(TokenWrapper tokenWrapper) {
 		return tokenWrapper.getToken().isLocal();
 	}
 	
 	@Override
 	public TokenWrapper getTokenHandle(Map<String, String> attributes, Map<String, Interest> interests, boolean createSession) throws AgentCommunicationException {
-		TokenWrapper tokenWrapper = getToken(attributes, interests);
+		return getTokenHandle(attributes, interests, createSession, null);
+	}
+	
+	@Override
+	public TokenWrapper getTokenHandle(Map<String, String> attributes, Map<String, Interest> interests, boolean createSession, TokenWrapperOwner tokenOwner) throws AgentCommunicationException {
+		TokenWrapper tokenWrapper = getToken(attributes, interests, tokenOwner);
+		trackTokenReservation(tokenWrapper, createSession);
 		
 		if(createSession) {
 			try {
 				reserveSession(tokenWrapper.getAgent(), tokenWrapper.getToken());			
-				tokenWrapper.setHasSession(true);				
 			} catch(AgentCommunicationException e) {
 				tokenLifecycleStrategy.afterTokenReservationError(getTokenLifecycleCallback(tokenWrapper), tokenWrapper, e);
 				logger.warn("Error while reserving session for token "+tokenWrapper.getID() +". Returning token to pool. "
 						+ "Subsequent call to this token may fail or leaks may appear on the agent side.", e);
-				returnTokenHandle(tokenWrapper);
+				try {
+					returnTokenHandle(tokenWrapper.getID());
+				} catch (GridClientException e1) {
+					logger.warn("Error while returning token "+tokenWrapper.getID()+" to the pool", e1);
+				}
 				throw e;
 			}
 		}
@@ -140,13 +179,19 @@ public abstract class AbstractGridClientImpl implements GridClient {
 	}
 	
 	@Override
-	public void returnTokenHandle(TokenWrapper tokenWrapper) throws AgentCommunicationException {
+	public void returnTokenHandle(String tokenId) throws GridClientException, AgentCommunicationException {
+		TokenReservation tokenReservation = reservedTokens.remove(tokenId);
+		if(tokenReservation == null) {
+			throw new GridClientException("The token with id "+tokenId+" isn't reserved. Please ensure that you're always call getTokenHandle() or getLocalTokenHandle() before calling the call() function.");
+		}
+		
+		TokenWrapper tokenWrapper = tokenReservation.getTokenWrapper();
 		try {
-			if(tokenWrapper.hasSession()) {
+			if(tokenReservation.hasSession()) {
 				//tokenWrapper.setHasSession(false);
 				if(isLocal(tokenWrapper)) {
 					// Remove the Session from the local store and close it
-					TokenReservationSession session = localTokenSessions.remove(tokenWrapper.getID());
+					TokenReservationSession session = localTokenSessions.remove(tokenId);
 					session.close();
 				} else {
 					releaseSession(tokenWrapper.getAgent(),tokenWrapper.getToken());			
@@ -157,15 +202,20 @@ public abstract class AbstractGridClientImpl implements GridClient {
 			throw e;
 		} finally {
 			if(!isLocal(tokenWrapper)) {
-				grid.returnToken(tokenWrapper);		
+				grid.returnToken(tokenId);		
 			}			
 		}
 	}
 
 	@Override
-	public OutputMessage call(TokenWrapper tokenWrapper, JsonNode argument, String handler, FileVersionId handlerPackage, Map<String,String> properties, int callTimeout) throws Exception {
-		Token token = tokenWrapper.getToken();
+	public OutputMessage call(String tokenId, JsonNode argument, String handler, FileVersionId handlerPackage, Map<String,String> properties, int callTimeout) throws GridClientException, AgentCommunicationException, Exception {
+		TokenReservation tokenReservation = reservedTokens.get(tokenId);
+		if(tokenReservation == null) {
+			throw new GridClientException("The token with id "+tokenId+" isn't reserved. You might already have released it.");
+		}
 		
+		TokenWrapper tokenWrapper = tokenReservation.getTokenWrapper();
+		Token token = tokenWrapper.getToken();
 		AgentRef agent = tokenWrapper.getAgent();
 		
 		InputMessage message = new InputMessage();
@@ -327,11 +377,11 @@ public abstract class AbstractGridClientImpl implements GridClient {
 		}
 	}
 
-	private TokenWrapper getToken(Map<String, String> attributes, Map<String, Interest> interests) {
+	private TokenWrapper getToken(Map<String, String> attributes, Map<String, Interest> interests, TokenWrapperOwner tokenOwner) {
 		TokenWrapper adapterToken = null;
 		try {
 			addThreadIdInterest(interests);
-			adapterToken = grid.selectToken(attributes, interests, gridClientConfiguration.getMatchExistsTimeout(), gridClientConfiguration.getNoMatchExistsTimeout());
+			adapterToken = grid.selectToken(attributes, interests, gridClientConfiguration.getMatchExistsTimeout(), gridClientConfiguration.getNoMatchExistsTimeout(), tokenOwner);
 		} catch (TimeoutException e) {
 			StringBuilder interestList = new StringBuilder();
 			if(interests!=null) {

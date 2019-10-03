@@ -106,8 +106,7 @@ public class CapacityAwareTokenWrapperAffinityEvaluatorImpl extends TokenWrapper
 		AtomicInteger agentHostUsage = new AtomicInteger(0);
 		
 		// calculate the token usage per agent host
-		tokenPool.getTokens().forEach(t->{
-			TokenWrapper tokenWrapper = t.getObject();
+		tokenPool.getTokens().forEach(tokenWrapper->{
 			if(tokenWrapper.getState() == TokenWrapperState.IN_USE && getHost(tokenWrapper.getAgent().getAgentUrl()).equals(agentHost)) {
 				agentHostUsage.incrementAndGet();
 			}

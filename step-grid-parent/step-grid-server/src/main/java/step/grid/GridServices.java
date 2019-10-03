@@ -49,7 +49,6 @@ import step.grid.filemanager.FileManager;
 import step.grid.filemanager.FileManagerException;
 import step.grid.filemanager.FileVersion;
 import step.grid.filemanager.FileVersionId;
-import step.grid.tokenpool.Token;
 
 @Path("/grid")
 public class GridServices {
@@ -97,18 +96,18 @@ public class GridServices {
 	@POST
     @Path("/token/select")
 	public TokenWrapper selectToken(SelectTokenArgument argument) throws TimeoutException, InterruptedException {
-		return grid.selectToken(argument.attributes, argument.interests, argument.matchTimeout, argument.noMatchTimeout);
+		return grid.selectToken(argument.attributes, argument.interests, argument.matchTimeout, argument.noMatchTimeout, argument.tokenOwner);
 	}
 
 	@POST
     @Path("/token/return")
-	public void returnToken(TokenWrapper object) {
-		grid.returnToken(object);
+	public void returnToken(String id) {
+		grid.returnToken(id);
 	}
 
 	@GET
     @Path("/token/list")
-	public List<Token<TokenWrapper>> getTokens() {
+	public List<TokenWrapper> getTokens() {
 		return grid.getTokens();
 	}
 

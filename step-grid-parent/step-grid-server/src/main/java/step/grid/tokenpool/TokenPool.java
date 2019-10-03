@@ -31,6 +31,7 @@ import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -266,9 +267,14 @@ public class TokenPool<P extends Identity, F extends Identity> implements Closea
 		token.lastTouch = System.currentTimeMillis();
 	}
 	
-	public Token<F> getToken(String id) {
+	public F getToken(String id) {
 		synchronized (tokens) {
-			return tokens.get(id);
+			Token<F> token = tokens.get(id);
+			if(token != null) {
+				return token.getObject();
+			} else {
+				return null;
+			}
 		}
 	}
 	
@@ -324,9 +330,9 @@ public class TokenPool<P extends Identity, F extends Identity> implements Closea
 		return tokens.size();
 	}
 	
-	public List<Token<F>> getTokens() {
+	public List<F> getTokens() {
 		synchronized (tokens) {
-			return new ArrayList<>(tokens.values());
+			return tokens.values().stream().map(t->t.getObject()).collect(Collectors.toList());
 		}
 	}
 	

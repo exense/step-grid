@@ -18,25 +18,25 @@
  *******************************************************************************/
 package step.grid.tokenpool;
 
-public class Token<T extends Identity> {
+class Token<T extends Identity> {
 
-	final T object;
+	protected final T object;
 	
-	volatile boolean available;
+	protected volatile boolean available;
 	
-	volatile boolean invalidated;
+	protected volatile boolean invalidated;
 	
-	volatile long lastTouch;
+	protected volatile long lastTouch;
 	
-	public Token(T object) {
+	protected Token(T object) {
 		this.object = object;
 	}
 
-	public T getObject() {
+	protected T getObject() {
 		return object;
 	}
 	
-	public boolean isFree() {
+	protected boolean isFree() {
 		return available && !invalidated;
 	}
 }

@@ -37,8 +37,6 @@ public class TokenWrapper implements Identity {
 	
 	private TokenWrapperOwner currentOwner;
 	
-	private boolean hasSession = false;
-	
 	public static final String TOKEN_RESERVATION_SESSION = "tokenReservationSession";
 	
 	public TokenWrapper() {
@@ -79,7 +77,7 @@ public class TokenWrapper implements Identity {
 		return currentOwner;
 	}
 
-	public void setCurrentOwner(TokenWrapperOwner currentOwner) {
+	protected void setCurrentOwner(TokenWrapperOwner currentOwner) {
 		this.currentOwner = currentOwner;
 	}
 
@@ -89,14 +87,6 @@ public class TokenWrapper implements Identity {
 
 	public void setAgent(AgentRef agent) {
 		this.agent = agent;
-	}
-
-	public boolean hasSession() {
-		return hasSession;
-	}
-
-	public void setHasSession(boolean hasSession) {
-		this.hasSession = hasSession;
 	}
 
 	public TokenHealth getTokenHealth() {

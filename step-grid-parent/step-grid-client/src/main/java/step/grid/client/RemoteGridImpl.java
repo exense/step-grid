@@ -50,11 +50,11 @@ import ch.exense.commons.io.FileHelper;
 import step.grid.Grid;
 import step.grid.SelectTokenArgument;
 import step.grid.TokenWrapper;
+import step.grid.TokenWrapperOwner;
 import step.grid.filemanager.FileManagerException;
 import step.grid.filemanager.FileVersion;
 import step.grid.filemanager.FileVersionId;
 import step.grid.tokenpool.Interest;
-import step.grid.tokenpool.Token;
 
 public class RemoteGridImpl implements Grid {
 
@@ -120,21 +120,21 @@ public class RemoteGridImpl implements Grid {
 
 	@Override
 	public TokenWrapper selectToken(Map<String, String> attributes, Map<String, Interest> interests, long matchTimeout,
-			long noMatchTimeout) throws TimeoutException, InterruptedException {
+			long noMatchTimeout, TokenWrapperOwner tokenOwner) throws TimeoutException, InterruptedException {
 		Builder r = requestBuilder("/grid/token/select");
-		SelectTokenArgument selectTokenArgument = new SelectTokenArgument(attributes, interests, matchTimeout, noMatchTimeout);
+		SelectTokenArgument selectTokenArgument = new SelectTokenArgument(attributes, interests, matchTimeout, noMatchTimeout, tokenOwner);
 		return executeRequest(()->r.post(Entity.entity(selectTokenArgument, MediaType.APPLICATION_JSON), TokenWrapper.class));
 	}
 
 	@Override
-	public void returnToken(TokenWrapper object) {
+	public void returnToken(String id) {
 		Builder r = requestBuilder("/grid/token/return");
-		executeRequest(()->r.post(Entity.entity(object, MediaType.APPLICATION_JSON)));
+		executeRequest(()->r.post(Entity.entity(id, MediaType.APPLICATION_JSON)));
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public List<Token<TokenWrapper>> getTokens() {
+	public List<TokenWrapper> getTokens() {
 		Builder r = requestBuilder("/grid/token/list");
 		return executeRequest(()->r.get(List.class));
 	}

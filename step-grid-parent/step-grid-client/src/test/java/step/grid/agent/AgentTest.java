@@ -51,7 +51,7 @@ public class AgentTest extends AbstractGridTest {
 		JsonNode o = newDummyJson();
 		
 		TokenWrapper token = client.getTokenHandle(null, interests, true);
-		OutputMessage outputMessage = client.call(token, o, TestTokenHandler.class.getName(), null, null, 1000);
+		OutputMessage outputMessage = client.call(token.getID(), o, TestTokenHandler.class.getName(), null, null, 1000);
 		Assert.assertEquals(outputMessage.getPayload(), o);;
 	}
 	
@@ -63,7 +63,7 @@ public class AgentTest extends AbstractGridTest {
 		JsonNode o = new ObjectMapper().createObjectNode().put("exception", "My Error");
 		
 		TokenWrapper token = client.getTokenHandle(null, interests, true);
-		OutputMessage outputMessage = client.call(token, o, TestTokenHandler.class.getName(), null, null, 1000);
+		OutputMessage outputMessage = client.call(token.getID(), o, TestTokenHandler.class.getName(), null, null, 1000);
 		Assert.assertEquals(AgentErrorCode.UNEXPECTED, outputMessage.getAgentError().getErrorCode());
 		Assert.assertTrue(outputMessage.getAttachments().size()==1);
 	}
@@ -76,7 +76,7 @@ public class AgentTest extends AbstractGridTest {
 		JsonNode o = newDummyJson();
 		
 		TokenWrapper token = client.getTokenHandle(null, interests, false);		
-		OutputMessage outputMessage = client.call(token, o, TestTokenHandler.class.getName(), null, null, 1000);
+		OutputMessage outputMessage = client.call(token.getID(), o, TestTokenHandler.class.getName(), null, null, 1000);
 		Assert.assertEquals(outputMessage.getPayload(), o);;
 	}
 	
@@ -85,14 +85,14 @@ public class AgentTest extends AbstractGridTest {
 		JsonNode o = new ObjectMapper().createObjectNode().put("delay", 5000);
 		
 		TokenWrapper token = client.getTokenHandle(null, null, true);
-		OutputMessage outputMessage = client.call(token, o, TestTokenHandler.class.getName(), null, null, 100);
+		OutputMessage outputMessage = client.call(token.getID(), o, TestTokenHandler.class.getName(), null, null, 100);
 		
 		Assert.assertEquals(AgentErrorCode.TIMEOUT_REQUEST_INTERRUPTED,outputMessage.getAgentError().getErrorCode());
 		Assert.assertTrue(outputMessage.getAttachments().get(0).getName().equals("stacktrace_before_interruption.log"));
 		
 		
 		// check if the token has been returned to the pool. In this case the second call should return the same error
-		outputMessage = client.call(token, o, TestTokenHandler.class.getName(), null, null, 10);
+		outputMessage = client.call(token.getID(), o, TestTokenHandler.class.getName(), null, null, 10);
 		Assert.assertEquals(AgentErrorCode.TIMEOUT_REQUEST_INTERRUPTED,outputMessage.getAgentError().getErrorCode());
 	}
 	
@@ -106,21 +106,21 @@ public class AgentTest extends AbstractGridTest {
 		JsonNode o = new ObjectMapper().createObjectNode().put("delay", 5000).put("notInterruptable", true);
 		
 		TokenWrapper token = client.getTokenHandle(null, null, true);
-		OutputMessage outputMessage = client.call(token, o, TestTokenHandler.class.getName(), null, null, 100);
+		OutputMessage outputMessage = client.call(token.getID(), o, TestTokenHandler.class.getName(), null, null, 100);
 		
 		// assert that the call was not interrupted:
 		Assert.assertEquals(AgentErrorCode.TIMEOUT_REQUEST_NOT_INTERRUPTED,outputMessage.getAgentError().getErrorCode());
 		Assert.assertTrue(outputMessage.getAttachments().get(0).getName().equals("stacktrace_before_interruption.log"));
 		
 		// check if the token has been returned to the pool. In this case the second call should return the same error
-		outputMessage = client.call(token, o, TestTokenHandler.class.getName(), null, null, 10);
+		outputMessage = client.call(token.getID(), o, TestTokenHandler.class.getName(), null, null, 10);
 		// we are now allowing for "stuck" tokens to be reused, which means we're potentially letting threads leak on the agent.
 		//Assert.assertTrue(outputMessage.getError().contains("already in use"));
 		
 		o = newDummyJson();
 		
 		// the token should have been returned to the pool after execution 
-		outputMessage = client.call(token, o, TestTokenHandler.class.getName(), null, null, 100);
+		outputMessage = client.call(token.getID(), o, TestTokenHandler.class.getName(), null, null, 100);
 		Assert.assertEquals(null, outputMessage.getAgentError());
 		Assert.assertEquals(o, outputMessage.getPayload());
 	}
@@ -130,7 +130,7 @@ public class AgentTest extends AbstractGridTest {
 		JsonNode o = newDummyJson();
 		
 		TokenWrapper token = client.getLocalTokenHandle();
-		OutputMessage outputMessage = client.call(token, o, TestTokenHandler.class.getName(), null, null, 1000);
+		OutputMessage outputMessage = client.call(token.getID(), o, TestTokenHandler.class.getName(), null, null, 1000);
 		
 		Assert.assertEquals(outputMessage.getPayload(), o);;
 	}

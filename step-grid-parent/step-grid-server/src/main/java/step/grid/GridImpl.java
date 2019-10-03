@@ -50,7 +50,6 @@ import step.grid.filemanager.FileVersionId;
 import step.grid.tokenpool.Identity;
 import step.grid.tokenpool.Interest;
 import step.grid.tokenpool.SimpleAffinityEvaluator;
-import step.grid.tokenpool.Token;
 import step.grid.tokenpool.TokenPool;
 import step.grid.tokenpool.affinityevaluator.TokenPoolAware;
 import step.grid.tokenpool.affinityevaluator.TokenWrapperAffinityEvaluatorImpl;
@@ -249,78 +248,79 @@ public class GridImpl implements Grid {
 	protected void handleRegistrationMessage(RegistrationMessage message) {
 		AgentRef agentRef = message.getAgentRef();
 		agentRefs.putOrTouch(agentRef.getAgentId(), agentRef);
-		for (step.grid.Token token : message.getTokens()) {
+		for (Token token : message.getTokens()) {
 			tokenPool.offerToken(new TokenWrapper(token, agentRef));			
 		}	
 	}
 	
 	@Override
-	public TokenWrapper selectToken(Map<String, String> attributes, Map<String, Interest> interests, long matchTimeout, long noMatchTimeout)
+	public TokenWrapper selectToken(Map<String, String> attributes, Map<String, Interest> interests, long matchTimeout, long noMatchTimeout, TokenWrapperOwner tokenOwner)
 			throws TimeoutException, InterruptedException {
 		TokenPretender tokenPretender = new TokenPretender(attributes, interests);
 		TokenWrapper tokenWrapper = tokenPool.selectToken(tokenPretender, matchTimeout, noMatchTimeout);
 		tokenWrapper.setState(TokenWrapperState.IN_USE);
+		tokenWrapper.setCurrentOwner(tokenOwner);
 		return tokenWrapper;
 	}
 
 	@Override
-	public void returnToken(TokenWrapper object) {
-		object.performAtomically(()->{
-			object.setCurrentOwner(null);
-			// Only change the state if it is IN_USE. Other states (like ERROR) are kept unchanged
-			if(object.getState()==TokenWrapperState.IN_USE) {
-				object.setState(TokenWrapperState.FREE);
-			}
-		});
-		tokenPool.returnToken(object);
+	public void returnToken(String tokenId) {
+		TokenWrapper tokenWrapper = tokenPool.getToken(tokenId);
+		// The token might have been removed from the pool => ignore non existing tokens
+		if(tokenWrapper != null) {
+			tokenWrapper.performAtomically(()->{
+				tokenWrapper.setCurrentOwner(null);
+				// Only change the state if it is IN_USE. Other states (like ERROR) are kept unchanged
+				if(tokenWrapper.getState()==TokenWrapperState.IN_USE) {
+					tokenWrapper.setState(TokenWrapperState.FREE);
+				}
+			});
+			tokenPool.returnToken(tokenWrapper);
+		}
 	}
 	
 	@Override
 	public void markTokenAsFailing(String tokenId, String errorMessage, Exception e) {
-		Token<TokenWrapper> token = tokenPool.getToken(tokenId);
-		TokenWrapper tokenWrapper = token.getObject();
-		TokenHealth tokenHealth = token.getObject().getTokenHealth();
+		TokenWrapper tokenWrapper = tokenPool.getToken(tokenId);
+		TokenHealth tokenHealth = tokenWrapper.getTokenHealth();
 		tokenWrapper.performAtomically(()->{
 			tokenHealth.setErrorMessage(errorMessage);
-			tokenHealth.setTokenWrapperOwner(token.getObject().getCurrentOwner());
+			tokenHealth.setTokenWrapperOwner(tokenWrapper.getCurrentOwner());
 			tokenHealth.setException(e);
-			token.getObject().setState(TokenWrapperState.ERROR);
+			tokenWrapper.setState(TokenWrapperState.ERROR);
 		});
 	}
 	
 	public void removeTokenError(String tokenId) {
-		Token<TokenWrapper> token = tokenPool.getToken(tokenId);
-		TokenWrapper tokenWrapper = token.getObject();
+		TokenWrapper tokenWrapper = tokenPool.getToken(tokenId);
 		TokenHealth tokenHealth = tokenWrapper.getTokenHealth();
 		tokenWrapper.performAtomically(()->{
 			if(tokenWrapper.getState().equals(TokenWrapperState.ERROR)) {
 				tokenHealth.setErrorMessage(null);
 				tokenHealth.setException(null);
-				token.getObject().setState(TokenWrapperState.FREE);
+				tokenWrapper.setState(TokenWrapperState.FREE);
 			}
 		});
 	}
 	
 	public void startTokenMaintenance(String tokenId) {
-		Token<TokenWrapper> token = tokenPool.getToken(tokenId);
-		TokenWrapper tokenWrapper = token.getObject();
+		TokenWrapper tokenWrapper = tokenPool.getToken(tokenId);
 		tokenWrapper.setState(TokenWrapperState.MAINTENANCE_REQUESTED);
 		tokenPool.addReturnTokenListener(tokenId, t->t.setState(TokenWrapperState.MAINTENANCE));
 	}
 	
 	public void stopTokenMaintenance(String tokenId) {
-		Token<TokenWrapper> token = tokenPool.getToken(tokenId);
-		TokenWrapper tokenWrapper = token.getObject();
+		TokenWrapper tokenWrapper = tokenPool.getToken(tokenId);
 		tokenWrapper.performAtomically(()->{
 			// Only change the state if it is currently in MAINTENANCE. Other states are kept unchanged
 			if(tokenWrapper.getState().equals(TokenWrapperState.MAINTENANCE)) {
-				token.getObject().setState(TokenWrapperState.FREE);
+				tokenWrapper.setState(TokenWrapperState.FREE);
 			}
 		});
 	}
 
 	@Override
-	public List<Token<TokenWrapper>> getTokens() {
+	public List<TokenWrapper> getTokens() {
 		return tokenPool.getTokens();
 	}
 	

@@ -18,22 +18,22 @@
  *******************************************************************************/
 package step.grid.client;
 
-import step.grid.tokenpool.TokenRegistry;
+import step.grid.Grid;
 
 public class TokenLifecycleStrategyCallback {
 
-	private TokenRegistry tokenRegistry;
+	private Grid grid;
 	
 	private String tokenId;
 	
-	public TokenLifecycleStrategyCallback(TokenRegistry tokenRegistry, String tokenId) {
+	public TokenLifecycleStrategyCallback(Grid grid, String tokenId) {
 		super();
-		this.tokenRegistry = tokenRegistry;
+		this.grid = grid;
 		this.tokenId = tokenId;
 	}
 
 	public void addTokenError(String errorMessage, Exception exception) {
-		tokenRegistry.markTokenAsFailing(tokenId, errorMessage, exception);
+		grid.markTokenAsFailing(tokenId, errorMessage, exception);
 	}
 
 }

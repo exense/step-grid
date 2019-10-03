@@ -40,9 +40,7 @@ public class GridReportBuilder {
 	public List<TokenGroupCapacity> getUsageByIdentity(List<String> groupbys) {		
 		Map<Map<String, String>, TokenGroupCapacity> countsByIdentity = new HashMap<>();
 		
-		for(step.grid.tokenpool.Token<TokenWrapper> token:grid.getTokens()) {
-			TokenWrapper aToken = token.getObject();
-			
+		for(TokenWrapper aToken:grid.getTokens()) {
 			Map<String, String> key = new HashMap<>(); 
 
 			for(String groupby:groupbys) {
@@ -62,10 +60,10 @@ public class GridReportBuilder {
 	
 	public Set<String> getTokenAttributeKeys() {
 		Set<String> result = new HashSet<>();
-		for(step.grid.tokenpool.Token<TokenWrapper> token:grid.getTokens()) {
-			result.addAll(token.getObject().getAttributes().keySet());
-			if(token.getObject().getInterests()!=null) {
-				result.addAll(token.getObject().getInterests().keySet());				
+		for(TokenWrapper token:grid.getTokens()) {
+			result.addAll(token.getAttributes().keySet());
+			if(token.getInterests()!=null) {
+				result.addAll(token.getInterests().keySet());				
 			}
 		}
 		return result;
@@ -100,10 +98,10 @@ public class GridReportBuilder {
 	
 	public List<TokenWrapper> getTokenAssociations(boolean onlyWithOwner) {
 		List<TokenWrapper> tokens = new ArrayList<>();
-		for(step.grid.tokenpool.Token<TokenWrapper> token:grid.getTokens()) {
-			TokenWrapperOwner currentOwner = token.getObject().getCurrentOwner();
+		for(TokenWrapper token:grid.getTokens()) {
+			TokenWrapperOwner currentOwner = token.getCurrentOwner();
 			if(currentOwner!=null||(currentOwner==null&&!onlyWithOwner)) {
-				tokens.add(token.getObject());
+				tokens.add(token);
 			}
 		}
 		return tokens;

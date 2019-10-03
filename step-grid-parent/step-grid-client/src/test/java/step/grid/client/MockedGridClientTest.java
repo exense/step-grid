@@ -36,7 +36,7 @@ public class MockedGridClientTest extends AbstractGridClientTest {
 		JsonNode node = new ObjectMapper().createObjectNode().put("file", fileHandle.getFileId()).put("fileVersion", fileHandle.getVersion());
 		
 		// Call a simple test message handler that reads the content of the transfered file and returns it
-		OutputMessage output = client.call(token, node, TestMessageHandler.class.getName(), null, new HashMap<>(), 100000);
+		OutputMessage output = client.call(token.getID(), node, TestMessageHandler.class.getName(), null, new HashMap<>(), 100000);
 		
 		FileVersion registeredFile = client.getRegisteredFile(fileHandle);
 		Assert.assertEquals(testFile, registeredFile.getFile());
@@ -45,7 +45,7 @@ public class MockedGridClientTest extends AbstractGridClientTest {
 		Assert.assertEquals("TEST", output.getPayload().get("content").asText());
 		
 		// Return the token
-		client.returnTokenHandle(token);
+		client.returnTokenHandle(token.getID());
 	}
 	
 	@Test

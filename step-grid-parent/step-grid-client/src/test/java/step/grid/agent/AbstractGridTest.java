@@ -37,6 +37,7 @@ import step.grid.TokenWrapper;
 import step.grid.agent.conf.AgentConf;
 import step.grid.client.AbstractGridClientImpl.AgentCommunicationException;
 import step.grid.client.GridClient;
+import step.grid.client.GridClientException;
 import step.grid.io.AgentErrorCode;
 import step.grid.io.OutputMessage;
 import step.grid.tokenpool.Interest;
@@ -113,18 +114,18 @@ public abstract class AbstractGridTest {
 		grid.removeTokenError(token.getID());
 	}
 
-	protected void returnToken(TokenWrapper token) throws AgentCommunicationException {
-		client.returnTokenHandle(token);
+	protected void returnToken(TokenWrapper token) throws AgentCommunicationException, GridClientException {
+		client.returnTokenHandle(token.getID());
 	}
 
 	protected OutputMessage callTokenAndProduceAgentError(TokenWrapper token) throws Exception {
 		JsonNode o = new ObjectMapper().createObjectNode().put("agentError", AgentErrorCode.TIMEOUT_REQUEST_NOT_INTERRUPTED.toString());
-		return client.call(token, o, TestTokenHandler.class.getName(), null, null, 1000);
+		return client.call(token.getID(), o, TestTokenHandler.class.getName(), null, null, 1000);
 	}
 	
 	protected OutputMessage callToken(TokenWrapper token) throws Exception {
 		JsonNode o = newDummyJson();
-		return client.call(token, o, TestTokenHandler.class.getName(), null, null, 1000);
+		return client.call(token.getID(), o, TestTokenHandler.class.getName(), null, null, 1000);
 	}
 
 	protected TokenWrapper selectToken() throws AgentCommunicationException {

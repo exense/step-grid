@@ -60,13 +60,13 @@ public abstract class AbstractGridClientTest extends AbstractGridTest {
 		JsonNode node = new ObjectMapper().createObjectNode().put("file", fileHandle.getFileId()).put("fileVersion", fileHandle.getVersion());
 		
 		// Call a simple test message handler that reads the content of the transfered file and returns it
-		OutputMessage output = client.call(token, node, TestMessageHandler.class.getName(), null, new HashMap<>(), 100000);
+		OutputMessage output = client.call(token.getID(), node, TestMessageHandler.class.getName(), null, new HashMap<>(), 100000);
 		
 		// Assert the content of the file matches
 		Assert.assertEquals("TEST", output.getPayload().get("content").asText());
 		
 		// Return the token
-		client.returnTokenHandle(token);
+		client.returnTokenHandle(token.getID());
 	}
 
 	protected void testMultipleVersionRegistration()
@@ -90,15 +90,15 @@ public abstract class AbstractGridClientTest extends AbstractGridTest {
 		FileVersionId fileHandleVersion2 = client.registerFile(file).getVersionId();
 		
 		JsonNode node = new ObjectMapper().createObjectNode().put("file", fileHandleVersion1.getFileId()).put("fileVersion", fileHandleVersion1.getVersion());
-		OutputMessage output = client.call(token, node, TestMessageHandler.class.getName(), null, new HashMap<>(), 100000);
+		OutputMessage output = client.call(token.getID(), node, TestMessageHandler.class.getName(), null, new HashMap<>(), 100000);
 		Assert.assertEquals("V1", output.getPayload().get("content").asText());
 		
 		node = new ObjectMapper().createObjectNode().put("file", fileHandleVersion2.getFileId()).put("fileVersion", fileHandleVersion2.getVersion());
-		output = client.call(token, node, TestMessageHandler.class.getName(), null, new HashMap<>(), 100000);
+		output = client.call(token.getID(), node, TestMessageHandler.class.getName(), null, new HashMap<>(), 100000);
 		Assert.assertEquals("V2", output.getPayload().get("content").asText());
 		
 		// Return the token
-		client.returnTokenHandle(token);
+		client.returnTokenHandle(token.getID());
 	}
 
 	private void writeFile(File file, String content) throws IOException {
@@ -137,10 +137,10 @@ public abstract class AbstractGridClientTest extends AbstractGridTest {
 		JsonNode node = new ObjectMapper().createObjectNode().put("folder", fileHandle.getFileId()).put("fileVersion", fileHandle.getVersion());
 		
 		// Call a simple test message handler that reads the structure of the transfered folder and returns it
-		OutputMessage output = client.call(token, node, TestMessageHandler.class.getName(), null, new HashMap<>(), 100000);
+		OutputMessage output = client.call(token.getID(), node, TestMessageHandler.class.getName(), null, new HashMap<>(), 100000);
 		
 		// Return the token
-		client.returnTokenHandle(token);
+		client.returnTokenHandle(token.getID());
 		
 		Assert.assertEquals("File1;SubFolder1;", output.getPayload().get("content").asText());
 	}
@@ -153,7 +153,7 @@ public abstract class AbstractGridClientTest extends AbstractGridTest {
 		TokenWrapper token = selectToken();
 
 		
-		client.call(token, newDummyJson().put("testAgentCallTimeoutDuringRelease", ""), TestMessageHandler.class.getName(), null, new HashMap<>(), 1000);
+		client.call(token.getID(), newDummyJson().put("testAgentCallTimeoutDuringRelease", ""), TestMessageHandler.class.getName(), null, new HashMap<>(), 1000);
 		
 		Exception actualException = null;
 		try {
@@ -174,12 +174,12 @@ public abstract class AbstractGridClientTest extends AbstractGridTest {
 		Exception actualException = null;
 		ObjectNode o = newDummyJson();
 		try {
-			client.call(token, o, TestMessageHandler.class.getName(), null, null, 1);			
+			client.call(token.getID(), o, TestMessageHandler.class.getName(), null, null, 1);			
 		} catch (Exception e) {
 			actualException = e;
 		} finally {
 			// Token return should still work after an exception
-			client.returnTokenHandle(token);
+			client.returnTokenHandle(token.getID());
 		}
 		
 		Assert.assertNotNull(actualException);
@@ -193,9 +193,9 @@ public abstract class AbstractGridClientTest extends AbstractGridTest {
 		TokenWrapper token = selectToken(false);
 		
 		JsonNode o = newDummyJson();
-		OutputMessage outputMessage = client.call(token, o, TestMessageHandler.class.getName(), null, null, 10000);	
+		OutputMessage outputMessage = client.call(token.getID(), o, TestMessageHandler.class.getName(), null, null, 10000);	
 		
-		client.returnTokenHandle(token);
+		client.returnTokenHandle(token.getID());
 		
 		Assert.assertEquals("OK", outputMessage.getPayload().get("Result").asText());
 	}
@@ -207,13 +207,13 @@ public abstract class AbstractGridClientTest extends AbstractGridTest {
 		TokenWrapper token = selectToken(true);
 		
 		JsonNode o = new ObjectMapper().createObjectNode().put("key", "myKey").put("value", "myValue");
-		client.call(token, o, TestSessionMessageHandler.class.getName(), null, null, 1000);
+		client.call(token.getID(), o, TestSessionMessageHandler.class.getName(), null, null, 1000);
 		
 		// the TestSessionMessageHandler reads the key-values provided a input from the Session and return them in the outputMessage 
-		OutputMessage outputMessage = client.call(token, o, TestSessionMessageHandler.class.getName(), null, null, 1000);
+		OutputMessage outputMessage = client.call(token.getID(), o, TestSessionMessageHandler.class.getName(), null, null, 1000);
 		Assert.assertEquals("myValue", outputMessage.getPayload().get("myKey").asText());
 		
-		client.returnTokenHandle(token);
+		client.returnTokenHandle(token.getID());
 	}
 	
 	protected void testLocalTokens() throws Exception {
@@ -221,31 +221,40 @@ public abstract class AbstractGridClientTest extends AbstractGridTest {
 		
 		TokenWrapper token = client.getLocalTokenHandle();
 		JsonNode o = new ObjectMapper().createObjectNode().put("key", "myKey").put("value", "myValue");
-		client.call(token, o, TestSessionMessageHandler.class.getName(), null, null, 1);
-		OutputMessage outputMessage = client.call(token, o, TestSessionMessageHandler.class.getName(), null, null, 1);
+		client.call(token.getID(), o, TestSessionMessageHandler.class.getName(), null, null, 1);
+		OutputMessage outputMessage = client.call(token.getID(), o, TestSessionMessageHandler.class.getName(), null, null, 1);
 		
 		Assert.assertEquals("myValue", outputMessage.getPayload().get("myKey").asText());
 		
 		
-		client.returnTokenHandle(token);
+		client.returnTokenHandle(token.getID());
 
 		Exception e = null;
 		try {
-			outputMessage = client.call(token, o, TestSessionMessageHandler.class.getName(), null, null, 1);
-			
+			client.returnTokenHandle(token.getID());
 		} catch(Exception ex) {
 			e = ex;
 		}
 		
-		Assert.assertEquals("The local token "+token.getID()+" is invalid or has already been returned to the pool. Please call getLocalTokenHandle() first.",e.getMessage());
+		Assert.assertEquals(GridClientException.class, e.getClass());
+		Assert.assertEquals("The token with id "+token.getID()+" isn't reserved. Please ensure that you're always call getTokenHandle() or getLocalTokenHandle() before calling the call() function.",e.getMessage());
+		
+		e = null;
+		try {
+			outputMessage = client.call(token.getID(), o, TestSessionMessageHandler.class.getName(), null, null, 1);
+		} catch(Exception ex) {
+			e = ex;
+		}
+		
+		Assert.assertEquals("The token with id "+token.getID()+" isn't reserved. You might already have released it.",e.getMessage());
 		
 		token = client.getLocalTokenHandle();
 		
-		outputMessage = client.call(token, o, TestSessionMessageHandler.class.getName(), null, null, 1);
+		outputMessage = client.call(token.getID(), o, TestSessionMessageHandler.class.getName(), null, null, 1);
 		// The Session object should be empty as we retrieved a new token
 		Assert.assertEquals("", outputMessage.getPayload().get("myKey").asText());
 		
-		client.returnTokenHandle(token);
+		client.returnTokenHandle(token.getID());
 	}
 
 	protected abstract void getClient(int readOffset, int reserveTimeout, int releaseTimeout);

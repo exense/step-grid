@@ -29,18 +29,18 @@ public class GridImplTest {
 		tokenList.add(t1);
 		grid.handleRegistrationMessage(new RegistrationMessage(a, tokenList));
 		
-		List<step.grid.tokenpool.Token<TokenWrapper>> tokens = grid.getTokens();
+		List<TokenWrapper> tokens = grid.getTokens();
 		Assert.assertEquals(1, tokens.size());
 		
 		Assert.assertTrue(grid.getAgents().contains(a));
 		
 		HashMap<String, Interest> interests = new HashMap<String, Interest>();
 		interests.put("att1", new Interest(Pattern.compile("val.*"), true));
-		TokenWrapper token = grid.selectToken(attributes, interests, 10, 10);
+		TokenWrapper token = grid.selectToken(attributes, interests, 10, 10, null);
 		
 		Assert.assertEquals(t1, token.getToken());
 		
-		grid.returnToken(token);
+		grid.returnToken(token.getID());
 	}
 
 }

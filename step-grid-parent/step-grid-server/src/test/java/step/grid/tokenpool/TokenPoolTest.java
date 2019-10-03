@@ -517,10 +517,7 @@ public class TokenPoolTest {
 		
 		e.shutdown();
 		
-		Assert.assertEquals(1+otherTokenCount, pool.getSize());
-		for(Token<?> t:pool.getTokens()) {
-			Assert.assertTrue(t.isFree());
-		}		
+		Assert.assertEquals(1+otherTokenCount, pool.getSize());	
 	}
 	
 	public void test_Pool_Perf_Poolsize() throws Exception {

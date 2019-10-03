@@ -10,18 +10,20 @@ public class SelectTokenArgument {
 	protected Map<String, Interest> interests;
 	protected long matchTimeout;
 	protected long noMatchTimeout;
+	protected TokenWrapperOwner tokenOwner;
 	
 	public SelectTokenArgument() {
 		super();
 	}
 
 	public SelectTokenArgument(Map<String, String> attributes, Map<String, Interest> interests, long matchTimeout,
-			long noMatchTimeout) {
+			long noMatchTimeout, TokenWrapperOwner tokenOwner) {
 		super();
 		this.attributes = attributes;
 		this.interests = interests;
 		this.matchTimeout = matchTimeout;
 		this.noMatchTimeout = noMatchTimeout;
+		this.tokenOwner = tokenOwner;
 	}
 
 	public Map<String, String> getAttributes() {
@@ -54,5 +56,13 @@ public class SelectTokenArgument {
 
 	public void setNoMatchTimeout(long noMatchTimeout) {
 		this.noMatchTimeout = noMatchTimeout;
+	}
+
+	public TokenWrapperOwner getTokenOwner() {
+		return tokenOwner;
+	}
+
+	public void setTokenOwner(TokenWrapperOwner tokenOwner) {
+		this.tokenOwner = tokenOwner;
 	}
 }
