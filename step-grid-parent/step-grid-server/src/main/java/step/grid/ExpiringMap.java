@@ -40,9 +40,9 @@ public class ExpiringMap<T,V> implements Map<T,V>, Closeable{
 	
 	private class Wrapper {
 		
-		long lasttouch;
+		volatile long lasttouch;
 		
-		V value;
+		final V value;
 
 		public Wrapper(V value) {
 			super();
@@ -73,7 +73,7 @@ public class ExpiringMap<T,V> implements Map<T,V>, Closeable{
 		}, checkIntervalMs,checkIntervalMs);
 	}
 	
-	private void keepaliveTimeoutCheck() {
+	private synchronized void keepaliveTimeoutCheck() {
 		if(keepaliveTimeout>0) {
 			long now = System.currentTimeMillis();			
 			Set<Map.Entry<T, ExpiringMap<T, V>.Wrapper>> set = map.entrySet();
