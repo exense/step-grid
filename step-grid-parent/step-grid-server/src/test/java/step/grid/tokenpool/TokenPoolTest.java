@@ -351,6 +351,9 @@ public class TokenPoolTest {
 		
 	}
 	
+	/**
+	 * Test the {@link TokenPool} in parallel without contention i.e. the same number of tokens as the number of threads
+	 */
 	@Test
 	public void test_Pool_Parallel_1TokenPerThread() throws Exception {
 		final TokenPool<IdentityImpl, IdentityImpl> pool = new TokenPool<>(new SimpleAffinityEvaluator<IdentityImpl, IdentityImpl>());
@@ -360,7 +363,7 @@ public class TokenPoolTest {
 		
 		final int testDurationMs = 1000;
 		final int nThreads = 10;
-		
+		final int sleepTimeNs = 1000;
 		
 		ExecutorService e = Executors.newFixedThreadPool(nThreads+1);
 		
@@ -376,16 +379,14 @@ public class TokenPoolTest {
 			Future<Boolean> f = e.submit(new Callable<Boolean>() {
 				@Override
 				public Boolean call() throws Exception {
-					for(int i=0;i<testDurationMs;i++) {
-						IdentityImpl selectedIdentityImpl = pool.selectToken(pretender, nThreads + 5);
+					while(System.currentTimeMillis()-t1<testDurationMs) {
+						IdentityImpl selectedIdentityImpl = pool.selectToken(pretender, 100);
 						try {
 							Assert.assertNotNull(selectedIdentityImpl);
 							Assert.assertFalse(selectedIdentityImpl.used);
 							selectedIdentityImpl.used = true;
 							
-							Thread.sleep(1);
-						} catch (Throwable e) {
-							logger.error("Unexpected error", e);
+							Thread.sleep(0, sleepTimeNs);
 						} finally {
 							selectedIdentityImpl.used = false;
 							pool.returnToken(selectedIdentityImpl);
@@ -401,16 +402,13 @@ public class TokenPoolTest {
 		token.addAttribute("color", "blue");
 		token.addAttribute("shape", "circle");
 		
-		final int periodNs = 1000;
 		Future<Boolean> offeringThread = e.submit(new Callable<Boolean>() {
 			@Override
 			public Boolean call() throws Exception {
-				long t2 = System.currentTimeMillis();
-				for(int i=0;i<testDurationMs*1000/periodNs;i++) {
+				while(System.currentTimeMillis()-t1<testDurationMs) {
 					pool.offerToken(token);
-					Thread.sleep(0, periodNs);
+					Thread.sleep(0, sleepTimeNs);
 				}
-				System.out.println("Duration offer token: " + (System.currentTimeMillis()-t2));
 				return true;
 			}
 		});
@@ -418,12 +416,6 @@ public class TokenPoolTest {
 		for(Future<Boolean> f:futures) {
 			f.get();			
 		}
-		
-		long duration = (System.currentTimeMillis()-t1);
-		System.out.println("Duration: " + duration);
-
-		System.out.println("testDurationMs: " + testDurationMs);
-		//Assert.assertTrue(duration<testDurationMs + 500);
 		
 		offeringThread.get();
 		
@@ -434,8 +426,12 @@ public class TokenPoolTest {
 
 	
 	
+	/**
+	 * Test the {@link TokenPool} with more threads than tokens
+	 * 
+	 */
 	@Test
-	public void test_Pool_Parallel() throws Exception {
+	public void test_Pool_Parallel_with_contention() throws Exception {
 		final TokenPool<IdentityImpl, IdentityImpl> pool = new TokenPool<>(new SimpleAffinityEvaluator<IdentityImpl, IdentityImpl>());
 		
 		final IdentityImpl token = new IdentityImpl();
@@ -443,7 +439,7 @@ public class TokenPoolTest {
 		token.addAttribute("shape", "circle");
 		pool.offerToken(token);
 		
-		int otherTokenCount = 5;
+		int otherTokenCount = 4;
 		
 		for(int i=0;i<otherTokenCount;i++) {
 			IdentityImpl otherToken = new IdentityImpl();
@@ -458,6 +454,7 @@ public class TokenPoolTest {
 		
 		final int testDurationMs = 1000;
 		final int nThreads = 10;
+		final int sleepTimeNs = 1000;
 		
 		ExecutorService e = Executors.newFixedThreadPool(nThreads+1);
 		
@@ -467,16 +464,14 @@ public class TokenPoolTest {
 			Future<Boolean> f = e.submit(new Callable<Boolean>() {
 				@Override
 				public Boolean call() throws Exception {
-					for(int i=0;i<testDurationMs/nThreads;i++) {
-						IdentityImpl selectedIdentityImpl = pool.selectToken(pretender, nThreads + 20);
+					while(System.currentTimeMillis()-t1<testDurationMs) {
+						IdentityImpl selectedIdentityImpl = pool.selectToken(pretender, testDurationMs);
 						try {
 							Assert.assertNotNull(selectedIdentityImpl);
 							Assert.assertFalse(selectedIdentityImpl.used);
 							selectedIdentityImpl.used = true;
 							
-							Thread.sleep(1);
-						} catch (Throwable e) {
-							logger.error("Unexpected error", e);
+							Thread.sleep(0, sleepTimeNs);
 						} finally {
 							selectedIdentityImpl.used = false;
 							pool.returnToken(selectedIdentityImpl);
@@ -488,30 +483,22 @@ public class TokenPoolTest {
 			futures.add(f);
 		}
 		
-		
-		final int periodNs = 1000;
 		Future<Boolean> offeringThread = e.submit(new Callable<Boolean>() {
 			@Override
 			public Boolean call() throws Exception {
-				long t2 = System.currentTimeMillis();
-				for(int i=0;i<testDurationMs*1000/periodNs;i++) {
+				while(System.currentTimeMillis()-t1<testDurationMs) {
 					pool.offerToken(token);
-					Thread.sleep(0, periodNs);
+					Thread.sleep(0, sleepTimeNs);					
 				}
-				System.out.println("Duration offer token: " + (System.currentTimeMillis()-t2));
 				return true;
 			}
 		});
 		
+		// The test shouldn't last longer than the specified duration
+		// + a few seconds for eventual process pauses (Garbage collections, etc)
 		for(Future<Boolean> f:futures) {
-			f.get(10, TimeUnit.SECONDS);			
+			f.get((int)(testDurationMs+2), TimeUnit.SECONDS);			
 		}
-		
-		long duration = (System.currentTimeMillis()-t1);
-		System.out.println("Duration: " + duration);
-
-		System.out.println("testDurationMs: " + testDurationMs);
-		Assert.assertTrue(duration<testDurationMs + 100);
 		
 		offeringThread.get();
 		
