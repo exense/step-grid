@@ -29,38 +29,35 @@ public class ExpiringMapTest {
 
 	@Test
 	public void test() throws InterruptedException {
-		while(true) 
-		{
-			// The keepalive timeout should be higher than the longer stop the world that is to be expected for
-			// the JVM running this test. A too short keep alive would cause this test to fail a line 54 while calling the 
-			// get method as the object might have been deleted during the stop the world
-			ExpiringMap<String, String> m = new ExpiringMap<>(500, 10);
-			
-			m.put("test", "test");
-			m.put("test2", "test");
-			
-			
-			Assert.assertEquals("test", m.get("test"));
-			Thread.sleep(700);;
-			
-			Assert.assertNull(m.get("test"));
-			
-			m.put("test", "test");
-			Assert.assertEquals("test", m.get("test"));
-			
-			// Loop longer than 500ms
-			for(int i=0;i<700;i++) {
-				m.touch("test");
-				Thread.sleep(1);
-			}
-			
-			Assert.assertEquals("test", m.get("test"));
-			
-			
-			m.remove("test");
-			Assert.assertNull(m.get("test"));
-			Assert.assertFalse(m.containsKey("test"));
+		// The keepalive timeout should be higher than the longer stop the world that is to be expected for
+		// the JVM running this test. A too short keep alive would cause this test to fail a line 54 while calling the 
+		// get method as the object might have been deleted during the stop the world
+		ExpiringMap<String, String> m = new ExpiringMap<>(500, 10);
+		
+		m.put("test", "test");
+		m.put("test2", "test");
+		
+		
+		Assert.assertEquals("test", m.get("test"));
+		Thread.sleep(700);;
+		
+		Assert.assertNull(m.get("test"));
+		
+		m.put("test", "test");
+		Assert.assertEquals("test", m.get("test"));
+		
+		// Loop longer than 500ms
+		for(int i=0;i<700;i++) {
+			m.touch("test");
+			Thread.sleep(1);
 		}
+		
+		Assert.assertEquals("test", m.get("test"));
+		
+		
+		m.remove("test");
+		Assert.assertNull(m.get("test"));
+		Assert.assertFalse(m.containsKey("test"));
 	}
 	
 	@Test
