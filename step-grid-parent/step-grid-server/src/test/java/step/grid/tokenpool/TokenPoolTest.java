@@ -316,12 +316,13 @@ public class TokenPoolTest {
 		pool.invalidateToken(token);
 		pool.returnToken(token);
 		
-		t.join();
+		// wait max 1 hour. 
+		// Avoid a freeze of the build if no timeout occurs
+		t.join(3600000);
 		
 		// Asserts that the TimeoutException has been thrown
 		Assert.assertEquals(1, l.size());
 		Assert.assertTrue(l.get(0) instanceof TimeoutException);
-		
 	}
 	
 	@Test
