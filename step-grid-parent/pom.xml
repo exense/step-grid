@@ -46,7 +46,6 @@
 		<connection>scm:git:https://github.com/exense/step-grid/</connection>
 		<developerConnection>scm:git:https://github.com/exense/step-grid.git</developerConnection>
 		<url>https://github.com/exense/step-grid/</url>
-	  <tag>HEAD</tag>
   </scm>
 
 	<repositories>
