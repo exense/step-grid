@@ -147,13 +147,19 @@ public class FileManagerImpl extends AbstractFileManager implements FileManager 
 		}
 		
 		final FileVersionId fileVersionId = new FileVersionId(fileId, version);
-		return registerFileVersion(deletePreviousVersions, registryIndex, fileId, fileVersionId, () -> {
+		FileVersion fileVersion = registerFileVersion(deletePreviousVersions, registryIndex, fileId, fileVersionId, () -> {
 			try {
 				return storeStream(tempFile.toFile(), fileName, fileVersionId, isDirectory);
 			} catch (FileManagerException | IOException e) {
 				throw new RuntimeException(e);
 			}
 		});
+		try {
+			Files.deleteIfExists(tempFile);
+		} catch (IOException e) {
+			logger.error("Error while deleting temp file "+tempFile);
+		}
+		return fileVersion;
 	}
 	
 
