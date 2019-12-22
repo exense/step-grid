@@ -1,16 +1,17 @@
 package step.grid.client;
 
 import java.io.File;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 import step.grid.TokenWrapper;
 import step.grid.agent.AgentTokenServices;
 import step.grid.agent.handler.MessageHandlerPool;
-import step.grid.client.AbstractGridClientImpl;
-import step.grid.client.DefaultTokenLifecycleStrategy;
-import step.grid.client.GridClientConfiguration;
 import step.grid.contextbuilder.ApplicationContextBuilder;
 import step.grid.filemanager.FileManagerClient;
 import step.grid.filemanager.FileManagerException;
@@ -35,6 +36,25 @@ public class MockedGridClientImpl extends AbstractGridClientImpl {
 		fileVersionCache.put(id, fileVersion);
 		return fileVersion;
 	}
+	
+	protected ConcurrentHashMap<String, FileVersion> resourceCache = new ConcurrentHashMap<>();
+	
+	@Override
+	public FileVersion registerFile(InputStream inputStream, String fileName, boolean isDirectory)
+			throws FileManagerException {
+		// Ensure the resource is read only once
+		FileVersion fileVersion = resourceCache.computeIfAbsent(fileName, f->{
+			try {
+				File file = File.createTempFile(fileName + "-" + UUID.randomUUID(), fileName.substring(fileName.lastIndexOf(".")));
+				Files.copy(inputStream, file.toPath(), StandardCopyOption.REPLACE_EXISTING);
+				file.deleteOnExit();
+				return registerFile(file);
+			} catch (Exception e) {
+				throw new RuntimeException(e);
+			}
+		});
+		return fileVersion;
+	}
 
 	@Override
 	public FileVersion getRegisteredFile(FileVersionId fileVersionId) throws FileManagerException {
@@ -44,6 +64,9 @@ public class MockedGridClientImpl extends AbstractGridClientImpl {
 	@Override
 	public void unregisterFile(FileVersionId fileVersionId) {
 		fileVersionCache.remove(fileVersionId);
+		resourceCache.entrySet().removeIf(k->{
+			return k.getValue().getVersionId().equals(fileVersionId);
+		});
 	}
 
 	@Override
