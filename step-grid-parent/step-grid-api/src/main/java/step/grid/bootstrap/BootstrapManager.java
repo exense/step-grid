@@ -26,6 +26,7 @@ import step.grid.agent.handler.MessageHandler;
 import step.grid.agent.handler.MessageHandlerPool;
 import step.grid.agent.tokenpool.AgentTokenWrapper;
 import step.grid.contextbuilder.ApplicationContextBuilder;
+import step.grid.contextbuilder.ApplicationContextBuilder.ApplicationContext;
 import step.grid.contextbuilder.RemoteApplicationContextFactory;
 import step.grid.filemanager.FileManagerClient;
 import step.grid.filemanager.FileVersionId;
@@ -55,11 +56,9 @@ public class BootstrapManager {
 		return contextBuilder.runInContext(new Callable<OutputMessage>() {
 			@Override
 			public OutputMessage call() throws Exception {
-				MessageHandlerPool handlerPool = (MessageHandlerPool) contextBuilder.getCurrentContext().get("handlerPool");
-				if(handlerPool == null) {
-					handlerPool = new MessageHandlerPool(agentTokenServices);
-					contextBuilder.getCurrentContext().put("handlerPool", handlerPool);
-				}
+				ApplicationContext currentContext = contextBuilder.getCurrentContext();
+				MessageHandlerPool handlerPool = (MessageHandlerPool) currentContext.computeIfAbsent("handlerPool", 
+						k->new MessageHandlerPool(agentTokenServices));
 				MessageHandler handler = handlerPool.get(handlerClass);
 				return handler.handle(token, message);
 			}

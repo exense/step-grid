@@ -20,10 +20,10 @@ package step.grid.contextbuilder;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -102,7 +102,7 @@ public class ApplicationContextBuilder {
 
 		private Map<String, ApplicationContext> childContexts = new ConcurrentHashMap<>();
 		
-		private Map<String, Object> contextObjects = new HashMap<>();
+		private ConcurrentHashMap<String, Object> contextObjects = new ConcurrentHashMap<>();
 
 		protected ApplicationContext() {
 			super();
@@ -115,6 +115,10 @@ public class ApplicationContextBuilder {
 
 		public Object get(Object key) {
 			return contextObjects.get(key);
+		}
+
+		public Object computeIfAbsent(String key, Function<? super String, Object> mappingFunction) {
+			return contextObjects.computeIfAbsent(key, mappingFunction);
 		}
 
 		public Object put(String key, Object value) {
@@ -219,15 +223,21 @@ public class ApplicationContextBuilder {
 	 */
 	public void pushContext(String branchName, ApplicationContextFactory descriptor) throws ApplicationContextBuilderException {
 		synchronized(this) {
-			ThreadLocal<ApplicationContext> branch = getBranch(branchName).getCurrentContexts();
+			String contextKey = descriptor.getId();
+			if(logger.isDebugEnabled()) {
+				logger.debug("Pushing context "+contextKey+" to branch "+branchName);
+			}
+ 			ThreadLocal<ApplicationContext> branch = getBranch(branchName).getCurrentContexts();
 			ApplicationContext parentContext = branch.get();
 			if(parentContext==null) {
 				throw new RuntimeException("The current context is null. This should never occur");
 			}
 			
-			String contextKey = descriptor.getId();
 			ApplicationContext context;
 			if(!parentContext.childContexts.containsKey(contextKey)) {
+				if(logger.isDebugEnabled()) {
+					logger.debug("Context "+contextKey+" doesn't exist on branch "+branchName+". Creating new context");
+				}
 				context = new ApplicationContext();
 				try {
 					buildClassLoader(descriptor, context, parentContext);
@@ -236,9 +246,15 @@ public class ApplicationContextBuilder {
 				}
 				parentContext.childContexts.put(contextKey, context);
 			} else {
+				if(logger.isDebugEnabled()) {
+					logger.debug("Context "+contextKey+" existing on branch. Reusing it.");
+				}
 				context = parentContext.childContexts.get(contextKey);	
 				try {
 					if(descriptor.requiresReload()) {
+						if(logger.isDebugEnabled()) {
+							logger.debug("Context "+contextKey+" requires reload. Reloading...");
+						}
 						buildClassLoader(descriptor, context, parentContext);
 						context.contextObjects.clear();
 					} else {
@@ -254,6 +270,9 @@ public class ApplicationContextBuilder {
 
 	private void buildClassLoader(ApplicationContextFactory descriptor, ApplicationContext context,	ApplicationContext parentContext) throws FileManagerException {
 		ClassLoader classLoader = descriptor.buildClassLoader(parentContext.classLoader);
+		if(logger.isDebugEnabled()) {
+			logger.debug("Loading classloader for "+descriptor.getId());
+		}
 		context.classLoader = classLoader;
 	}
 	
