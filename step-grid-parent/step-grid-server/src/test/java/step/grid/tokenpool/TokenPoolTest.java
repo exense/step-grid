@@ -309,7 +309,8 @@ public class TokenPoolTest {
 		// wait for the thread to start
 		s.acquire();
 		
-		Thread.sleep(10);
+		// Waiting here to reduce probability of SED-207 "No timeout in "selectToken" when a token is invalidated" to occur
+		Thread.sleep(1000);
 		tokenInvalidated.set(true);
 		// Invalidate the token => this should lead to a timeout in the token selection as no match exists anymore after 
 		// token invalidation
@@ -318,7 +319,7 @@ public class TokenPoolTest {
 		
 		// wait max 1 hour. 
 		// Avoid a freeze of the build if no timeout occurs
-		t.join(3600000);
+		t.join(10000);
 		
 		// Asserts that the TimeoutException has been thrown
 		Assert.assertEquals(1, l.size());
