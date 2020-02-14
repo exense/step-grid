@@ -78,7 +78,9 @@ public interface GridClient extends GridFileService, Closeable {
 	public OutputMessage call(String tokenId, JsonNode argument, String handler, FileVersionId handlerPackage, Map<String,String> properties, int callTimeout) throws GridClientException, AgentCommunicationException, Exception;
 	
 	/**
-	 * Return the token to the pool
+	 * Return the token to the pool.
+	 * The {@link GridClient} implementation might be stateful. A token has therefore to be released by the same instance
+	 * of the client that has been used to select the token.
 	 * 
 	 * @param tokenId the ID of the {@link TokenWrapper} to be returned. The ID is returned by {@link TokenWrapper#getID}
 	 * @throws GridClientException
