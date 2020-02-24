@@ -42,7 +42,12 @@
 			<url>http://step.exense.ch/</url>
 		</developer>
 	</developers>
-
+	<scm>
+		<connection>scm:git:https://github.com/exense/step-grid/</connection>
+		<developerConnection>scm:git:https://github.com/exense/step-grid.git</developerConnection>
+		<url>https://github.com/exense/step-grid/</url>
+  </scm>
+  
 	<repositories>
 		<!-- nexus Snapshot -->
 		<repository>
