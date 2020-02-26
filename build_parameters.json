@@ -11,7 +11,7 @@
 			"nexus-staging::https://nexus-enterprise.exense.ch/repository/staging-maven/"
 		],
 		"URL_PROD":		[ 
-			"sonatype::https://nexus-enterprise.exense.ch/repository/test-build-maven/"
+			"sonatype::https://oss.sonatype.org/service/local/staging/deploy/maven2"
 		],
 		
 		"CONFIG_STAGING": [ "DefaultBuild"],
