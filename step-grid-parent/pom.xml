@@ -47,14 +47,6 @@
 		<developerConnection>scm:git:https://github.com/exense/step-grid.git</developerConnection>
 		<url>https://github.com/exense/step-grid/</url>
   </scm>
-  
-	<repositories>
-		<!-- nexus Snapshot -->
-		<repository>
-			<id>nexus-exense</id>
-			<url>https://nexus-enterprise.exense.ch/repository/exense/</url>
-		</repository>
-	</repositories>
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
