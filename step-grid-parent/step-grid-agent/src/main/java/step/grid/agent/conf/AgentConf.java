@@ -98,6 +98,26 @@ public class AgentConf {
 
 	public void setAgentUrl(String agentUrl) {
 		this.agentUrl = agentUrl;
+		
+		Integer port;
+		if (agentUrl.contains(":")) {
+			int slashPos = agentUrl.lastIndexOf("/");
+			String portString = agentUrl.substring(agentUrl.lastIndexOf(":"),
+					(slashPos>0)?slashPos:agentUrl.length());
+			
+			try {
+				port = Integer.getInteger(portString);
+			} catch (Exception e) {
+				throw new RuntimeException("Malformated agentUrl configuration.");
+			}
+		} else if (agentUrl.startsWith("https://")) {
+			port = 443;
+		} else if (agentUrl.startsWith("http://")) {
+			port = 80;
+		} else {
+			throw new RuntimeException("Malformated agentUrl configuration.");
+		}
+		setAgentPort(port);
 	}
 
 	public List<TokenGroupConf> getTokenGroups() {
