@@ -175,13 +175,7 @@ public class Agent {
 			}
 		}
 		
-		if(agentConf.getAgentUrl()==null) {
-			if(agentConf.getAgentHost()==null) {
-				agentConf.setAgentUrl("http://" + Inet4Address.getLocalHost().getCanonicalHostName() + ":" + ((ServerConnector)server.getConnectors()[0]).getLocalPort());
-			} else {
-				agentConf.setAgentUrl("http://" + agentConf.getAgentHost() + ":" + ((ServerConnector)server.getConnectors()[0]).getLocalPort());
-			}
-		} else {
+		if(agentConf.getAgentUrl()!=null) {
 			URL url = new URL(agentConf.getAgentUrl());
 			if (agentConf.getAgentHost()==null) {
 				agentConf.setAgentHost(url.getHost());
@@ -218,6 +212,14 @@ public class Agent {
 		registrationTask = new RegistrationTask(this, registrationClient);
 		
 		server.start();
+		
+		if(agentConf.getAgentUrl()==null) {
+			if(agentConf.getAgentHost()==null) {
+				agentConf.setAgentUrl("http://" + Inet4Address.getLocalHost().getCanonicalHostName() + ":" + ((ServerConnector)server.getConnectors()[0]).getLocalPort());
+			} else {
+				agentConf.setAgentUrl("http://" + agentConf.getAgentHost() + ":" + ((ServerConnector)server.getConnectors()[0]).getLocalPort());
+			}
+		}
 		
 		timer.schedule(registrationTask, 0, agentConf.getRegistrationPeriod());
 	}
