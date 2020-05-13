@@ -21,6 +21,7 @@ package step.grid.agent;
 import java.io.File;
 import java.io.IOException;
 import java.net.Inet4Address;
+import java.net.URL;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -208,7 +209,14 @@ public class Agent {
 			} else {
 				agentConf.setAgentUrl("http://" + agentConf.getAgentHost() + ":" + ((ServerConnector)server.getConnectors()[0]).getLocalPort());
 			}
-			
+		} else {
+			URL url = new URL(agentConf.getAgentUrl());
+			if (agentConf.getAgentHost()==null) {
+				agentConf.setAgentHost(url.getHost());
+			}
+			if (agentConf.getAgentPort()==0) {
+				agentConf.setAgentPort(url.getPort());
+			}
 		}
 		
 		timer.schedule(registrationTask, 0, agentConf.getRegistrationPeriod());
