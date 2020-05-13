@@ -175,6 +175,22 @@ public class Agent {
 			}
 		}
 		
+		if(agentConf.getAgentUrl()==null) {
+			if(agentConf.getAgentHost()==null) {
+				agentConf.setAgentUrl("http://" + Inet4Address.getLocalHost().getCanonicalHostName() + ":" + ((ServerConnector)server.getConnectors()[0]).getLocalPort());
+			} else {
+				agentConf.setAgentUrl("http://" + agentConf.getAgentHost() + ":" + ((ServerConnector)server.getConnectors()[0]).getLocalPort());
+			}
+		} else {
+			URL url = new URL(agentConf.getAgentUrl());
+			if (agentConf.getAgentHost()==null) {
+				agentConf.setAgentHost(url.getHost());
+			}
+			if (agentConf.getAgentPort()==0) {
+				agentConf.setAgentPort(url.getPort());
+			}
+		}
+		
 		ResourceConfig resourceConfig = new ResourceConfig();
 		resourceConfig.packages(AgentServices.class.getPackage().getName());
 		resourceConfig.register(JacksonJsonProvider.class);
@@ -202,22 +218,6 @@ public class Agent {
 		registrationTask = new RegistrationTask(this, registrationClient);
 		
 		server.start();
-		
-		if(agentConf.getAgentUrl()==null) {
-			if(agentConf.getAgentHost()==null) {
-				agentConf.setAgentUrl("http://" + Inet4Address.getLocalHost().getCanonicalHostName() + ":" + ((ServerConnector)server.getConnectors()[0]).getLocalPort());
-			} else {
-				agentConf.setAgentUrl("http://" + agentConf.getAgentHost() + ":" + ((ServerConnector)server.getConnectors()[0]).getLocalPort());
-			}
-		} else {
-			URL url = new URL(agentConf.getAgentUrl());
-			if (agentConf.getAgentHost()==null) {
-				agentConf.setAgentHost(url.getHost());
-			}
-			if (agentConf.getAgentPort()==0) {
-				agentConf.setAgentPort(url.getPort());
-			}
-		}
 		
 		timer.schedule(registrationTask, 0, agentConf.getRegistrationPeriod());
 	}
