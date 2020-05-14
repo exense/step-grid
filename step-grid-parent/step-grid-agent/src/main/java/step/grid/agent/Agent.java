@@ -214,10 +214,13 @@ public class Agent {
 		server.start();
 		
 		if(agentConf.getAgentUrl()==null) {
+			// If the AgentUrl is not set, update the AgentUrl with the port opened by the server
+			// This has to be done after server start because the port isn't known before server start when set to 0 
+			int localPort = ((ServerConnector)server.getConnectors()[0]).getLocalPort();
 			if(agentConf.getAgentHost()==null) {
-				agentConf.setAgentUrl("http://" + Inet4Address.getLocalHost().getCanonicalHostName() + ":" + ((ServerConnector)server.getConnectors()[0]).getLocalPort());
+				agentConf.setAgentUrl("http://" + Inet4Address.getLocalHost().getCanonicalHostName() + ":" + localPort);
 			} else {
-				agentConf.setAgentUrl("http://" + agentConf.getAgentHost() + ":" + ((ServerConnector)server.getConnectors()[0]).getLocalPort());
+				agentConf.setAgentUrl("http://" + agentConf.getAgentHost() + ":" + localPort);
 			}
 		}
 		
