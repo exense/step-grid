@@ -16,6 +16,5 @@
 		
 		"CONFIG_STAGING": [ "DefaultBuild"],
 		"CONFIG_PROD": [ "DefaultBuild"]
-	},
-	"DISTRIBUTIONS": { "TYPE":[],"ORIGIN_FILE":[],"DESTINATION_NAME":[],"URL_STAGING":[],"URL_PROD":[],"OS":[],"CONFIG":[] }
+	}
 }
