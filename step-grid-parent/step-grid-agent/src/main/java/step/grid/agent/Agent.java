@@ -61,6 +61,10 @@ import step.grid.tokenpool.Interest;
 
 public class Agent {
 	
+	private static final String TOKEN_ID = "$tokenid";
+
+	private static final String AGENT_ID = "$agentid";
+
 	private static final Logger logger = LoggerFactory.getLogger(Agent.class);
 	
 	private String id;
@@ -135,6 +139,8 @@ public class Agent {
 			Map<String, String> allAttributes = new HashMap<>();
 			allAttributes.putAll(attributes);
 			allAttributes.put(AgentTypes.AGENT_TYPE_KEY, AgentTypes.AGENT_TYPE);
+			allAttributes.put(AGENT_ID, id);
+			allAttributes.put(TOKEN_ID, token.getUid());
 			token.setAttributes(allAttributes);
 			token.setSelectionPatterns(createInterestMap(selectionPatterns));
 			token.setProperties(properties);
