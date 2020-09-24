@@ -17,4 +17,6 @@ public interface Grid extends GridFileService {
 	List<TokenWrapper> getTokens();
 	
 	void markTokenAsFailing(String tokenId, String errorMessage, Exception e);
+
+	void cleanupFileManagerCache();
 }

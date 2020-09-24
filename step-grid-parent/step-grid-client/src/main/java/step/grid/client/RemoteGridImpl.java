@@ -55,6 +55,7 @@ import step.grid.filemanager.FileManagerException;
 import step.grid.filemanager.FileVersion;
 import step.grid.filemanager.FileVersionId;
 import step.grid.tokenpool.Interest;
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 public class RemoteGridImpl implements Grid {
 
@@ -143,6 +144,11 @@ public class RemoteGridImpl implements Grid {
 	public void markTokenAsFailing(String tokenId, String errorMessage, Exception e) {
 		Builder r = requestBuilder("/grid/token/"+tokenId+"/error/add");
 		executeRequest(()->r.post(Entity.entity(errorMessage, MediaType.APPLICATION_JSON)));
+	}
+
+	@Override
+	public void cleanupFileManagerCache() {
+		throw new NotImplementedException();
 	}
 
 	@Override
