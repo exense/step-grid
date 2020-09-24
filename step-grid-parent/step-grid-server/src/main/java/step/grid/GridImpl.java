@@ -167,12 +167,14 @@ public class GridImpl implements Grid {
 		}
 	}
 
+	public void cleanupFileManagerCache() {
+		fileManager.cleanupCache();
+	}
 
 	public void stop() throws Exception {
 		server.stop();
 		agentRefs.close();
 		tokenPool.close();
-		
 	}
 
 	public void start() throws Exception {
