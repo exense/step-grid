@@ -55,7 +55,6 @@ import step.grid.filemanager.FileManagerException;
 import step.grid.filemanager.FileVersion;
 import step.grid.filemanager.FileVersionId;
 import step.grid.tokenpool.Interest;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 public class RemoteGridImpl implements Grid {
 
@@ -148,7 +147,7 @@ public class RemoteGridImpl implements Grid {
 
 	@Override
 	public void cleanupFileManagerCache() {
-		throw new NotImplementedException();
+		throw new RuntimeException("NotImplementedException"); //NotImplementedException();
 	}
 
 	@Override

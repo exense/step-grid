@@ -58,7 +58,6 @@
 		    <artifactId>step-api-reporting</artifactId>
 		    <version>${step-api.version}</version>
 		</dependency>
-				
 	</dependencies>
 
 	<build>
