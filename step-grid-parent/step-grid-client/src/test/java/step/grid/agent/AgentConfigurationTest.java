@@ -138,7 +138,7 @@ public class AgentConfigurationTest {
 		AgentConf agentConf = new AgentConf();
 		agentConf.setRegistrationPeriod(100);
 		agentConf.setGridHost("http://localhost:" + grid.getServerPort());
-		agentConf.setAgentUrl("http://localhost");
+		agentConf.setAgentUrl("http://localhost:11111");
 		
 		startAgent(agentConf);
 		testGrid();
