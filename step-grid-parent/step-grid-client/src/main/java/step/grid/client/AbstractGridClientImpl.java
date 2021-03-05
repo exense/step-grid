@@ -21,6 +21,9 @@ package step.grid.client;
 import java.io.File;
 import java.io.InputStream;
 import java.net.SocketTimeoutException;
+import java.security.KeyManagementException;
+import java.security.NoSuchAlgorithmException;
+import java.security.cert.X509Certificate;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -29,6 +32,9 @@ import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 import javax.ws.rs.ProcessingException;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
@@ -90,7 +96,47 @@ public abstract class AbstractGridClientImpl implements GridClient {
 		this.tokenLifecycleStrategy = tokenLifecycleStrategy;
 		this.grid = grid;
 		
-		client = ClientBuilder.newClient();
+		ClientBuilder newBuilder = ClientBuilder.newBuilder();
+
+		if(gridClientConfiguration.isAllowInvalidSslCertificates()) {
+			// allow untrusted certificates
+			TrustManager[] trustManager = new X509TrustManager[] { new X509TrustManager() {
+				
+				@Override
+				public X509Certificate[] getAcceptedIssuers() {
+					return null;
+				}
+				
+				@Override
+				public void checkClientTrusted(X509Certificate[] certs, String authType) {
+					
+				}
+				
+				@Override
+				public void checkServerTrusted(X509Certificate[] certs, String authType) {
+					
+				}
+			}};
+			
+			SSLContext sslContext;
+			try {
+				sslContext = SSLContext.getInstance("SSL");
+				sslContext.init(null, trustManager, null);
+			} catch (NoSuchAlgorithmException | KeyManagementException e) {
+				throw new RuntimeException("Error while initalizing SSL context", e);
+			}
+			newBuilder.sslContext(sslContext);
+
+			// allow SSL common name mismatch
+			newBuilder.hostnameVerifier(new javax.net.ssl.HostnameVerifier() {
+				public boolean verify(String hostname, javax.net.ssl.SSLSession sslSession) {
+					return true;
+				}
+			});
+		}
+		
+		client = newBuilder.build();
+		
 		client.register(ObjectMapperResolver.class);
 		client.register(JacksonJsonProvider.class);
 		

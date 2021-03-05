@@ -28,6 +28,8 @@ public class GridClientConfiguration {
 	
 	private int readTimeoutOffset = 3000;
 	
+	private boolean allowInvalidSslCertificates = false;
+	
 	public long getNoMatchExistsTimeout() {
 		return noMatchExistsTimeout;
 	}
@@ -66,5 +68,13 @@ public class GridClientConfiguration {
 
 	public void setReadTimeoutOffset(int readTimeoutOffset) {
 		this.readTimeoutOffset = readTimeoutOffset;
+	}
+
+	public boolean isAllowInvalidSslCertificates() {
+		return allowInvalidSslCertificates;
+	}
+
+	public void setAllowInvalidSslCertificates(boolean allowInvalidSslCertificates) {
+		this.allowInvalidSslCertificates = allowInvalidSslCertificates;
 	}
 }

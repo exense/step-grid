@@ -21,7 +21,9 @@ package step.grid.agent;
 import java.io.File;
 import java.io.IOException;
 import java.net.Inet4Address;
+import java.net.MalformedURLException;
 import java.net.URL;
+import java.net.UnknownHostException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -33,11 +35,16 @@ import java.util.UUID;
 import java.util.regex.Pattern;
 
 import org.eclipse.jetty.server.Handler;
+import org.eclipse.jetty.server.HttpConfiguration;
+import org.eclipse.jetty.server.HttpConnectionFactory;
+import org.eclipse.jetty.server.SecureRequestCustomizer;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
+import org.eclipse.jetty.server.SslConnectionFactory;
 import org.eclipse.jetty.server.handler.ContextHandlerCollection;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
+import org.eclipse.jetty.util.ssl.SslContextFactory;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.servlet.ServletContainer;
@@ -59,29 +66,24 @@ import step.grid.filemanager.FileManagerClient;
 import step.grid.filemanager.FileManagerClientImpl;
 import step.grid.tokenpool.Interest;
 
-public class Agent {
+public class Agent implements AutoCloseable {
 	
-	private static final String TOKEN_ID = "$tokenid";
+	private static final Logger logger = LoggerFactory.getLogger(Agent.class);
 
+	private static final String TOKEN_ID = "$tokenid";
 	private static final String AGENT_ID = "$agentid";
 
-	private static final Logger logger = LoggerFactory.getLogger(Agent.class);
+	private final String id = UUID.randomUUID().toString();
+	private final AgentTokenPool tokenPool = new AgentTokenPool();
 	
-	private String id;
+	private final Server server;
+	private final Timer timer;
+	private final RegistrationTask registrationTask;
+	private final AgentTokenServices agentTokenServices;
 	
-	private AgentConf agentConf;
-	
-	private Server server;
-	
-	private AgentTokenPool tokenPool;
-		
-	private Timer timer;
-		
-	private RegistrationTask registrationTask;
-	
-	private AgentTokenServices agentTokenServices;
+	private final String agentUrl;
 
-	public Agent(String[] args) throws Exception {
+	public static Agent newInstanceFromArgs(String[] args) throws Exception {
 		ArgumentParser arguments = new ArgumentParser(args);
 
 		String agentConfStr = arguments.getOption("config");
@@ -96,8 +98,6 @@ public class Agent {
 			
 			if(arguments.hasOption("agentPort")) {
 				agentConf.setAgentPort(Integer.decode(arguments.getOption("agentPort")));
-			} else if (agentConf.getAgentPort() == null) {
-				agentConf.setAgentPort(0);
 			}
 			
 			if(arguments.hasOption("agentHost")) {
@@ -108,12 +108,7 @@ public class Agent {
 				agentConf.setAgentUrl(arguments.getOption("agentUrl"));
 			}
 			
-			this.agentConf = agentConf;
-			
-			id = UUID.randomUUID().toString();
-			tokenPool = new AgentTokenPool();
-			
-			start();
+			return new Agent(agentConf);
 		} else {
 			throw new RuntimeException("Argument '-config' is missing.");
 		}
@@ -122,10 +117,189 @@ public class Agent {
 	public Agent(AgentConf agentConf) throws Exception {
 		super();
 
-		this.agentConf = agentConf;
-		
-		id = UUID.randomUUID().toString();
-		tokenPool = new AgentTokenPool();
+		validateConfiguration(agentConf);
+
+		String agentHost = agentConf.getAgentHost();
+		String agentUrl = agentConf.getAgentUrl();
+		Integer agentPort = agentConf.getAgentPort();
+		boolean ssl = agentConf.isSsl();
+
+		String gridUrl = agentConf.getGridHost();
+		RegistrationClient registrationClient = new RegistrationClient(gridUrl,
+				agentConf.getGridConnectTimeout(), agentConf.getGridReadTimeout());
+
+		FileManagerClient fileManagerClient = initFileManager(registrationClient, agentConf.getWorkingDir());
+
+		agentTokenServices = new AgentTokenServices(fileManagerClient);
+		agentTokenServices.setAgentProperties(agentConf.getProperties());
+		agentTokenServices.setApplicationContextBuilder(new ApplicationContextBuilder());
+
+		buildTokenList(agentConf);
+
+		int serverPort = getServerPort(agentUrl, agentPort);
+
+		logger.info("Starting server...");
+		server = startServer(agentConf, serverPort, ssl);
+
+		int actualServerPort = getActualServerPort();
+		logger.info("Successfully started server on port " + actualServerPort);
+
+		this.agentUrl = getOrBuildActualAgentUrl(agentHost, agentUrl, actualServerPort, ssl);
+
+		logger.info("Starting grid registration task using grid URL " + gridUrl + "...");
+		registrationTask = createGridRegistrationTask(registrationClient);
+		timer = createGridRegistrationTimerAndRegisterTask(agentConf);
+
+		logger.info("Agent successfully started on port " + actualServerPort
+				+ ". The agent will publish following URL for incoming connections: " + this.agentUrl);
+	}
+
+	private RegistrationTask createGridRegistrationTask(RegistrationClient registrationClient) {
+		return new RegistrationTask(this, registrationClient);
+	}
+
+	private Timer createGridRegistrationTimerAndRegisterTask(AgentConf agentConf) {
+		Timer timer = new Timer();
+		timer.schedule(registrationTask, 0, agentConf.getRegistrationPeriod());
+		return timer;
+	}
+
+	private void buildTokenList(AgentConf agentConf) {
+		List<TokenGroupConf> tokenGroups = agentConf.getTokenGroups();
+		if(tokenGroups!=null) {
+			for(TokenGroupConf group:tokenGroups) {
+				TokenConf tokenConf = group.getTokenConf();
+				addTokens(group.getCapacity(), tokenConf.getAttributes(), tokenConf.getSelectionPatterns(), 
+						tokenConf.getProperties());
+			}
+		}
+	}
+
+	private int getServerPort(String agentUrl, Integer agentPort) throws MalformedURLException {
+		int port;
+		if (agentPort != null) {
+			port = agentPort;
+		} else {
+			if (agentUrl != null) {
+				URL url = new URL(agentUrl);
+				int urlPort = url.getPort();
+				port = urlPort != -1 ? urlPort : url.getDefaultPort();
+			} else {
+				port = 0;
+			}
+		}
+		return port;
+	}
+
+	private String getOrBuildActualAgentUrl(String agentHost, String agentUrl, int localPort, boolean ssl)
+			throws UnknownHostException {
+		String actualAgentUrl;
+		if (agentUrl == null) {
+			// agentUrl not set. generate it
+			String scheme;
+			if (ssl) {
+				scheme = "https://";
+			} else {
+				scheme = "http://";
+			}
+
+			String host;
+			if (agentHost == null) {
+				// agentHost not specified. Calculate it
+				host = Inet4Address.getLocalHost().getCanonicalHostName();
+			} else {
+				host = agentHost;
+			}
+			actualAgentUrl = scheme + host + ":" + localPort;
+		} else {
+			actualAgentUrl = agentUrl;
+		}
+		return actualAgentUrl;
+	}
+
+	private int getActualServerPort() {
+		return ((ServerConnector) server.getConnectors()[0]).getLocalPort();
+	}
+
+	private Server startServer(AgentConf agentConf, int port, boolean ssl) throws Exception {
+		ResourceConfig resourceConfig = new ResourceConfig();
+		resourceConfig.packages(AgentServices.class.getPackage().getName());
+		resourceConfig.register(JacksonJsonProvider.class);
+		resourceConfig.register(ObjectMapperResolver.class);
+		final Agent agent = this;
+		resourceConfig.register(new AbstractBinder() {
+			@Override
+			protected void configure() {
+				bind(agent).to(Agent.class);
+			}
+		});
+		ServletContainer servletContainer = new ServletContainer(resourceConfig);
+
+		ServletHolder sh = new ServletHolder(servletContainer);
+		ServletContextHandler context = new ServletContextHandler(ServletContextHandler.SESSIONS);
+		context.setContextPath("/");
+		context.addServlet(sh, "/*");
+
+		Server server = new Server();
+
+		ServerConnector connector;
+		if (ssl) {
+			String keyStorePath = agentConf.getKeyStorePath();
+			String keyStorePassword = agentConf.getKeyStorePassword();
+			String keyManagerPassword = agentConf.getKeyManagerPassword();
+
+			HttpConfiguration https = new HttpConfiguration();
+			https.addCustomizer(new SecureRequestCustomizer());
+
+			SslContextFactory sslContextFactory = new SslContextFactory();
+			sslContextFactory.setKeyStorePath(keyStorePath);
+			sslContextFactory.setKeyStorePassword(keyStorePassword);
+			sslContextFactory.setKeyManagerPassword(keyManagerPassword);
+
+			connector = new ServerConnector(server, new SslConnectionFactory(sslContextFactory, "http/1.1"),
+					new HttpConnectionFactory(https));
+		} else {
+			HttpConfiguration http = new HttpConfiguration();
+			http.addCustomizer(new SecureRequestCustomizer());
+
+			connector = new ServerConnector(server);
+			connector.addConnectionFactory(new HttpConnectionFactory(http));
+			server.addConnector(connector);
+		}
+		connector.setPort(port);
+		server.addConnector(connector);
+
+		ContextHandlerCollection contexts = new ContextHandlerCollection();
+		contexts.setHandlers(new Handler[] { context });
+		server.setHandler(contexts);
+
+		server.start();
+
+		return server;
+	}
+
+	private void validateConfiguration(AgentConf agentConf) {
+		assertMandatoryOption(agentConf.getGridHost(), "gridHost");
+		if (agentConf.isSsl()) {
+			assertMandatorySslOption(agentConf.getKeyStorePath(), "keyStorePath");
+			assertMandatorySslOption(agentConf.getKeyStorePassword(), "keyStorePassword");
+			assertMandatorySslOption(agentConf.getKeyManagerPassword(), "keyManagerPassword");
+		}
+	}
+
+	private void assertMandatoryOption(String actualOptionValue, String optionName) {
+		assertOption(actualOptionValue, "Missing option '" + optionName + "'. This option is mandatory.");
+	}
+
+	private void assertMandatorySslOption(String actualOptionValue, String optionName) {
+		assertOption(actualOptionValue,
+				"Missing option '" + optionName + "'. This option is mandatory when SSL is enabled.");
+	}
+
+	private void assertOption(String actualOptionValue, String errorMessage) {
+		if (actualOptionValue == null || actualOptionValue.trim().length() == 0) {
+			throw new IllegalArgumentException(errorMessage);
+		}
 	}
 	
 	public String getId() {
@@ -160,82 +334,8 @@ public class Agent {
 		return result;
 	}
 
-	public void start() throws Exception {		
-		final Agent agent = this;
-		
-		AgentConf agentConf = agent.agentConf;
-		
-		RegistrationClient registrationClient = new RegistrationClient(agent.getGridHost(), agentConf.getGridConnectTimeout(), agentConf.getGridReadTimeout());
-		
-		FileManagerClient fileManagerClient = initFileManager(registrationClient);
-				
-		agentTokenServices = new AgentTokenServices(fileManagerClient);
-		agentTokenServices.setAgentProperties(agentConf.getProperties());
-		agentTokenServices.setApplicationContextBuilder(new ApplicationContextBuilder());
-				
-		if(agentConf.getTokenGroups()!=null) {
-			for(TokenGroupConf group:agentConf.getTokenGroups()) {
-				TokenConf tokenConf = group.getTokenConf();
-				addTokens(group.getCapacity(), tokenConf.getAttributes(), tokenConf.getSelectionPatterns(), 
-						tokenConf.getProperties());
-			}
-		}
-		
-		if(agentConf.getAgentUrl()!=null) {
-			URL url = new URL(agentConf.getAgentUrl());
-			if (agentConf.getAgentHost()==null) {
-				agentConf.setAgentHost(url.getHost());
-			}
-			if (agentConf.getAgentPort()==0) {
-				agentConf.setAgentPort(url.getPort());
-			}
-		}
-		
-		ResourceConfig resourceConfig = new ResourceConfig();
-		resourceConfig.packages(AgentServices.class.getPackage().getName());
-		resourceConfig.register(JacksonJsonProvider.class);
-		resourceConfig.register(ObjectMapperResolver.class);
-		resourceConfig.register(new AbstractBinder() {	
-			@Override
-			protected void configure() {
-				bind(agent).to(Agent.class);
-			}
-		});
-		ServletContainer servletContainer = new ServletContainer(resourceConfig);
-
-		ServletHolder sh = new ServletHolder(servletContainer);
-		ServletContextHandler context = new ServletContextHandler(ServletContextHandler.SESSIONS);
-		context.setContextPath("/");
-		context.addServlet(sh, "/*");
-		
-		server = new Server(agentConf.getAgentPort());
-		
-		ContextHandlerCollection contexts = new ContextHandlerCollection();
-        contexts.setHandlers(new Handler[] { context });
-		server.setHandler(contexts);
-		
-		timer = new Timer();
-		registrationTask = new RegistrationTask(this, registrationClient);
-		
-		server.start();
-		
-		if(agentConf.getAgentUrl()==null) {
-			// If the AgentUrl is not set, update the AgentUrl with the port opened by the server
-			// This has to be done after server start because the port isn't known before server start when set to 0 
-			int localPort = ((ServerConnector)server.getConnectors()[0]).getLocalPort();
-			if(agentConf.getAgentHost()==null) {
-				agentConf.setAgentUrl("http://" + Inet4Address.getLocalHost().getCanonicalHostName() + ":" + localPort);
-			} else {
-				agentConf.setAgentUrl("http://" + agentConf.getAgentHost() + ":" + localPort);
-			}
-		}
-		
-		timer.schedule(registrationTask, 0, agentConf.getRegistrationPeriod());
-	}
-
-	private FileManagerClient initFileManager(RegistrationClient registrationClient) throws IOException {
+	private FileManagerClient initFileManager(RegistrationClient registrationClient, String workingDir) throws IOException {
 		String fileManagerDirPath;
-		String workingDir = agentConf.getWorkingDir();
 		if(workingDir!=null) {
 			fileManagerDirPath = workingDir;
 		} else {
@@ -252,29 +352,11 @@ public class Agent {
 	}
 
 	protected String getAgentUrl() {
-		return agentConf.getAgentUrl();
-	}
-
-	public void stop() throws Exception {
-		if(timer!=null) {
-			timer.cancel();
-		}
-		
-		if(registrationTask!=null) {
-			registrationTask.cancel();
-			registrationTask.unregister();
-			registrationTask.destroy();
-		}
-
-		server.stop();
+		return agentUrl;
 	}
 
 	protected AgentTokenPool getTokenPool() {
 		return tokenPool;
-	}
-
-	protected RegistrationTask getRegistrationTask() {
-		return registrationTask;
 	}
 
 	public AgentTokenServices getAgentTokenServices() {
@@ -288,19 +370,19 @@ public class Agent {
 		}
 		return tokens;
 	}
-	
-	protected List<Token> getAvailableTokens() {
-		List<Token> tokens = new ArrayList<>();
-		for(AgentTokenWrapper wrapper:tokenPool.getTokens()) {
-			if(!wrapper.isInUse()) {
-				tokens.add(wrapper.getToken());				
-			}
-		}
-		return tokens;
-	}
-	
-	protected String getGridHost() {
-		return agentConf.getGridHost();
-	}
 
+	@Override
+	public void close() throws Exception {
+		if(timer!=null) {
+			timer.cancel();
+		}
+		
+		if(registrationTask!=null) {
+			registrationTask.cancel();
+			registrationTask.unregister();
+			registrationTask.destroy();
+		}
+
+		server.stop();
+	}
 }

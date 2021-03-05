@@ -18,6 +18,8 @@
  ******************************************************************************/
 package step.grid.agent;
 
+import static org.junit.Assert.*;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -26,7 +28,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import junit.framework.Assert;
 import step.grid.agent.conf.AgentConf;
 import step.grid.agent.conf.TokenConf;
 import step.grid.agent.conf.TokenGroupConf;
@@ -43,6 +44,7 @@ public class AgentServicesTest {
 	public void before() throws Exception {
 		AgentConf conf = new AgentConf();
 		conf.setAgentPort(0);
+		conf.setGridHost("dummy");
 		
 		List<TokenGroupConf> tokenGroups = new ArrayList<>();
 		
@@ -57,12 +59,11 @@ public class AgentServicesTest {
 		conf.setTokenGroups(tokenGroups);
 		
 		agent = new Agent(conf);
-		agent.start();
 	}
 	
 	@After
 	public void after() throws Exception {
-		agent.stop();
+		agent.close();
 	}
 	
 	@Test
@@ -79,9 +80,9 @@ public class AgentServicesTest {
 		OutputMessage outputMessage = a.process(tokenId, message);
 		
 		AgentError agentError = outputMessage.getAgentError();
-		Assert.assertEquals(AgentErrorCode.CONTEXT_BUILDER_FILE_PROVIDER_CALL_ERROR, agentError.getErrorCode());
-		Assert.assertEquals("fileId",agentError.getErrorDetails().get(AgentErrorCode.Details.FILE_HANDLE));
-		Assert.assertEquals("1",agentError.getErrorDetails().get(AgentErrorCode.Details.FILE_VERSION));
+		assertEquals(AgentErrorCode.CONTEXT_BUILDER_FILE_PROVIDER_CALL_ERROR, agentError.getErrorCode());
+		assertEquals("fileId",agentError.getErrorDetails().get(AgentErrorCode.Details.FILE_HANDLE));
+		assertEquals("1",agentError.getErrorDetails().get(AgentErrorCode.Details.FILE_VERSION));
 	}
 
 }

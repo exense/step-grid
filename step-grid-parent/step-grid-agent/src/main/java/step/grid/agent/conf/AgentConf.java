@@ -31,6 +31,11 @@ public class AgentConf {
 	
 	String agentUrl;
 	
+	boolean ssl = false;
+	String keyStorePath;
+	String keyStorePassword;
+	String keyManagerPassword;
+	
 	String workingDir;
 	
 	Integer registrationPeriod = 10000;
@@ -98,6 +103,38 @@ public class AgentConf {
 
 	public void setAgentUrl(String agentUrl) {
 		this.agentUrl = agentUrl;
+	}
+
+	public boolean isSsl() {
+		return ssl;
+	}
+
+	public void setSsl(boolean ssl) {
+		this.ssl = ssl;
+	}
+
+	public String getKeyStorePath() {
+		return keyStorePath;
+	}
+
+	public void setKeyStorePath(String keyStorePath) {
+		this.keyStorePath = keyStorePath;
+	}
+
+	public String getKeyStorePassword() {
+		return keyStorePassword;
+	}
+
+	public void setKeyStorePassword(String keyStorePassword) {
+		this.keyStorePassword = keyStorePassword;
+	}
+
+	public String getKeyManagerPassword() {
+		return keyManagerPassword;
+	}
+
+	public void setKeyManagerPassword(String keyManagerPassword) {
+		this.keyManagerPassword = keyManagerPassword;
 	}
 
 	public List<TokenGroupConf> getTokenGroups() {
