@@ -176,8 +176,6 @@ public class Agent implements AutoCloseable {
 					throw new IllegalArgumentException("Missing section 'tokenConf' in agent configuration");
 				}
 			}
-		} else {
-			throw new IllegalArgumentException("Missing section 'tokenGroups' in agent configuration");
 		}
 	}
 

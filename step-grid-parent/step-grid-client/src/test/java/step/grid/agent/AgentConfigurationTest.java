@@ -71,25 +71,16 @@ public class AgentConfigurationTest {
 	}
 	
 	@Test
-	public void testMissingSections() throws Exception {
+	public void testMissingSection() throws Exception {
 		AgentConf agentConf = new AgentConf();
 		agentConf.setGridHost("http://localhost:" + grid.getServerPort());
 		
-		Exception actualException = null;
-		try {
-			startAgent(agentConf);
-		} catch (Exception e) {
-			actualException = e;
-		}
-		assertNotNull(actualException);
-		assertEquals("Missing section 'tokenGroups' in agent configuration", actualException.getMessage());
-
 		ArrayList<TokenGroupConf> tokenGroups = new ArrayList<TokenGroupConf>();
 		TokenGroupConf tokenGroupConf = new TokenGroupConf();
 		tokenGroups.add(tokenGroupConf);
 		agentConf.setTokenGroups(tokenGroups);
 
-		actualException = null;
+		Exception actualException = null;
 		try {
 			startAgent(agentConf);
 		} catch (Exception e) {
