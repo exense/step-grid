@@ -169,9 +169,15 @@ public class Agent implements AutoCloseable {
 		if(tokenGroups!=null) {
 			for(TokenGroupConf group:tokenGroups) {
 				TokenConf tokenConf = group.getTokenConf();
-				addTokens(group.getCapacity(), tokenConf.getAttributes(), tokenConf.getSelectionPatterns(), 
-						tokenConf.getProperties());
+				if(tokenConf != null) {
+					addTokens(group.getCapacity(), tokenConf.getAttributes(), tokenConf.getSelectionPatterns(), 
+							tokenConf.getProperties());
+				} else {
+					throw new IllegalArgumentException("Missing section 'tokenConf' in agent configuration");
+				}
 			}
+		} else {
+			throw new IllegalArgumentException("Missing section 'tokenGroups' in agent configuration");
 		}
 	}
 

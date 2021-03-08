@@ -44,7 +44,7 @@ public class AgentConfParserTest {
 			actualException = e;
 		}
 		assertNotNull(actualException);
-		assertEquals("Unsupported file type. Supported file types are .yaml and .json", actualException.getMessage());
+		assertTrue(actualException.getMessage().startsWith("Unsupported file type"));
 	}
 	
 	private void assertAgentConf(AgentConf agentConf) {

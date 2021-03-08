@@ -46,7 +46,8 @@ public class AgentConfParser {
 		} else if(file.getName().endsWith(JSON)) {
 			mapper = new ObjectMapper();
 		} else {
-			throw new IllegalArgumentException("Unsupported file type. Supported file types are .yaml and .json");
+			throw new IllegalArgumentException("Unsupported file type for agent configuration: "
+					+ file.getAbsolutePath() + ". Supported file types are .yaml and .json");
 		}
 		
 		return mapper.readValue(resolvedContent, AgentConf.class);

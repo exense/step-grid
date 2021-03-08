@@ -18,9 +18,11 @@
  ******************************************************************************/
 package step.grid.agent;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.HashMap;
 
 import org.junit.After;
@@ -34,6 +36,8 @@ import step.grid.GridImpl;
 import step.grid.GridImpl.GridImplConfig;
 import step.grid.TokenWrapper;
 import step.grid.agent.conf.AgentConf;
+import step.grid.agent.conf.TokenConf;
+import step.grid.agent.conf.TokenGroupConf;
 import step.grid.client.AbstractGridClientImpl.AgentCommunicationException;
 import step.grid.client.GridClientConfiguration;
 import step.grid.client.GridClientException;
@@ -60,9 +64,48 @@ public class AgentConfigurationTest {
 		AgentConf agentConf = new AgentConf();
 		agentConf.setRegistrationPeriod(100);
 		agentConf.setGridHost("http://localhost:" + grid.getServerPort());
+		agentConf.setTokenGroups(tokenGroupWith1Token());
 		
 		startAgent(agentConf);
 		testGrid();
+	}
+	
+	@Test
+	public void testMissingSections() throws Exception {
+		AgentConf agentConf = new AgentConf();
+		agentConf.setGridHost("http://localhost:" + grid.getServerPort());
+		
+		Exception actualException = null;
+		try {
+			startAgent(agentConf);
+		} catch (Exception e) {
+			actualException = e;
+		}
+		assertNotNull(actualException);
+		assertEquals("Missing section 'tokenGroups' in agent configuration", actualException.getMessage());
+
+		ArrayList<TokenGroupConf> tokenGroups = new ArrayList<TokenGroupConf>();
+		TokenGroupConf tokenGroupConf = new TokenGroupConf();
+		tokenGroups.add(tokenGroupConf);
+		agentConf.setTokenGroups(tokenGroups);
+
+		actualException = null;
+		try {
+			startAgent(agentConf);
+		} catch (Exception e) {
+			actualException = e;
+		}
+		assertNotNull(actualException);
+		assertEquals("Missing section 'tokenConf' in agent configuration", actualException.getMessage());
+	}
+
+	private ArrayList<TokenGroupConf> tokenGroupWith1Token() {
+		ArrayList<TokenGroupConf> tokenGroups = new ArrayList<TokenGroupConf>();
+		TokenGroupConf tokenGroupConf = new TokenGroupConf();
+		tokenGroupConf.setCapacity(1);
+		tokenGroupConf.setTokenConf(new TokenConf());
+		tokenGroups.add(tokenGroupConf);
+		return tokenGroups;
 	}
 
 	@Test
@@ -78,6 +121,7 @@ public class AgentConfigurationTest {
 		agentConf.setKeyStorePassword("123456");
 		agentConf.setKeyManagerPassword("123456");
 		agentConf.setGridHost("http://localhost:" + grid.getServerPort());
+		agentConf.setTokenGroups(tokenGroupWith1Token());
 
 		startAgent(agentConf);
 		testGrid();
@@ -120,6 +164,7 @@ public class AgentConfigurationTest {
 		agentConf.setGridHost("http://localhost:" + grid.getServerPort());
 		agentConf.setAgentPort(0);
 		agentConf.setAgentHost("invalid");
+		agentConf.setTokenGroups(tokenGroupWith1Token());
 		
 		startAgent(agentConf);
 		
@@ -136,6 +181,7 @@ public class AgentConfigurationTest {
 	@Test
 	public void testAgentUrl() throws Exception {
 		AgentConf agentConf = new AgentConf();
+		agentConf.setTokenGroups(tokenGroupWith1Token());
 		agentConf.setRegistrationPeriod(100);
 		agentConf.setGridHost("http://localhost:" + grid.getServerPort());
 		agentConf.setAgentUrl("http://localhost:11111");
@@ -146,7 +192,6 @@ public class AgentConfigurationTest {
 
 	private void startAgent(AgentConf agentConf) throws Exception {
 		agent = new Agent(agentConf);
-		agent.addTokens(1, new HashMap<>(), null, null);
 	}
 
 	@After

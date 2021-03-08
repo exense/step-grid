@@ -18,15 +18,16 @@
  ******************************************************************************/
 package step.grid.agent.conf;
 
+import java.util.HashMap;
 import java.util.Map;
 
 public class TokenConf {
 
-	Map<String, String> attributes;
+	Map<String, String> attributes = new HashMap<>();
 	
-	Map<String, String> selectionPatterns;
+	Map<String, String> selectionPatterns = new HashMap<>();
 	
-	Map<String, String> properties;
+	Map<String, String> properties = new HashMap<>();
 
 	public TokenConf() {
 		super();
