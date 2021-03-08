@@ -24,21 +24,32 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 
 import ch.exense.commons.app.ArgumentParser;
 
 public class AgentConfParser {
 	
-	ObjectMapper mapper = new ObjectMapper();
-	
-	public AgentConf parser(ArgumentParser arguments, File file) throws Exception {
+	private static final String JSON = "json";
+	private static final String YAML = "yaml";
+
+	public AgentConf parse(ArgumentParser arguments, File file) throws Exception {
 		byte[] bytes = Files.readAllBytes(file.toPath());
 		
 		String content = new String(bytes);
 		
 		String resolvedContent = replacePlaceholders(arguments, content);
+	
+		ObjectMapper mapper;
+		if(file.getName().endsWith(YAML)) {
+			mapper = new ObjectMapper(new YAMLFactory());
+		} else if(file.getName().endsWith(JSON)) {
+			mapper = new ObjectMapper();
+		} else {
+			throw new IllegalArgumentException("Unsupported file type. Supported file types are .yaml and .json");
+		}
 		
-		return mapper.reader(AgentConf.class).readValue(resolvedContent);
+		return mapper.readValue(resolvedContent, AgentConf.class);
 	}
 	
 	private String replacePlaceholders(ArgumentParser arguments, String configXml) {

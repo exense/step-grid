@@ -90,7 +90,7 @@ public class Agent implements AutoCloseable {
 		
 		if(agentConfStr!=null) {
 			AgentConfParser parser = new AgentConfParser();
-			AgentConf agentConf = parser.parser(arguments, new File(agentConfStr));
+			AgentConf agentConf = parser.parse(arguments, new File(agentConfStr));
 
 			if(arguments.hasOption("gridHost")) {
 				agentConf.setGridHost(arguments.getOption("gridHost"));

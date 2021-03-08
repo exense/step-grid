@@ -1,0 +1,23 @@
+---
+# The URL of the grid
+gridHost: http://${host}:8081
+# Specifies the interval used by the registration client in ms
+# This should be lower than the grid TTL specified on the grid side 
+registrationPeriod: 1000
+gridReadTimeout: 20000
+workingDir: src/test/work
+# If ssl is enabled or not 
+ssl: true
+# SSL parameters. Mandatory if SSL is enabled
+keyStorePath: C:\Users\jecom\Programs\step\server.jks
+keyStorePassword: '123456'
+keyManagerPassword: '123456'
+# Token groups
+tokenGroups:
+- capacity: 10
+  tokenConf:
+    attributes:
+      key: val
+    properties:
+properties:
+  plugins.jmeter.home: "../distribution/template-agent/ext/lib/jmeter"
