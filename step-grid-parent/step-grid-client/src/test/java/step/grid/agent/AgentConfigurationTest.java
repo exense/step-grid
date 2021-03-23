@@ -89,6 +89,29 @@ public class AgentConfigurationTest {
 		assertNotNull(actualException);
 		assertEquals("Missing section 'tokenConf' in agent configuration", actualException.getMessage());
 	}
+	
+	@Test
+	public void testTokenGroupWithoutAttributes() throws Exception {
+		AgentConf agentConf = new AgentConf();
+		agentConf.setGridHost("http://localhost:" + grid.getServerPort());
+		
+		ArrayList<TokenGroupConf> tokenGroups = new ArrayList<TokenGroupConf>();
+		TokenGroupConf tokenGroupConf = new TokenGroupConf();
+		tokenGroupConf.setCapacity(1);
+		TokenConf tokenConf = new TokenConf();
+		// Set the attributes, properties and selection params to null
+		// This situation is now allowed with the yaml format
+		tokenConf.setAttributes(null);
+		tokenConf.setProperties(null);
+		tokenConf.setSelectionPatterns(null);
+		tokenGroupConf.setTokenConf(tokenConf);
+		tokenGroups.add(tokenGroupConf);
+		
+		agentConf.setTokenGroups(tokenGroups);
+
+		startAgent(agentConf);
+		testGrid();
+	}
 
 	private ArrayList<TokenGroupConf> tokenGroupWith1Token() {
 		ArrayList<TokenGroupConf> tokenGroups = new ArrayList<TokenGroupConf>();

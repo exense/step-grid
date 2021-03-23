@@ -315,7 +315,9 @@ public class Agent implements AutoCloseable {
 			AgentTokenWrapper token = new AgentTokenWrapper();
 			token.getToken().setAgentid(id);
 			Map<String, String> allAttributes = new HashMap<>();
-			allAttributes.putAll(attributes);
+			if(attributes != null) {
+				allAttributes.putAll(attributes);
+			}
 			allAttributes.put(AgentTypes.AGENT_TYPE_KEY, AgentTypes.AGENT_TYPE);
 			allAttributes.put(AGENT_ID, id);
 			allAttributes.put(TOKEN_ID, token.getUid());
