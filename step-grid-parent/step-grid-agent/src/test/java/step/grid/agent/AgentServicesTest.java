@@ -38,6 +38,7 @@ import step.grid.io.OutputMessage;
 
 public class AgentServicesTest {
 
+	private static final long GRACEFUL_SHUTDOWN_TIMEOUT = 2000l;
 	Agent agent;
 	
 	@Before
@@ -57,6 +58,7 @@ public class AgentServicesTest {
 		tokenGroups.add(tokenGroup);
 		
 		conf.setTokenGroups(tokenGroups);
+		conf.setGracefulShutdownTimeout(GRACEFUL_SHUTDOWN_TIMEOUT);
 		
 		agent = new Agent(conf);
 	}
@@ -84,5 +86,44 @@ public class AgentServicesTest {
 		assertEquals("fileId",agentError.getErrorDetails().get(AgentErrorCode.Details.FILE_HANDLE));
 		assertEquals("1",agentError.getErrorDetails().get(AgentErrorCode.Details.FILE_VERSION));
 	}
-
+	
+	@Test
+	public void testForcedShutdown() throws Exception {
+		AgentServices a = new AgentServices();
+		a.agent = agent;
+		a.init();
+		
+		String tokenId = a.tokenPool.getTokens().get(0).getUid();
+		a.reserveToken(tokenId);
+		
+		long t1 = System.currentTimeMillis();
+		agent.close();
+		long t2 = System.currentTimeMillis();
+		
+		assertTrue(t2 - t1 > GRACEFUL_SHUTDOWN_TIMEOUT);
+	}
+	
+	@Test
+	public void testGracefullShutdown() throws Exception {
+		AgentServices a = new AgentServices();
+		a.agent = agent;
+		a.init();
+		
+		String tokenId = a.tokenPool.getTokens().get(0).getUid();
+		a.reserveToken(tokenId);
+		
+		long t1 = System.currentTimeMillis();
+		new Thread(() -> {
+			try {
+				Thread.sleep(100);
+				a.releaseToken(tokenId);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}).start();
+		agent.close();
+		long t2 = System.currentTimeMillis();
+		
+		assertTrue(t2 - t1 < GRACEFUL_SHUTDOWN_TIMEOUT);
+	}
 }

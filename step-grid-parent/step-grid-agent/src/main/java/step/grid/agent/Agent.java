@@ -32,6 +32,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Timer;
 import java.util.UUID;
+import java.util.function.Supplier;
 import java.util.regex.Pattern;
 
 import org.eclipse.jetty.server.Handler;
@@ -82,7 +83,12 @@ public class Agent implements AutoCloseable {
 	private final AgentTokenServices agentTokenServices;
 	
 	private final String agentUrl;
+	private final long gracefulShutdownTimeout; 
 
+	public static void main(String[] args) throws Exception {
+		newInstanceFromArgs(args);
+	}
+	
 	public static Agent newInstanceFromArgs(String[] args) throws Exception {
 		ArgumentParser arguments = new ArgumentParser(args);
 
@@ -123,6 +129,8 @@ public class Agent implements AutoCloseable {
 		String agentUrl = agentConf.getAgentUrl();
 		Integer agentPort = agentConf.getAgentPort();
 		boolean ssl = agentConf.isSsl();
+		Long agentConfGracefulShutdownTimeout = agentConf.getGracefulShutdownTimeout();
+		gracefulShutdownTimeout = agentConfGracefulShutdownTimeout != null ? agentConfGracefulShutdownTimeout : 30000;
 
 		String gridUrl = agentConf.getGridHost();
 		RegistrationClient registrationClient = new RegistrationClient(gridUrl,
@@ -379,6 +387,8 @@ public class Agent implements AutoCloseable {
 
 	@Override
 	public void close() throws Exception {
+		logger.info("Shutting down...");
+		
 		if(timer!=null) {
 			timer.cancel();
 		}
@@ -389,6 +399,28 @@ public class Agent implements AutoCloseable {
 			registrationTask.destroy();
 		}
 
+		logger.info("Waiting for tokens to be released...");
+		
+		// Wait until all tokens are released
+		boolean gracefullyStopped = pollUntil(tokenPool::areAllTokensFree, gracefulShutdownTimeout);
+		
 		server.stop();
+
+		if(gracefullyStopped) {
+			logger.info("Agent gracefully stopped");
+		} else {
+			logger.warn("Timeout while waiting for all tokens to be released. Agent forcibly stopped");
+		}
+	}
+	
+	private static boolean pollUntil(Supplier<Boolean> predicate, long timeout) throws InterruptedException {
+		long t1 = System.currentTimeMillis();
+		while (System.currentTimeMillis() < t1 + (timeout)) {
+			if(predicate.get()) {
+				return true;
+			}
+			Thread.sleep(100);
+		}
+		return false;
 	}
 }

@@ -32,6 +32,23 @@ public class AgentTokenPool {
 	
 	private final Map<String, AgentTokenWrapper> pool = new ConcurrentHashMap<>();
 	
+	protected static final TokenReservationSession UNUSABLE_SESSION = new TokenReservationSession() {
+		@Override
+		public Object get(String arg0) {
+			throw unusableSessionException();
+		}
+
+		@Override
+		public Object put(String arg0, Object arg1) {
+			throw unusableSessionException();
+		}
+
+		private RuntimeException unusableSessionException() {
+			// TODO use error codes instead of error messages
+			return new RuntimeException("Session object unreachable. Wrap your keywords with a Session node in your test plan in order to make the session object available.");
+		}
+	};
+	
 	public AgentTokenPool() {
 		super();
 	}
@@ -52,22 +69,7 @@ public class AgentTokenPool {
 		AgentTokenWrapper token = pool.get(tokenId);
 		if(token!=null) {
 			if(token.getTokenReservationSession()==null) {
-				token.setTokenReservationSession(new TokenReservationSession() {
-					@Override
-					public Object get(String arg0) {
-						throw unusableSessionException();
-					}
-
-					@Override
-					public Object put(String arg0, Object arg1) {
-						throw unusableSessionException();
-					}
-
-					private RuntimeException unusableSessionException() {
-						// TODO use error codes instead of error messages
-						return new RuntimeException("Session object unreachable. Wrap your keywords with a Session node in your test plan in order to make the session object available.");
-					}
-				});
+				token.setTokenReservationSession(UNUSABLE_SESSION);
 			}
 		} else {
 			throw new InvalidTokenIdException();
@@ -125,5 +127,11 @@ public class AgentTokenPool {
 	@SuppressWarnings("serial")
 	public static class InvalidTokenIdException extends Exception {
 		
+	}
+	
+	public boolean areAllTokensFree() {
+		return getTokens().stream().filter(
+				t -> t.getTokenReservationSession() != null && t.getTokenReservationSession() != UNUSABLE_SESSION)
+				.findAny().isEmpty();
 	}
 }

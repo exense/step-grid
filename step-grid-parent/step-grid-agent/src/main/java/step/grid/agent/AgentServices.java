@@ -34,12 +34,14 @@ import java.util.concurrent.TimeoutException;
 import javax.annotation.PostConstruct;
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
+import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 
 import org.slf4j.Logger;
@@ -257,5 +259,22 @@ public class AgentServices {
 	@Path("/token/list")
 	public List<Token> listTokens() {
 		return agent.getTokens();
+	}
+	
+	@POST
+	@Consumes(MediaType.APPLICATION_JSON)
+	@Path("/shutdown")
+	public void shutdown(@Context HttpServletRequest request) {
+		logger.info("Received shutdown request from " + request.getRemoteAddr());
+		new Thread() {
+			@Override
+			public void run() {
+				try {
+					agent.close();
+				} catch (Exception e) {
+					logger.error("Error while shutting down", e);
+				}
+			}
+		}.start();;
 	}
 }

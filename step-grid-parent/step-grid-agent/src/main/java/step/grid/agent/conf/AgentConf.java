@@ -47,6 +47,8 @@ public class AgentConf {
 	List<TokenGroupConf> tokenGroups;
 	
 	Map<String, String> properties;
+	
+	Long gracefulShutdownTimeout;
 
 	public AgentConf() {
 		super();
@@ -183,5 +185,13 @@ public class AgentConf {
 
 	public void setProperties(Map<String, String> properties) {
 		this.properties = properties;
+	}
+
+	public Long getGracefulShutdownTimeout() {
+		return gracefulShutdownTimeout;
+	}
+
+	public void setGracefulShutdownTimeout(Long gracefulShutdownTimeout) {
+		this.gracefulShutdownTimeout = gracefulShutdownTimeout;
 	} 
 }

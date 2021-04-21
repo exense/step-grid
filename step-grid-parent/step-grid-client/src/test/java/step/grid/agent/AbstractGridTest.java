@@ -71,7 +71,9 @@ public abstract class AbstractGridTest {
 		grid = new GridImpl(fileManagerFolder, 0, gridConfig);
 		grid.start();
 				
-		agent = new Agent(new AgentConf("http://localhost:"+grid.getServerPort(), 0, null, 100));
+		AgentConf agentConf = new AgentConf("http://localhost:"+grid.getServerPort(), 0, null, 100);
+		agentConf.setGracefulShutdownTimeout(100l);
+		agent = new Agent(agentConf);
 		Map<String, String> attributes = new HashMap<String, String>();
 		attributes.put("att1", "val1");
 		agent.addTokens(nTokens, attributes, null, null);
