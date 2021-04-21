@@ -84,6 +84,7 @@ public class Agent implements AutoCloseable {
 	
 	private final String agentUrl;
 	private final long gracefulShutdownTimeout; 
+	private volatile boolean stopped = false;
 
 	public static void main(String[] args) throws Exception {
 		newInstanceFromArgs(args);
@@ -386,30 +387,34 @@ public class Agent implements AutoCloseable {
 	}
 
 	@Override
-	public void close() throws Exception {
-		logger.info("Shutting down...");
-		
-		if(timer!=null) {
-			timer.cancel();
-		}
-		
-		if(registrationTask!=null) {
-			registrationTask.cancel();
-			registrationTask.unregister();
-			registrationTask.destroy();
-		}
-
-		logger.info("Waiting for tokens to be released...");
-		
-		// Wait until all tokens are released
-		boolean gracefullyStopped = pollUntil(tokenPool::areAllTokensFree, gracefulShutdownTimeout);
-		
-		server.stop();
-
-		if(gracefullyStopped) {
-			logger.info("Agent gracefully stopped");
-		} else {
-			logger.warn("Timeout while waiting for all tokens to be released. Agent forcibly stopped");
+	public synchronized void close() throws Exception {
+		if(!stopped) {
+			logger.info("Shutting down...");
+			
+			if(timer!=null) {
+				timer.cancel();
+			}
+			
+			if(registrationTask!=null) {
+				registrationTask.cancel();
+				registrationTask.unregister();
+				registrationTask.destroy();
+			}
+			
+			logger.info("Waiting for tokens to be released...");
+			
+			// Wait until all tokens are released
+			boolean gracefullyStopped = pollUntil(tokenPool::areAllTokensFree, gracefulShutdownTimeout);
+			
+			server.stop();
+			
+			if(gracefullyStopped) {
+				logger.info("Agent gracefully stopped");
+			} else {
+				logger.warn("Timeout while waiting for all tokens to be released. Agent forcibly stopped");
+			}
+			
+			stopped = true;
 		}
 	}
 	

@@ -99,8 +99,15 @@ public class AgentServicesTest {
 		long t1 = System.currentTimeMillis();
 		agent.close();
 		long t2 = System.currentTimeMillis();
+		// try to close a second time. This should have no effect
+		agent.close();
+		long t3 = System.currentTimeMillis();
 		
-		assertTrue(t2 - t1 > GRACEFUL_SHUTDOWN_TIMEOUT);
+		assertTrue(t2 - t1 >= GRACEFUL_SHUTDOWN_TIMEOUT);
+		// Calling the method close a second time should have no effect.
+		// Thus the duration of the call should be lower than the shutdown timeout and
+		// no error should be thrown
+		assertTrue(t3 - t2 < GRACEFUL_SHUTDOWN_TIMEOUT);
 	}
 	
 	@Test
