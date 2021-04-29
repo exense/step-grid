@@ -391,6 +391,7 @@ public class Agent implements AutoCloseable {
 		if(!stopped) {
 			logger.info("Shutting down...");
 			
+			// Stopping registration task
 			if(timer!=null) {
 				timer.cancel();
 			}
@@ -406,13 +407,14 @@ public class Agent implements AutoCloseable {
 			// Wait until all tokens are released
 			boolean gracefullyStopped = pollUntil(tokenPool::areAllTokensFree, gracefulShutdownTimeout);
 			
-			server.stop();
-			
 			if(gracefullyStopped) {
 				logger.info("Agent gracefully stopped");
 			} else {
 				logger.warn("Timeout while waiting for all tokens to be released. Agent forcibly stopped");
 			}
+			
+			// Stopping HTTP server
+			server.stop();
 			
 			stopped = true;
 		}
