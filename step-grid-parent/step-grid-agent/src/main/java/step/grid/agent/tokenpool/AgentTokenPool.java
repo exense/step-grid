@@ -103,6 +103,17 @@ public class AgentTokenPool {
 		}
 	}
 	
+	public void afterTokenExecution(String tokenId) throws InvalidTokenIdException {
+		AgentTokenWrapper token = getToken(tokenId);
+		if(token!=null) {
+			TokenReservationSession tokenReservationSession = token.getTokenReservationSession();
+			// Remove the unusable session (if any) after execution
+			if(tokenReservationSession == UNUSABLE_SESSION) {
+				token.setTokenReservationSession(null);
+			}
+		}
+	}
+	
 	public void closeTokenReservationSession(String tokenId) throws InvalidTokenIdException {
 		AgentTokenWrapper token = getToken(tokenId);
 		if(token!=null) {
@@ -130,8 +141,9 @@ public class AgentTokenPool {
 	}
 	
 	public boolean areAllTokensFree() {
-		return getTokens().stream().filter(
-				t -> t.getTokenReservationSession() != null && t.getTokenReservationSession() != UNUSABLE_SESSION)
+		boolean result = getTokens().stream().filter(
+				t -> t.getTokenReservationSession() != null)
 				.findAny().isEmpty();
+		return result;
 	}
 }

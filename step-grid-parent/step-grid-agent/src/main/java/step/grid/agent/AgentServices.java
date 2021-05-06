@@ -121,6 +121,7 @@ public class AgentServices {
 							return handleUnexpectedError(message, e);
 						} finally {			
 							tokenWrapper.setInUse(false);
+							tokenPool.afterTokenExecution(tokenId);
 						}
 					}
 				});
