@@ -1,20 +1,17 @@
 {
-	"NAME": "Step Grid",
-	"OS": "LINUX",
-	
-	"SUBPROJECTS":
-	{
-		"TYPE":		["POM"],
-		"FOLDER":	["step-grid-parent/"],
-		
-		"URL_STAGING":	[ 
-			"nexus-staging::https://nexus-enterprise.exense.ch/repository/staging-maven/"
-		],
-		"URL_PROD":		[ 
-			"sonatype::https://oss.sonatype.org/service/local/staging/deploy/maven2"
-		],
-		
-		"CONFIG_STAGING": [ "DefaultBuild"],
-		"CONFIG_PROD": [ "DefaultBuild"]
-	}
+	"ACTION": "COMPILE",
+	"TYPE": "POM",
+	"FOLDER": "step-grid-parent/",
+	"PARAMETERS": [
+		{
+			"NAME": "DEVELOPMENT",
+			"URL": "nexus-staging::https://nexus-enterprise.exense.ch/repository/staging-maven/",
+			"CONFIG": "DefaultBuild"
+		},
+		{
+			"NAME": "PRODUCTION",
+			"URL": "sonatype::https://oss.sonatype.org/service/local/staging/deploy/maven2",
+			"CONFIG": "DefaultBuild"
+		}
+	]
 }
