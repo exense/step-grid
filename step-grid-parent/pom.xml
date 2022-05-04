@@ -190,6 +190,22 @@
 				<activeByDefault>true</activeByDefault>
 			</activation>
 			<!-- Local compilation - no signature -->
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.owasp</groupId>
+						<artifactId>dependency-check-maven</artifactId>
+						<version>6.1.6</version>
+						<executions>
+							<execution>
+								<goals>
+									<goal>check</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
 		</profile>
 		<profile>
 			<id>DefaultBuild</id>
