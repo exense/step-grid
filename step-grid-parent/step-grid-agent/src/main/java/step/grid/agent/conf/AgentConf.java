@@ -35,6 +35,11 @@ public class AgentConf {
 	String keyStorePath;
 	String keyStorePassword;
 	String keyManagerPassword;
+
+
+	boolean exposeMetrics = false;
+	Integer metricsPort = 8082;
+	String metricsPath = "/metrics";
 	
 	String workingDir;
 	
@@ -138,6 +143,18 @@ public class AgentConf {
 	public void setKeyManagerPassword(String keyManagerPassword) {
 		this.keyManagerPassword = keyManagerPassword;
 	}
+
+	public boolean isExposeMetrics() { return exposeMetrics; }
+
+	public void setExposeMetrics(boolean exposeMetrics) { this.exposeMetrics = exposeMetrics; }
+
+	public Integer getMetricsPort() { return metricsPort; }
+
+	public void setMetricsPort(Integer metricsPort) { this.metricsPort = metricsPort; }
+
+	public String getMetricsPath() { return metricsPath; }
+
+	public void setMetricsPath(String metricsPath) { this.metricsPath = metricsPath; }
 
 	public List<TokenGroupConf> getTokenGroups() {
 		return tokenGroups;
