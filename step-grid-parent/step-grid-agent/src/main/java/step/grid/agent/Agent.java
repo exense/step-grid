@@ -19,15 +19,17 @@
 package step.grid.agent;
 
 import ch.exense.commons.app.ArgumentParser;
-import com.fasterxml.jackson.jaxrs.json.JacksonJsonProvider;
-import io.prometheus.client.exporter.MetricsServlet;
+
 import io.prometheus.client.hotspot.DefaultExports;
+import io.prometheus.client.servlet.jakarta.exporter.MetricsServlet;
 import org.eclipse.jetty.server.*;
 import org.eclipse.jetty.server.handler.ContextHandlerCollection;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.eclipse.jetty.util.ssl.SslContextFactory;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
+import org.glassfish.jersey.jackson.JacksonFeature;
+import org.glassfish.jersey.jackson.internal.jackson.jaxrs.json.JacksonJsonProvider;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.servlet.ServletContainer;
 import org.slf4j.Logger;
@@ -233,6 +235,7 @@ public class Agent implements AutoCloseable {
 		ResourceConfig resourceConfig = new ResourceConfig();
 		resourceConfig.packages(AgentServices.class.getPackage().getName());
 		resourceConfig.register(JacksonJsonProvider.class);
+		resourceConfig.register(JacksonFeature.class);
 		resourceConfig.register(ObjectMapperResolver.class);
 		final Agent agent = this;
 		resourceConfig.register(new AbstractBinder() {
@@ -257,9 +260,12 @@ public class Agent implements AutoCloseable {
 			String keyManagerPassword = agentConf.getKeyManagerPassword();
 
 			HttpConfiguration https = new HttpConfiguration();
-			https.addCustomizer(new SecureRequestCustomizer());
+			SecureRequestCustomizer secureRequestCustomizer = new SecureRequestCustomizer();
+			//require to accept local host connection
+			secureRequestCustomizer.setSniHostCheck(false);
+			https.addCustomizer(secureRequestCustomizer);
 
-			SslContextFactory sslContextFactory = new SslContextFactory();
+			SslContextFactory.Server sslContextFactory = new SslContextFactory.Server();
 			sslContextFactory.setKeyStorePath(keyStorePath);
 			sslContextFactory.setKeyStorePassword(keyStorePassword);
 			sslContextFactory.setKeyManagerPassword(keyManagerPassword);

@@ -189,7 +189,7 @@ public class AgentConfigurationTest {
 			actualException = e;
 		}
 		assertNotNull(actualException);
-		assertEquals("javax.ws.rs.ProcessingException: java.net.UnknownHostException: invalid", actualException.getMessage());
+		assertEquals("jakarta.ws.rs.ProcessingException: java.net.UnknownHostException: invalid", actualException.getMessage());
 	}
 	
 	@Test

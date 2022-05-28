@@ -64,14 +64,14 @@
 	</repositories>
 	
 	<properties>
-		<step-api.version>1.1.7</step-api.version>
-		<exense-commons.version>1.3.5</exense-commons.version>
+		<step-api.version>2022.05.28-IDeca6afa</step-api.version>
+		<exense-commons.version>2022.05.04-ID927be60</exense-commons.version>
 
-		<jersey.version>2.29.1</jersey.version>
-		<hk2.version>2.6.1</hk2.version>
-		<jetty.version>9.4.46.v20220331</jetty.version>
+		<jersey.version>3.0.4</jersey.version>
+		<hk2.version>3.0.1</hk2.version>
+		<jetty.version>11.0.9</jetty.version>
 		<junit.version>4.13.1</junit.version>
-		<jackson.version>2.13.2</jackson.version>
+		<jackson.version>2.13.3</jackson.version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 	</properties>
 
@@ -108,8 +108,8 @@
 				<artifactId>maven-compiler-plugin</artifactId>
 				<version>3.8.0</version>
 				<configuration>
-					<source>1.8</source>
-					<target>1.8</target>
+					<source>11</source>
+					<target>11</target>
 				</configuration>
 			</plugin>
 			<plugin>
@@ -166,10 +166,23 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-javadoc-plugin</artifactId>
-				<version>3.1.1</version>
+				<version>3.3.2</version>
 				<configuration>
+					<header><![CDATA[<meta name='viewport' content='width=device-width, initial-scale=1.0'>]]></header>
+					<!-- detectLinks MUST NOT be set to true in a production context, as it derives random domain names
+					from package names, then tries to download data from those random URLs. -->
+					<detectLinks>false</detectLinks>
+
+					<!-- detectOfflineLinks SHOULD also be set to false, because:  -->
+					<!-- a) it cannot generate meaningful links to the javadoc from other projects, anyway -->
+					<!-- b) it causes unnecessarily scary ERROR messages at build time  -->
+					<detectOfflineLinks>false</detectOfflineLinks>
+
 					<quiet>true</quiet>
-					<source>8</source>
+					<source>11</source>
+					<additionalOptions>
+						<additionalOption>-Xdoclint:none</additionalOption>
+					</additionalOptions>
 				</configuration>
 				<executions>
 					<execution>
