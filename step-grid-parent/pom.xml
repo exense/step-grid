@@ -65,10 +65,8 @@
 	
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<maven.compiler.source>11</maven.compiler.source>
-		<maven.compiler.target>11</maven.compiler.target>
 		<!-- internal dependencies -->
-		<step-api.version>2022.06.09-IDe21ce90</step-api.version>
+		<step-api.version>2022.06.09-IDb0ca56d</step-api.version>
 		<exense-commons.version>2022.06.09-IDa516421</exense-commons.version>
 		<!-- external dependencies -->
 		<slf4j.version>1.7.36</slf4j.version>
