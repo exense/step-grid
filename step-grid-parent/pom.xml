@@ -64,10 +64,14 @@
 	</repositories>
 	
 	<properties>
-		<step-api.version>2022.06.08-ID60579aa</step-api.version>
-		<exense-commons.version>2022.06.08-ID14e27e5</exense-commons.version>
-
-		<slf4j.version>1.7.5</slf4j.version>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<maven.compiler.source>11</maven.compiler.source>
+		<maven.compiler.target>11</maven.compiler.target>
+		<!-- internal dependencies -->
+		<step-api.version>2022.06.09-IDe21ce90</step-api.version>
+		<exense-commons.version>2022.06.09-IDa516421</exense-commons.version>
+		<!-- external dependencies -->
+		<slf4j.version>1.7.36</slf4j.version>
 		<jersey.version>3.0.4</jersey.version>
 		<hk2.version>3.0.1</hk2.version>
 		<jetty.version>11.0.9</jetty.version>
