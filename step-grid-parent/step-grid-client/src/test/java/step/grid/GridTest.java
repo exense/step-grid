@@ -21,7 +21,6 @@ package step.grid;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-
 import step.grid.agent.AbstractGridTest;
 import step.grid.client.GridClientConfiguration;
 import step.grid.client.LocalGridClientImpl;
@@ -45,7 +44,7 @@ public class GridTest extends AbstractGridTest {
 		callToken(token);
 		
 		Assert.assertEquals(token.getState(), TokenWrapperState.IN_USE);
-		token.setCurrentOwner(new TokenWrapperOwner() {});
+		token.setCurrentOwner(new GenericTokenWrapperOwner());
 		
 		returnToken(token);
 		
