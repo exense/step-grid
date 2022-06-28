@@ -18,14 +18,7 @@
  ******************************************************************************/
 package step.grid;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.TimeoutException;
-
+import ch.exense.commons.io.FileHelper;
 import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
@@ -37,21 +30,23 @@ import org.glassfish.jersey.jackson.internal.jackson.jaxrs.json.JacksonJaxbJsonP
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.servlet.ServletContainer;
-
-import ch.exense.commons.io.FileHelper;
 import step.grid.agent.RegistrationMessage;
-import step.grid.filemanager.FileManager;
-import step.grid.filemanager.FileManagerException;
-import step.grid.filemanager.FileManagerImpl;
+import step.grid.filemanager.*;
 import step.grid.filemanager.FileManagerImpl.FileManagerImplConfig;
-import step.grid.filemanager.FileVersion;
-import step.grid.filemanager.FileVersionId;
 import step.grid.tokenpool.Identity;
 import step.grid.tokenpool.Interest;
 import step.grid.tokenpool.SimpleAffinityEvaluator;
 import step.grid.tokenpool.TokenPool;
 import step.grid.tokenpool.affinityevaluator.TokenPoolAware;
 import step.grid.tokenpool.affinityevaluator.TokenWrapperAffinityEvaluatorImpl;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.TimeoutException;
 
 public class GridImpl implements Grid {
 
@@ -325,8 +320,8 @@ public class GridImpl implements Grid {
 		return tokenPool.getTokens();
 	}
 	
-	public Collection<AgentRef> getAgents() {
-		return agentRefs.values();
+	public List<AgentRef> getAgents() {
+		return new ArrayList<>(agentRefs.values());
 	}
 	
 	public int getServerPort() {

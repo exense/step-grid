@@ -18,16 +18,7 @@
  ******************************************************************************/
 package step.grid.client;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.Files;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.TimeoutException;
-import java.util.function.Supplier;
-
+import ch.exense.commons.io.FileHelper;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
@@ -37,24 +28,27 @@ import jakarta.ws.rs.client.WebTarget;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.NewCookie;
 import jakarta.ws.rs.core.Response;
-
+import org.glassfish.jersey.jackson.internal.jackson.jaxrs.json.JacksonJsonProvider;
 import org.glassfish.jersey.media.multipart.FormDataBodyPart;
 import org.glassfish.jersey.media.multipart.MultiPart;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.media.multipart.file.FileDataBodyPart;
 import org.glassfish.jersey.media.multipart.file.StreamDataBodyPart;
-
-import org.glassfish.jersey.jackson.internal.jackson.jaxrs.json.JacksonJsonProvider;
-
-import ch.exense.commons.io.FileHelper;
-import step.grid.Grid;
-import step.grid.SelectTokenArgument;
-import step.grid.TokenWrapper;
-import step.grid.TokenWrapperOwner;
+import step.grid.*;
 import step.grid.filemanager.FileManagerException;
 import step.grid.filemanager.FileVersion;
 import step.grid.filemanager.FileVersionId;
 import step.grid.tokenpool.Interest;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.TimeoutException;
+import java.util.function.Supplier;
 
 public class RemoteGridImpl implements Grid {
 
@@ -136,6 +130,12 @@ public class RemoteGridImpl implements Grid {
 	@Override
 	public List<TokenWrapper> getTokens() {
 		Builder r = requestBuilder("/grid/token/list");
+		return executeRequest(()->r.get(List.class));
+	}
+
+	@Override
+	public List<AgentRef> getAgents() {
+		Builder r = requestBuilder("/grid/agent/list");
 		return executeRequest(()->r.get(List.class));
 	}
 

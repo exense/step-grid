@@ -19,10 +19,13 @@
 package step.grid.client;
 
 import java.io.Closeable;
+import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
+import step.grid.AgentRef;
 import step.grid.GridFileService;
 import step.grid.TokenWrapper;
 import step.grid.TokenWrapperOwner;
@@ -36,7 +39,7 @@ public interface GridClient extends GridFileService, Closeable {
 	/**
 	 * @return a local {@link TokenWrapper} that runs in the local JVM
 	 */
-	public TokenWrapper getLocalTokenHandle();
+	TokenWrapper getLocalTokenHandle();
 	
 	/**
 	 * Selects a remote token from the GRID based on the attributes and selection criteria
@@ -47,7 +50,7 @@ public interface GridClient extends GridFileService, Closeable {
 	 * @return a {@link TokenWrapper} from the GRID that executes calls on any available agent
 	 * @throws AgentCommunicationException
 	 */
-	public TokenWrapper getTokenHandle(Map<String, String> attributes, Map<String, Interest> selectionCriteria, boolean createSession) throws AgentCommunicationException;
+	TokenWrapper getTokenHandle(Map<String, String> attributes, Map<String, Interest> selectionCriteria, boolean createSession) throws AgentCommunicationException;
 	
 	/**
 	 * Selects a remote token from the GRID based on the attributes and selection criteria
@@ -59,7 +62,7 @@ public interface GridClient extends GridFileService, Closeable {
 	 * @return a {@link TokenWrapper} from the GRID that executes calls on any available agent
 	 * @throws AgentCommunicationException
 	 */
-	public TokenWrapper getTokenHandle(Map<String, String> attributes, Map<String, Interest> selectionCriteria, boolean createSession, TokenWrapperOwner tokenOwner) throws AgentCommunicationException;
+	TokenWrapper getTokenHandle(Map<String, String> attributes, Map<String, Interest> selectionCriteria, boolean createSession, TokenWrapperOwner tokenOwner) throws AgentCommunicationException;
 	
 	/**
 	 * Runs the specified handler class on a specific token 
@@ -75,7 +78,7 @@ public interface GridClient extends GridFileService, Closeable {
 	 * @throws AgentCommunicationException
 	 * @throws Exception
 	 */
-	public OutputMessage call(String tokenId, JsonNode argument, String handler, FileVersionId handlerPackage, Map<String,String> properties, int callTimeout) throws GridClientException, AgentCommunicationException, Exception;
+	OutputMessage call(String tokenId, JsonNode argument, String handler, FileVersionId handlerPackage, Map<String,String> properties, int callTimeout) throws GridClientException, AgentCommunicationException, Exception;
 	
 	/**
 	 * Return the token to the pool.
@@ -86,8 +89,12 @@ public interface GridClient extends GridFileService, Closeable {
 	 * @throws GridClientException
 	 * @throws AgentCommunicationException
 	 */
-	public void returnTokenHandle(String tokenId) throws GridClientException, AgentCommunicationException;
+	void returnTokenHandle(String tokenId) throws GridClientException, AgentCommunicationException;
 	
-	public void close();
-	
+	void close();
+
+	List<AgentRef> getAgents();
+
+	List<TokenWrapper> getTokens();
+
 }

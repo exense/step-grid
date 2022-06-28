@@ -22,6 +22,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 
 import org.junit.Assert;
 import org.junit.Before;
@@ -31,6 +32,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import ch.exense.commons.io.FileHelper;
+import step.grid.AgentRef;
 import step.grid.TokenWrapper;
 import step.grid.agent.AbstractGridTest;
 import step.grid.bootstrap.ResourceExtractor;
@@ -39,6 +41,8 @@ import step.grid.client.AbstractGridClientImpl.AgentCommunicationException;
 import step.grid.filemanager.FileManagerException;
 import step.grid.filemanager.FileVersionId;
 import step.grid.io.OutputMessage;
+
+import static org.junit.Assert.assertEquals;
 
 public abstract class AbstractGridClientTest extends AbstractGridTest {
 	
@@ -63,7 +67,7 @@ public abstract class AbstractGridClientTest extends AbstractGridTest {
 		OutputMessage output = client.call(token.getID(), node, TestMessageHandler.class.getName(), null, new HashMap<>(), 100000);
 		
 		// Assert the content of the file matches
-		Assert.assertEquals("TEST", output.getPayload().get("content").asText());
+		assertEquals("TEST", output.getPayload().get("content").asText());
 		
 		// Return the token
 		client.returnTokenHandle(token.getID());
@@ -91,11 +95,11 @@ public abstract class AbstractGridClientTest extends AbstractGridTest {
 		
 		JsonNode node = new ObjectMapper().createObjectNode().put("file", fileHandleVersion1.getFileId()).put("fileVersion", fileHandleVersion1.getVersion());
 		OutputMessage output = client.call(token.getID(), node, TestMessageHandler.class.getName(), null, new HashMap<>(), 100000);
-		Assert.assertEquals("V1", output.getPayload().get("content").asText());
+		assertEquals("V1", output.getPayload().get("content").asText());
 		
 		node = new ObjectMapper().createObjectNode().put("file", fileHandleVersion2.getFileId()).put("fileVersion", fileHandleVersion2.getVersion());
 		output = client.call(token.getID(), node, TestMessageHandler.class.getName(), null, new HashMap<>(), 100000);
-		Assert.assertEquals("V2", output.getPayload().get("content").asText());
+		assertEquals("V2", output.getPayload().get("content").asText());
 		
 		// Return the token
 		client.returnTokenHandle(token.getID());
@@ -142,7 +146,7 @@ public abstract class AbstractGridClientTest extends AbstractGridTest {
 		// Return the token
 		client.returnTokenHandle(token.getID());
 		
-		Assert.assertEquals("File1;SubFolder1;", output.getPayload().get("content").asText());
+		assertEquals("File1;SubFolder1;", output.getPayload().get("content").asText());
 	}
 	
 	// AgentCallTimeout during reservation is currently impossible to test as we don't have any hook in the reservation where to inject a sleep
@@ -188,16 +192,32 @@ public abstract class AbstractGridClientTest extends AbstractGridTest {
 	
 	protected void testHappyPathWithoutSession() throws Exception {
 		getClient(0, 10000, 10000);
-		
+
 		// Select a token without session
 		TokenWrapper token = selectToken(false);
-		
+
 		JsonNode o = newDummyJson();
-		OutputMessage outputMessage = client.call(token.getID(), o, TestMessageHandler.class.getName(), null, null, 10000);	
-		
+		OutputMessage outputMessage = client.call(token.getID(), o, TestMessageHandler.class.getName(), null, null, 10000);
+
 		client.returnTokenHandle(token.getID());
-		
-		Assert.assertEquals("OK", outputMessage.getPayload().get("Result").asText());
+
+		assertEquals("OK", outputMessage.getPayload().get("Result").asText());
+
+		// Test getAgents method of grid
+		List<AgentRef> agents = grid.getAgents();
+		assertEquals(1, agents.size());
+
+		// Test getAgents method of grid client
+		agents = client.getAgents();
+		assertEquals(1, agents.size());
+
+		// Test getTokens method of grid
+		List<TokenWrapper> tokens = grid.getTokens();
+		assertEquals(1, tokens.size());
+
+		// Test getTokens method of grid client
+		tokens = client.getTokens();
+		assertEquals(1, tokens.size());
 	}
 
 	protected void testHappyPathWithSession() throws AgentCommunicationException, Exception {
@@ -211,7 +231,7 @@ public abstract class AbstractGridClientTest extends AbstractGridTest {
 		
 		// the TestSessionMessageHandler reads the key-values provided a input from the Session and return them in the outputMessage 
 		OutputMessage outputMessage = client.call(token.getID(), o, TestSessionMessageHandler.class.getName(), null, null, 1000);
-		Assert.assertEquals("myValue", outputMessage.getPayload().get("myKey").asText());
+		assertEquals("myValue", outputMessage.getPayload().get("myKey").asText());
 		
 		client.returnTokenHandle(token.getID());
 	}
@@ -224,7 +244,7 @@ public abstract class AbstractGridClientTest extends AbstractGridTest {
 		client.call(token.getID(), o, TestSessionMessageHandler.class.getName(), null, null, 1);
 		OutputMessage outputMessage = client.call(token.getID(), o, TestSessionMessageHandler.class.getName(), null, null, 1);
 		
-		Assert.assertEquals("myValue", outputMessage.getPayload().get("myKey").asText());
+		assertEquals("myValue", outputMessage.getPayload().get("myKey").asText());
 		
 		
 		client.returnTokenHandle(token.getID());
@@ -236,8 +256,8 @@ public abstract class AbstractGridClientTest extends AbstractGridTest {
 			e = ex;
 		}
 		
-		Assert.assertEquals(GridClientException.class, e.getClass());
-		Assert.assertEquals("The token with id "+token.getID()+" isn't reserved. Please ensure that you're always call getTokenHandle() or getLocalTokenHandle() before calling the call() function.",e.getMessage());
+		assertEquals(GridClientException.class, e.getClass());
+		assertEquals("The token with id "+token.getID()+" isn't reserved. Please ensure that you're always call getTokenHandle() or getLocalTokenHandle() before calling the call() function.",e.getMessage());
 		
 		e = null;
 		try {
@@ -246,13 +266,13 @@ public abstract class AbstractGridClientTest extends AbstractGridTest {
 			e = ex;
 		}
 		
-		Assert.assertEquals("The token with id "+token.getID()+" isn't reserved. You might already have released it.",e.getMessage());
+		assertEquals("The token with id "+token.getID()+" isn't reserved. You might already have released it.",e.getMessage());
 		
 		token = client.getLocalTokenHandle();
 		
 		outputMessage = client.call(token.getID(), o, TestSessionMessageHandler.class.getName(), null, null, 1);
 		// The Session object should be empty as we retrieved a new token
-		Assert.assertEquals("", outputMessage.getPayload().get("myKey").asText());
+		assertEquals("", outputMessage.getPayload().get("myKey").asText());
 		
 		client.returnTokenHandle(token.getID());
 	}

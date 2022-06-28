@@ -34,5 +34,4 @@ public class LocalGridClientImpl extends AbstractGridClientImpl implements GridC
 	public LocalGridClientImpl(GridClientConfiguration gridClientConfiguration, TokenLifecycleStrategy tokenLifecycleStrategy, Grid grid) {
 		super(gridClientConfiguration, tokenLifecycleStrategy, grid);
 	}
-
 }

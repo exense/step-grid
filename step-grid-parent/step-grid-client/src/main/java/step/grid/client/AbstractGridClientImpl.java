@@ -24,9 +24,7 @@ import java.net.SocketTimeoutException;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.X509Certificate;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
@@ -496,6 +494,17 @@ public abstract class AbstractGridClientImpl implements GridClient {
 	@Override
 	public void unregisterFile(FileVersionId fileVersionId) {
 		grid.unregisterFile(fileVersionId);
+	}
+
+
+	@Override
+	public List<AgentRef> getAgents() {
+		return grid.getAgents();
+	}
+
+	@Override
+	public List<TokenWrapper> getTokens() {
+		return grid.getTokens();
 	}
 
 }

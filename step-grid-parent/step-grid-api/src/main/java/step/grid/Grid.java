@@ -33,6 +33,8 @@ public interface Grid extends GridFileService {
 	void returnToken(String id);
 
 	List<TokenWrapper> getTokens();
+
+	List<AgentRef> getAgents();
 	
 	void markTokenAsFailing(String tokenId, String errorMessage, Exception e);
 

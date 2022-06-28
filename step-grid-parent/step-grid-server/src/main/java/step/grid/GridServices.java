@@ -92,6 +92,12 @@ public class GridServices {
 		return Response.ok(fileStream, MediaType.APPLICATION_OCTET_STREAM)
 				.header("content-disposition", "attachment; filename = "+file.getName()+"; type = "+(fileVersion.isDirectory()?"dir":"file")).build();
 	}
+
+	@GET
+	@Path("/agent/list")
+	public List<AgentRef> getAgents() {
+		return grid.getAgents();
+	}
 	
 	@POST
     @Path("/token/select")
