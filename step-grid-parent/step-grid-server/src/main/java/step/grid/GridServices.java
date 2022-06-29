@@ -18,37 +18,24 @@
  ******************************************************************************/
 package step.grid;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.nio.file.Files;
-import java.util.List;
-import java.util.concurrent.TimeoutException;
-
+import ch.exense.commons.io.FileHelper;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.Consumes;
-import jakarta.ws.rs.GET;
-import jakarta.ws.rs.POST;
-import jakarta.ws.rs.Path;
-import jakarta.ws.rs.PathParam;
-import jakarta.ws.rs.Produces;
-import jakarta.ws.rs.QueryParam;
-import jakarta.ws.rs.WebApplicationException;
+import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.StreamingOutput;
-
 import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
 import org.glassfish.jersey.media.multipart.FormDataParam;
-
-import ch.exense.commons.io.FileHelper;
 import step.grid.agent.RegistrationMessage;
 import step.grid.filemanager.FileManager;
 import step.grid.filemanager.FileManagerException;
 import step.grid.filemanager.FileVersion;
 import step.grid.filemanager.FileVersionId;
+
+import java.io.*;
+import java.nio.file.Files;
+import java.util.List;
+import java.util.concurrent.TimeoutException;
 
 @Path("/grid")
 public class GridServices {
@@ -121,6 +108,24 @@ public class GridServices {
     @Path("/token/{id}/error/add")
 	public void markTokenAsFailing(@PathParam("id") String tokenId, String errorMessage) {
 		grid.markTokenAsFailing(tokenId, errorMessage, null);
+	}
+
+	@DELETE
+	@Path("/token/{id}/error")
+	public void removeTokenError(@PathParam("id") String tokenId) {
+		grid.removeTokenError(tokenId);
+	}
+
+	@POST
+	@Path("/token/{id}/maintenance")
+	public void startTokenMaintenance(@PathParam("id") String tokenId) {
+		grid.startTokenMaintenance(tokenId);
+	}
+
+	@DELETE
+	@Path("/token/{id}/maintenance")
+	public void stopTokenMaintenance(@PathParam("id") String tokenId) {
+		grid.stopTokenMaintenance(tokenId);
 	}
 
 	@POST

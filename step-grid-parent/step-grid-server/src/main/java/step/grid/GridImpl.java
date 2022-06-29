@@ -287,6 +287,7 @@ public class GridImpl implements Grid {
 		});
 	}
 	
+	@Override
 	public void removeTokenError(String tokenId) {
 		TokenWrapper tokenWrapper = tokenPool.getToken(tokenId);
 		TokenHealth tokenHealth = tokenWrapper.getTokenHealth();
@@ -299,12 +300,14 @@ public class GridImpl implements Grid {
 		});
 	}
 	
+	@Override
 	public void startTokenMaintenance(String tokenId) {
 		TokenWrapper tokenWrapper = tokenPool.getToken(tokenId);
 		tokenWrapper.setState(TokenWrapperState.MAINTENANCE_REQUESTED);
 		tokenPool.addReturnTokenListener(tokenId, t->t.setState(TokenWrapperState.MAINTENANCE));
 	}
 	
+	@Override
 	public void stopTokenMaintenance(String tokenId) {
 		TokenWrapper tokenWrapper = tokenPool.getToken(tokenId);
 		tokenWrapper.performAtomically(()->{

@@ -25,6 +25,7 @@ import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.client.Invocation.Builder;
 import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.GenericType;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.NewCookie;
 import jakarta.ws.rs.core.Response;
@@ -130,19 +131,37 @@ public class RemoteGridImpl implements Grid {
 	@Override
 	public List<TokenWrapper> getTokens() {
 		Builder r = requestBuilder("/grid/token/list");
-		return executeRequest(()->r.get(List.class));
+		return executeRequest(()->r.get(new GenericType<List<TokenWrapper>>() {}));
 	}
 
 	@Override
 	public List<AgentRef> getAgents() {
 		Builder r = requestBuilder("/grid/agent/list");
-		return executeRequest(()->r.get(List.class));
+		return executeRequest(()->r.get(new GenericType<List<AgentRef>>() {}));
 	}
 
 	@Override
 	public void markTokenAsFailing(String tokenId, String errorMessage, Exception e) {
 		Builder r = requestBuilder("/grid/token/"+tokenId+"/error/add");
 		executeRequest(()->r.post(Entity.entity(errorMessage, MediaType.APPLICATION_JSON)));
+	}
+
+	@Override
+	public void removeTokenError(String tokenId) {
+		Builder r = requestBuilder("/grid/token/"+tokenId+"/error");
+		executeRequest(()->r.delete());
+	}
+
+	@Override
+	public void startTokenMaintenance(String tokenId) {
+		Builder r = requestBuilder("/grid/token/"+tokenId+"/maintenance");
+		executeRequest(()->r.post(null));
+	}
+
+	@Override
+	public void stopTokenMaintenance(String tokenId) {
+		Builder r = requestBuilder("/grid/token/"+tokenId+"/maintenance");
+		executeRequest(()->r.delete());
 	}
 
 	@Override

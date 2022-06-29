@@ -18,22 +18,15 @@
  ******************************************************************************/
 package step.grid.client;
 
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.List;
-
-import org.junit.Assert;
-import org.junit.Before;
-
+import ch.exense.commons.io.FileHelper;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-
-import ch.exense.commons.io.FileHelper;
+import org.junit.Assert;
+import org.junit.Before;
 import step.grid.AgentRef;
 import step.grid.TokenWrapper;
+import step.grid.TokenWrapperState;
 import step.grid.agent.AbstractGridTest;
 import step.grid.bootstrap.ResourceExtractor;
 import step.grid.client.AbstractGridClientImpl.AgentCallTimeoutException;
@@ -42,7 +35,13 @@ import step.grid.filemanager.FileManagerException;
 import step.grid.filemanager.FileVersionId;
 import step.grid.io.OutputMessage;
 
-import static org.junit.Assert.assertEquals;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.List;
+
+import static org.junit.Assert.*;
 
 public abstract class AbstractGridClientTest extends AbstractGridTest {
 	
@@ -275,6 +274,47 @@ public abstract class AbstractGridClientTest extends AbstractGridTest {
 		assertEquals("", outputMessage.getPayload().get("myKey").asText());
 		
 		client.returnTokenHandle(token.getID());
+	}
+
+	protected void testTokenManagement() throws Exception {
+		getClient(0, 100, 100);
+
+		// Select a token without session
+		TokenWrapper token = selectToken(false);
+
+		assertNotNull(token);
+
+		String tokenId = token.getID();
+		client.returnTokenHandle(tokenId);
+
+		client.startTokenMaintenance(tokenId);
+
+		TokenWrapper tokenWrapper = getTokenById(tokenId);
+		assertEquals(TokenWrapperState.MAINTENANCE, tokenWrapper.getState());
+
+		client.stopTokenMaintenance(tokenId);
+
+		tokenWrapper = getTokenById(tokenId);
+		assertEquals(TokenWrapperState.FREE, tokenWrapper.getState());
+
+		client.markTokenAsFailing(tokenId, "My Error", new Exception());
+
+		tokenWrapper = getTokenById(tokenId);
+		assertEquals(TokenWrapperState.ERROR, tokenWrapper.getState());
+		assertEquals("My Error", tokenWrapper.getTokenHealth().getErrorMessage());
+
+		client.removeTokenError(tokenId);
+
+		tokenWrapper = getTokenById(tokenId);
+		assertEquals(TokenWrapperState.FREE, tokenWrapper.getState());
+		assertNull(tokenWrapper.getTokenHealth().getErrorMessage());
+
+		List<AgentRef> agents = client.getAgents();
+		assertEquals(1, agents.size());
+	}
+
+	private TokenWrapper getTokenById(String tokenId) {
+		return client.getTokens().stream().filter(t -> t.getID().equals(tokenId)).findFirst().get();
 	}
 
 	protected abstract void getClient(int readOffset, int reserveTimeout, int releaseTimeout);

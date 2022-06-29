@@ -72,6 +72,11 @@ public class LocalGridClientTest extends AbstractGridClientTest {
 	public void testLocalTokens() throws Exception {
 		super.testLocalTokens();
 	}
+
+	@Test
+	public void testTokenManagement() throws Exception {
+		super.testTokenManagement();
+	}
 	
 	protected void getClient(int readOffset, int reserveTimeout, int releaseTimeout) {
 		GridClientConfiguration gridClientConfiguration = new GridClientConfiguration();

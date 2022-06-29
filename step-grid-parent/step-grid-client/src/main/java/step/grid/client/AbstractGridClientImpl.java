@@ -507,4 +507,23 @@ public abstract class AbstractGridClientImpl implements GridClient {
 		return grid.getTokens();
 	}
 
+	@Override
+	public void markTokenAsFailing(String tokenId, String errorMessage, Exception e) {
+		grid.markTokenAsFailing(tokenId, errorMessage, e);
+	}
+
+	@Override
+	public void removeTokenError(String tokenId) {
+		grid.removeTokenError(tokenId);
+	}
+
+	@Override
+	public void startTokenMaintenance(String tokenId) {
+		grid.startTokenMaintenance(tokenId);
+	}
+
+	@Override
+	public void stopTokenMaintenance(String tokenId) {
+		grid.stopTokenMaintenance(tokenId);
+	}
 }

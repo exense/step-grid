@@ -38,5 +38,11 @@ public interface Grid extends GridFileService {
 	
 	void markTokenAsFailing(String tokenId, String errorMessage, Exception e);
 
+	void removeTokenError(String tokenId);
+
+	void startTokenMaintenance(String tokenId);
+
+	void stopTokenMaintenance(String tokenId);
+
 	void cleanupFileManagerCache();
 }
