@@ -23,6 +23,7 @@ import java.util.Map;
 
 import step.grid.TokenWrapperState;
 
+@Deprecated
 public class TokenGroupCapacity {
 
 	Map<String, String> key;

@@ -24,6 +24,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Test;
 import step.grid.AgentRef;
 import step.grid.TokenWrapper;
 import step.grid.TokenWrapperState;
@@ -31,6 +32,8 @@ import step.grid.agent.AbstractGridTest;
 import step.grid.bootstrap.ResourceExtractor;
 import step.grid.client.AbstractGridClientImpl.AgentCallTimeoutException;
 import step.grid.client.AbstractGridClientImpl.AgentCommunicationException;
+import step.grid.client.reports.GridReportBuilder;
+import step.grid.client.reports.TokenGroupCapacity;
 import step.grid.filemanager.FileManagerException;
 import step.grid.filemanager.FileVersionId;
 import step.grid.io.OutputMessage;
@@ -40,6 +43,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.Assert.*;
 
@@ -311,6 +315,37 @@ public abstract class AbstractGridClientTest extends AbstractGridTest {
 
 		List<AgentRef> agents = client.getAgents();
 		assertEquals(1, agents.size());
+	}
+
+	protected void testReportBuilder() throws Exception {
+		getClient(0,10000,10000);
+
+		TokenWrapper token = selectToken(true);
+
+		GridReportBuilder reportBuilder = new GridReportBuilder(client);
+
+		List<TokenGroupCapacity> usageByIdentity = reportBuilder.getUsageByIdentity(List.of());
+		assertEquals(1, usageByIdentity.size());
+		assertEquals(1, (int) usageByIdentity.get(0).getCountByState().get(TokenWrapperState.IN_USE));
+
+		usageByIdentity = reportBuilder.getUsageByIdentity(List.of("url"));
+		assertEquals(1, usageByIdentity.size());
+		assertEquals(1, (int) usageByIdentity.get(0).getCountByState().get(TokenWrapperState.IN_USE));
+
+		returnToken(token);
+
+		usageByIdentity = reportBuilder.getUsageByIdentity(List.of());
+		assertEquals(1, usageByIdentity.size());
+		assertEquals(1, (int) usageByIdentity.get(0).getCountByState().get(TokenWrapperState.FREE));
+
+		List<TokenWrapper> tokenAssociations = reportBuilder.getTokenAssociations(false);
+		assertEquals(1, tokenAssociations.size());
+
+		tokenAssociations = reportBuilder.getTokenAssociations(true);
+		assertEquals(0, tokenAssociations.size());
+
+		Set<String> tokenAttributeKeys = reportBuilder.getTokenAttributeKeys();
+		assertEquals(Set.of("$agentid", "$agenttype", "$tokenid", "att1"), tokenAttributeKeys);
 	}
 
 	private TokenWrapper getTokenById(String tokenId) {

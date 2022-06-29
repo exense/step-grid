@@ -28,6 +28,12 @@ import java.util.Set;
 import step.grid.reports.TokenGroupCapacity;
 import step.grid.tokenpool.Interest;
 
+/**
+ * @deprecated
+ * This class is deprecated and will be removed in the future. Please use GridReportBuilder from
+ * the client package instead
+ */
+@Deprecated
 public class GridReportBuilder {
 
 	private Grid grid;

@@ -77,6 +77,11 @@ public class RemoteGridClientTest extends AbstractGridClientTest {
 	public void testTokenManagement() throws Exception {
 		super.testTokenManagement();
 	}
+
+	@Test
+	public void testReportBuilder() throws Exception {
+		super.testReportBuilder();
+	}
 	
 	protected void getClient(int readOffset, int reserveTimeout, int releaseTimeout) {
 		GridClientConfiguration gridClientConfiguration = new GridClientConfiguration();
