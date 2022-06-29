@@ -442,7 +442,6 @@ public abstract class AbstractGridClientImpl implements GridClient {
 	private TokenWrapper getToken(Map<String, String> attributes, Map<String, Interest> interests, TokenWrapperOwner tokenOwner) {
 		TokenWrapper adapterToken = null;
 		try {
-			addThreadIdInterest(interests);
 			adapterToken = grid.selectToken(attributes, interests, gridClientConfiguration.getMatchExistsTimeout(), gridClientConfiguration.getNoMatchExistsTimeout(), tokenOwner);
 		} catch (TimeoutException e) {
 			StringBuilder interestList = new StringBuilder();
@@ -455,20 +454,7 @@ public abstract class AbstractGridClientImpl implements GridClient {
 		} catch (InterruptedException e) {
 			throw new RuntimeException(e);
 		}
-		markTokenWithThreadId(adapterToken);
 		return adapterToken;
-	}
-
-	private void markTokenWithThreadId(TokenWrapper adapterToken) {
-		if(adapterToken.getAttributes()!=null) {
-			adapterToken.getAttributes().put(SELECTION_CRITERION_THREAD, Long.toString(Thread.currentThread().getId()));			
-		}
-	}
-
-	private void addThreadIdInterest(final Map<String, Interest> interests) {
-		if(interests!=null) {
-			interests.put(SELECTION_CRITERION_THREAD, new Interest(Pattern.compile("^"+Long.toString(Thread.currentThread().getId())+"$"), false));				
-		}
 	}
 	
 	@Override
