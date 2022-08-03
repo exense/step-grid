@@ -121,7 +121,6 @@ public class Agent implements AutoCloseable {
 		String agentUrl = agentConf.getAgentUrl();
 		Integer agentPort = agentConf.getAgentPort();
 		boolean ssl = agentConf.isSsl();
-		boolean exposeMetrics = agentConf.isExposeMetrics();
 		Long agentConfGracefulShutdownTimeout = agentConf.getGracefulShutdownTimeout();
 		gracefulShutdownTimeout = agentConfGracefulShutdownTimeout != null ? agentConfGracefulShutdownTimeout : 30000;
 
@@ -140,7 +139,7 @@ public class Agent implements AutoCloseable {
 		int serverPort = getServerPort(agentUrl, agentPort);
 
 		logger.info("Starting server...");
-		server = startServer(agentConf, serverPort, ssl, exposeMetrics);
+		server = startServer(agentConf, serverPort, ssl);
 
 		int actualServerPort = getActualServerPort();
 		logger.info("Successfully started server on port " + actualServerPort);
@@ -153,11 +152,6 @@ public class Agent implements AutoCloseable {
 
 		logger.info("Agent successfully started on port " + actualServerPort
 				+ ". The agent will publish following URL for incoming connections: " + this.agentUrl);
-
-		if(exposeMetrics) {
-			logger.info(String.format("Agent will expose JVM metrics at %s%s",
-					this.agentUrl.replaceAll(String.valueOf(actualServerPort), String.valueOf(agentConf.getMetricsPort())), agentConf.getMetricsPath()));
-		}
 	}
 
 	private RegistrationTask createGridRegistrationTask(RegistrationClient registrationClient) {
@@ -231,7 +225,7 @@ public class Agent implements AutoCloseable {
 		return ((ServerConnector) server.getConnectors()[0]).getLocalPort();
 	}
 
-	private Server startServer(AgentConf agentConf, int port, boolean ssl, boolean exposeMetrics) throws Exception {
+	private Server startServer(AgentConf agentConf, int port, boolean ssl) throws Exception {
 		ResourceConfig resourceConfig = new ResourceConfig();
 		resourceConfig.packages(AgentServices.class.getPackage().getName());
 		resourceConfig.register(JacksonJsonProvider.class);
@@ -253,7 +247,6 @@ public class Agent implements AutoCloseable {
 		Server server = new Server();
 
 		ServerConnector connector;
-		List<Handler> handlers = new ArrayList<>();
 		if (ssl) {
 			String keyStorePath = agentConf.getKeyStorePath();
 			String keyStorePassword = agentConf.getKeyStorePassword();
@@ -270,37 +263,21 @@ public class Agent implements AutoCloseable {
 			sslContextFactory.setKeyStorePassword(keyStorePassword);
 			sslContextFactory.setKeyManagerPassword(keyManagerPassword);
 
-			connector = new ServerConnector(server, new SslConnectionFactory(sslContextFactory, "http/1.1"), new HttpConnectionFactory(https));
-			connector.setPort(port);
-			server.addConnector(connector);
-			if(exposeMetrics) {
-				ServletContextHandler metricContext = createMetricsContext(agentConf.getMetricsPath());
-				ServerConnector metricsConnector = createMetricsConnector(
-						new ServerConnector(server, new SslConnectionFactory(sslContextFactory, "http/1.1"), new HttpConnectionFactory(https)),
-						agentConf.getMetricsPort()
-				);
-				server.addConnector(metricsConnector);
-				handlers.add(metricContext);
-			}
+			connector = new ServerConnector(server, new SslConnectionFactory(sslContextFactory, "http/1.1"),
+					new HttpConnectionFactory(https));
 		} else {
 			HttpConfiguration http = new HttpConfiguration();
 			http.addCustomizer(new SecureRequestCustomizer());
 
 			connector = new ServerConnector(server);
 			connector.addConnectionFactory(new HttpConnectionFactory(http));
-			connector.setPort(port);
-			server.addConnector(connector);
-			if(exposeMetrics) {
-				ServletContextHandler metricContext = createMetricsContext(agentConf.getMetricsPath());
-				ServerConnector metricsConnector = createMetricsConnector(new ServerConnector(server), agentConf.getMetricsPort());
-				server.addConnector(metricsConnector);
-				handlers.add(metricContext);
-			}
 		}
-		handlers.add(context);
+		connector.setPort(port);
+		server.addConnector(connector);
 
 		ContextHandlerCollection contexts = new ContextHandlerCollection();
-		contexts.setHandlers(handlers.toArray(new Handler[0]));
+		contexts.addHandler(context);
+		addMetricServletIfRequired(agentConf, contexts);
 		server.setHandler(contexts);
 
 		server.start();
@@ -308,19 +285,17 @@ public class Agent implements AutoCloseable {
 		return server;
 	}
 
-	private ServerConnector createMetricsConnector(ServerConnector serverConnector, int metricsPort) {
-		serverConnector.setPort(metricsPort);
-		serverConnector.setName("MetricsConnector");
-		return serverConnector;
-	}
+	private void addMetricServletIfRequired(AgentConf agentConf, ContextHandlerCollection handlers) {
+		if (agentConf.isExposeMetrics()) {
+			ServletContextHandler servletContext = new ServletContextHandler();
+			servletContext.setContextPath("/metrics");
+			servletContext.addServlet(new ServletHolder(new MetricsServlet()), "");
+			//Start default JVM metrics
+			DefaultExports.initialize();
+			handlers.addHandler(servletContext);
 
-	private ServletContextHandler createMetricsContext(String metricsPath) {
-		DefaultExports.initialize();
-		ServletContextHandler metricContext = new ServletContextHandler(ServletContextHandler.SESSIONS);
-		metricContext.setContextPath("/");
-		metricContext.addServlet(new ServletHolder(new MetricsServlet()), metricsPath);
-		metricContext.setVirtualHosts(new String[]{"@MetricsConnector"});
-		return metricContext;
+			logger.info("Exposing prometheus JVM metrics under path '/metrics'");
+		}
 	}
 
 	private void validateConfiguration(AgentConf agentConf) {
