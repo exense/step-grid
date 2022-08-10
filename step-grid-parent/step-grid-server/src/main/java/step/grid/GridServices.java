@@ -19,6 +19,7 @@
 package step.grid;
 
 import ch.exense.commons.io.FileHelper;
+import io.swagger.v3.oas.annotations.Hidden;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -38,6 +39,7 @@ import java.util.List;
 import java.util.concurrent.TimeoutException;
 
 @Path("/grid")
+@Hidden
 public class GridServices {
 
 	@Inject
