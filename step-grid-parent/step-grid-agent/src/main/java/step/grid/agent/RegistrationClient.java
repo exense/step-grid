@@ -68,19 +68,20 @@ public class RegistrationClient implements FileVersionProvider {
 		this.connectionTimeout = connectionTimeout;
 	}
 	
-	public void sendRegistrationMessage(RegistrationMessage message) {
-		try {			
+	public boolean sendRegistrationMessage(RegistrationMessage message) {
+		try {
 			Response r = client.target(registrationServer + "/grid/register").request().property(ClientProperties.READ_TIMEOUT, callTimeout)
 					.property(ClientProperties.CONNECT_TIMEOUT, connectionTimeout).post(Entity.entity(message, MediaType.APPLICATION_JSON));
 			
 			r.readEntity(String.class);
-			
+			return true;
 		} catch (ProcessingException e) {
 			if(e.getCause() instanceof java.net.ConnectException) {
 				logger.error("Unable to reach " + registrationServer + " for agent registration (java.net.ConnectException: "+e.getCause().getMessage()+")");				
 			} else {
 				logger.error("while registering tokens to " + registrationServer, e);				
 			}
+			return false;
 		}
 	}
 

@@ -76,6 +76,7 @@ public class Agent implements AutoCloseable {
 	private final String agentUrl;
 	private final long gracefulShutdownTimeout; 
 	private volatile boolean stopped = false;
+	private volatile boolean registered = false;
 
 	public static void main(String[] args) throws Exception {
 		newInstanceFromArgs(args);
@@ -223,6 +224,10 @@ public class Agent implements AutoCloseable {
 
 	private int getActualServerPort() {
 		return ((ServerConnector) server.getConnectors()[0]).getLocalPort();
+	}
+
+	public Server getServer() {
+		return server;
 	}
 
 	private Server startServer(AgentConf agentConf, int port, boolean ssl) throws Exception {
@@ -425,6 +430,14 @@ public class Agent implements AutoCloseable {
 			
 			stopped = true;
 		}
+	}
+
+	public boolean isRegistered() {
+		return registered;
+	}
+
+	public void setRegistered(boolean registered) {
+		this.registered = registered;
 	}
 	
 	private static boolean pollUntil(Supplier<Boolean> predicate, long timeout) throws InterruptedException {

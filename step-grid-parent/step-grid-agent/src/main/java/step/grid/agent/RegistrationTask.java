@@ -41,10 +41,12 @@ public class RegistrationTask extends TimerTask {
 
 	@Override
 	public void run() {
+		boolean agentRegistered;
 		try {		
 			RegistrationMessage message = new RegistrationMessage(new AgentRef(agent.getId(), agent.getAgentUrl(), AgentTypes.AGENT_TYPE), agent.getTokens());
 			logger.debug("Sending registration message "+message.toString());
-			client.sendRegistrationMessage(message);
+			agentRegistered = client.sendRegistrationMessage(message);
+			agent.setRegistered(agentRegistered);
 		} catch (Exception e) {
 			logger.error("An unexpected error occurred while registering the adapter.",e);
 		}

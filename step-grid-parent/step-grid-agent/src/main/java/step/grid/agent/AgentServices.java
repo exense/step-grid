@@ -44,6 +44,7 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 
+import jakarta.ws.rs.core.Response;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -277,5 +278,29 @@ public class AgentServices {
 				}
 			}
 		}.start();;
+	}
+
+	// For readiness probe
+	@GET
+	@Path("/registered")
+	public Response isRegistered(@Context HttpServletRequest request) {
+		logger.debug("Received registered request from " + request.getRemoteAddr());
+		if(agent.isRegistered()) {
+			return Response.status(Response.Status.OK).entity("Agent is registered").build();
+		} else {
+			return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Agent is not registered").build();
+		}
+	}
+
+	// For liveness probe
+	@GET
+	@Path("/running")
+	public Response isRunning(@Context HttpServletRequest request) {
+		logger.debug("Received running request from " + request.getRemoteAddr());
+		if(agent.getServer().isRunning()) {
+			return Response.status(Response.Status.OK).entity("Agent is running").build();
+		} else {
+			return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Agent is not running").build();
+		}
 	}
 }
