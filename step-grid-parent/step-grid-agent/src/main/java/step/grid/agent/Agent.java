@@ -226,8 +226,8 @@ public class Agent implements AutoCloseable {
 		return ((ServerConnector) server.getConnectors()[0]).getLocalPort();
 	}
 
-	public Server getServer() {
-		return server;
+	public boolean isRunning() {
+		return server.isRunning();
 	}
 
 	private Server startServer(AgentConf agentConf, int port, boolean ssl) throws Exception {

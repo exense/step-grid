@@ -20,11 +20,14 @@ package step.grid.agent;
 
 import static org.junit.Assert.*;
 
+import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-
+import jakarta.ws.rs.core.Response;
+import org.eclipse.jetty.server.Request;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -132,5 +135,24 @@ public class AgentServicesTest {
 		long t2 = System.currentTimeMillis();
 		
 		assertTrue(t2 - t1 < GRACEFUL_SHUTDOWN_TIMEOUT);
+	}
+
+	@Test
+	public void testProbes() throws InterruptedException {
+		AgentServices a = new AgentServices();
+		a.agent = agent;
+		a.init();
+
+		Request request = new Request(null, null);
+		request.setRemoteAddr(new InetSocketAddress(0));
+
+		Response registered = a.isRegistered(request);
+		Assert.assertEquals(500,registered.getStatus());
+		//Would need to start a  grid to test the positive case (or a mock of POST registrationServer + "/grid/register")
+
+		Response running = a.isRunning(request);
+		Assert.assertEquals(200,running.getStatus());
+
+
 	}
 }

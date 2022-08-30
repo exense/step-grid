@@ -297,7 +297,7 @@ public class AgentServices {
 	@Path("/running")
 	public Response isRunning(@Context HttpServletRequest request) {
 		logger.debug("Received running request from " + request.getRemoteAddr());
-		if(agent.getServer().isRunning()) {
+		if(agent.isRunning()) {
 			return Response.status(Response.Status.OK).entity("Agent is running").build();
 		} else {
 			return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Agent is not running").build();
