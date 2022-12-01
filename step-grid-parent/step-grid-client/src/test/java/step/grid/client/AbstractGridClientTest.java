@@ -41,9 +41,11 @@ import step.grid.io.OutputMessage;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.junit.Assert.*;
 
@@ -148,8 +150,10 @@ public abstract class AbstractGridClientTest extends AbstractGridTest {
 		
 		// Return the token
 		client.returnTokenHandle(token.getID());
-		
-		assertEquals("File1;SubFolder1;", output.getPayload().get("content").asText());
+
+		List<String> content = Arrays.stream(output.getPayload().get("content").asText().split(";")).sorted().collect(Collectors.toList());
+		List<String> result = Arrays.stream("SubFolder1;File1;".split(";")).sorted().collect(Collectors.toList());
+		assertEquals(result, content);
 	}
 	
 	// AgentCallTimeout during reservation is currently impossible to test as we don't have any hook in the reservation where to inject a sleep
