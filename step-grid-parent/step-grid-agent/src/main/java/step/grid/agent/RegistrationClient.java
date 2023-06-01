@@ -50,6 +50,7 @@ import step.grid.filemanager.FileVersionProvider;
 public class RegistrationClient implements FileVersionProvider {
 	
 	private final String registrationServer;
+	private final String fileServer;
 	
 	private Client client;
 	
@@ -57,10 +58,11 @@ public class RegistrationClient implements FileVersionProvider {
 
 	int connectionTimeout;
 	int callTimeout;
-	
-	public RegistrationClient(String registrationServer, int connectionTimeout, int callTimeout) {
+
+	public RegistrationClient(String registrationServer, String fileServer, int connectionTimeout, int callTimeout) {
 		super();
 		this.registrationServer = registrationServer;
+		this.fileServer = fileServer;
 		this.client = ClientBuilder.newClient();
 		this.client.register(ObjectMapperResolver.class);
 		this.client.register(JacksonJsonProvider.class);
@@ -94,7 +96,7 @@ public class RegistrationClient implements FileVersionProvider {
 		try {
 			Response response;
 			try {
-				response = client.target(registrationServer + "/grid/file/"+fileVersionId.getFileId()+"/"+fileVersionId.getVersion()).request().property(ClientProperties.READ_TIMEOUT, callTimeout)
+				response = client.target(fileServer + "/grid/file/"+fileVersionId.getFileId()+"/"+fileVersionId.getVersion()).request().property(ClientProperties.READ_TIMEOUT, callTimeout)
 						.property(ClientProperties.CONNECT_TIMEOUT, connectionTimeout).get();
 			} catch (ProcessingException e) {
 				Throwable cause = e.getCause();

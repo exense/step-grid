@@ -126,7 +126,9 @@ public class Agent implements AutoCloseable {
 		gracefulShutdownTimeout = agentConfGracefulShutdownTimeout != null ? agentConfGracefulShutdownTimeout : 30000;
 
 		String gridUrl = agentConf.getGridHost();
-		RegistrationClient registrationClient = new RegistrationClient(gridUrl,
+		String fileServerHost = Optional.ofNullable(agentConf.getFileServerHost()).orElse(gridUrl);
+
+		RegistrationClient registrationClient = new RegistrationClient(gridUrl, fileServerHost,
 				agentConf.getGridConnectTimeout(), agentConf.getGridReadTimeout());
 
 		FileManagerClient fileManagerClient = initFileManager(registrationClient, agentConf.getWorkingDir());
