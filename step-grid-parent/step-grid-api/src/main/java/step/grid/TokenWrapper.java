@@ -77,7 +77,7 @@ public class TokenWrapper implements Identity {
 		return currentOwner;
 	}
 
-	protected void setCurrentOwner(TokenWrapperOwner currentOwner) {
+	public void setCurrentOwner(TokenWrapperOwner currentOwner) {
 		this.currentOwner = currentOwner;
 	}
 
@@ -97,13 +97,13 @@ public class TokenWrapper implements Identity {
 		return state;
 	}
 
-	protected void setState(TokenWrapperState state) {
+	public void setState(TokenWrapperState state) {
 		synchronized (this) {
 			this.state = state;
 		}
 	}
-	
-	protected void performAtomically(Runnable runnable) {
+
+	public void performAtomically(Runnable runnable) {
 		synchronized (this) {
 			runnable.run();
 		}
