@@ -94,6 +94,10 @@ public class Agent implements AutoCloseable {
 			if(arguments.hasOption("gridHost")) {
 				agentConf.setGridHost(arguments.getOption("gridHost"));
 			}
+
+			if(arguments.hasOption("fileServerHost")) {
+				agentConf.setFileServerHost(arguments.getOption("fileServerHost"));
+			}
 			
 			if(arguments.hasOption("agentPort")) {
 				agentConf.setAgentPort(Integer.decode(arguments.getOption("agentPort")));
