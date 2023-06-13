@@ -36,6 +36,8 @@ public class GridTest extends AbstractGridTest {
 		GridClientConfiguration gridClientConfiguration = new GridClientConfiguration();
 		gridClientConfiguration.setNoMatchExistsTimeout(2000);
 		client = new LocalGridClientImpl(gridClientConfiguration, grid);
+		// wait for the agent to connect:
+		Thread.sleep(1000);
 	}
 	
 	@Test
