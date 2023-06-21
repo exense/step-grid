@@ -284,11 +284,11 @@ public class AgentServices {
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Path("/preStop")
 	public void preStop(@Context HttpServletRequest request) {
-		logger.info("Received shutdown request from " + request.getRemoteAddr());
+		logger.info("Received pre-stop request from " + request.getRemoteAddr());
 		try {
 			agent.close();
 		} catch (Exception e) {
-			logger.error("Error while shutting down", e);
+			logger.error("Error while pre-stopping", e);
 		}
 	}
 
