@@ -280,6 +280,19 @@ public class AgentServices {
 		}.start();;
 	}
 
+	@POST
+	@Consumes(MediaType.APPLICATION_JSON)
+	@Path("/preStop")
+	public void preStop(@Context HttpServletRequest request) {
+		logger.info("Received shutdown request from " + request.getRemoteAddr());
+		try {
+			agent.close();
+		} catch (Exception e) {
+			logger.error("Error while shutting down", e);
+		}
+	}
+
+
 	// For readiness probe
 	@GET
 	@Path("/registered")
