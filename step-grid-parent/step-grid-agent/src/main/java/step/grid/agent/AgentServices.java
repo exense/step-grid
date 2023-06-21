@@ -280,13 +280,13 @@ public class AgentServices {
 		}.start();;
 	}
 
-	@POST
+	@GET
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Path("/preStop")
 	public void preStop(@Context HttpServletRequest request) {
 		logger.info("Received pre-stop request from " + request.getRemoteAddr());
 		try {
-			agent.close();
+			agent.preStop();
 		} catch (Exception e) {
 			logger.error("Error while pre-stopping", e);
 		}

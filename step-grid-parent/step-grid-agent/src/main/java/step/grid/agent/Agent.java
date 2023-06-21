@@ -399,28 +399,28 @@ public class Agent implements AutoCloseable {
 		return tokens;
 	}
 
-	@Override
-	public synchronized void close() throws Exception {
+
+	public synchronized void preStop() throws Exception {
 		if(!stopped) {
 			logger.info("Shutting down...");
-			
+
 			// Stopping registration task
-			if(timer!=null) {
+			if (timer != null) {
 				timer.cancel();
 			}
-			
-			if(registrationTask!=null) {
+
+			if (registrationTask != null) {
 				registrationTask.cancel();
 				registrationTask.unregister();
 				registrationTask.destroy();
 			}
-			
+
 			logger.info("Waiting for tokens to be released...");
-			
+
 			// Wait until all tokens are released
 			boolean gracefullyStopped = pollUntil(tokenPool::areAllTokensFree, gracefulShutdownTimeout);
-			
-			if(gracefullyStopped) {
+
+			if (gracefullyStopped) {
 				logger.info("Agent gracefully stopped");
 			} else {
 				logger.warn("Timeout while waiting for all tokens to be released. Agent forcibly stopped");
@@ -430,9 +430,17 @@ public class Agent implements AutoCloseable {
 			if (registrationClient != null) {
 				registrationClient.close();
 			}
+		}
+	}
+
+	@Override
+	public synchronized void close() throws Exception {
+		if(!stopped) {
+			preStop();
 			
 			// Stopping HTTP server
 			server.stop();
+			logger.info("Web server stopped");
 			
 			stopped = true;
 		}
