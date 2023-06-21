@@ -74,7 +74,8 @@ public class Agent implements AutoCloseable {
 	private final AgentTokenServices agentTokenServices;
 	
 	private final String agentUrl;
-	private final long gracefulShutdownTimeout; 
+	private final long gracefulShutdownTimeout;
+	private final RegistrationClient registrationClient;
 	private volatile boolean stopped = false;
 	private volatile boolean registered = false;
 
@@ -126,7 +127,7 @@ public class Agent implements AutoCloseable {
 		gracefulShutdownTimeout = agentConfGracefulShutdownTimeout != null ? agentConfGracefulShutdownTimeout : 30000;
 
 		String gridUrl = agentConf.getGridHost();
-		RegistrationClient registrationClient = new RegistrationClient(gridUrl,
+		registrationClient = new RegistrationClient(gridUrl,
 				agentConf.getGridConnectTimeout(), agentConf.getGridReadTimeout());
 
 		FileManagerClient fileManagerClient = initFileManager(registrationClient, agentConf.getWorkingDir());
@@ -423,6 +424,11 @@ public class Agent implements AutoCloseable {
 				logger.info("Agent gracefully stopped");
 			} else {
 				logger.warn("Timeout while waiting for all tokens to be released. Agent forcibly stopped");
+			}
+
+			//client is shared between registration tasks and file manager, closing it only once all token are released
+			if (registrationClient != null) {
+				registrationClient.close();
 			}
 			
 			// Stopping HTTP server
