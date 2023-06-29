@@ -42,6 +42,8 @@ public class AgentConf {
 	String workingDir;
 	
 	Integer registrationPeriod = 10000;
+
+	Integer registrationOffset = 0;
 	
 	Integer gridReadTimeout = 3000;
 	
@@ -160,6 +162,14 @@ public class AgentConf {
 
 	public void setRegistrationPeriod(Integer registrationPeriod) {
 		this.registrationPeriod = registrationPeriod;
+	}
+
+	public Integer getRegistrationOffset() {
+		return registrationOffset;
+	}
+
+	public void setRegistrationOffset(Integer registrationOffset) {
+		this.registrationOffset = registrationOffset;
 	}
 
 	public String getWorkingDir() {

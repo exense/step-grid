@@ -162,7 +162,7 @@ public class Agent implements AutoCloseable {
 
 	private Timer createGridRegistrationTimerAndRegisterTask(AgentConf agentConf) {
 		Timer timer = new Timer();
-		timer.schedule(registrationTask, 0, agentConf.getRegistrationPeriod());
+		timer.schedule(registrationTask, agentConf.getRegistrationOffset(), agentConf.getRegistrationPeriod());
 		return timer;
 	}
 
