@@ -288,7 +288,7 @@ public class AgentServices {
 
 	@GET
 	@Consumes(MediaType.APPLICATION_JSON)
-	@Path("/preStop")
+	@Path("/pre-stop")
 	public void preStop(@Context HttpServletRequest request) {
 		logger.info("Received pre-stop request from " + request.getRemoteAddr());
 		try {
