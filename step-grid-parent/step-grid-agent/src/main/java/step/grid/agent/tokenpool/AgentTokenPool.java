@@ -118,7 +118,6 @@ public class AgentTokenPool {
 		AgentTokenWrapper token = getToken(tokenId);
 		if(token!=null) {
 			TokenReservationSession tokenReservationSession = token.getTokenReservationSession();
-			token.setTokenReservationSession(null);
 			if(tokenReservationSession!=null) {
 				try {
 					tokenReservationSession.close();					
@@ -130,6 +129,7 @@ public class AgentTokenPool {
 				// token has already been released or has never been reserved. Nothing to do.
 				logger.warn("Trying to release token '"+tokenId+"' which is not reserved");
 			}
+			token.setTokenReservationSession(null);
 		} else {
 			throw new InvalidTokenIdException();
 		}

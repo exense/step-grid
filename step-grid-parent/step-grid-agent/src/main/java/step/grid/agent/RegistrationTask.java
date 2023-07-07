@@ -57,7 +57,7 @@ public class RegistrationTask extends TimerTask {
 	}
 	
 	protected void destroy() {
-		client.close();
+		// client created and closed by caller
 	}
 
 }
