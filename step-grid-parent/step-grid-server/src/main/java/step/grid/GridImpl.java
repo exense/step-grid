@@ -30,25 +30,25 @@ import org.glassfish.jersey.jackson.internal.jackson.jaxrs.json.JacksonJaxbJsonP
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.servlet.ServletContainer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import step.grid.agent.RegistrationMessage;
 import step.grid.filemanager.*;
 import step.grid.filemanager.FileManagerImpl.FileManagerImplConfig;
-import step.grid.tokenpool.Identity;
-import step.grid.tokenpool.Interest;
-import step.grid.tokenpool.SimpleAffinityEvaluator;
-import step.grid.tokenpool.TokenPool;
+import step.grid.tokenpool.*;
 import step.grid.tokenpool.affinityevaluator.TokenPoolAware;
 import step.grid.tokenpool.affinityevaluator.TokenWrapperAffinityEvaluatorImpl;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeoutException;
 
 public class GridImpl implements Grid {
+
+	private final static Logger logger = LoggerFactory.getLogger(GridImpl.class);
 
 	private ExpiringMap<String, AgentRef> agentRefs;
 	
@@ -63,6 +63,10 @@ public class GridImpl implements Grid {
 	private final FileManager fileManager;
 	
 	private final GridImplConfig gridConfig;
+
+	private final List<RegistrationCallback<AgentRef>> agentRegistrationCallbacks = new CopyOnWriteArrayList<>();
+
+	private boolean acceptRegistrationMessages = false;
 	
 	public GridImpl(Integer port) throws IOException {
 		this(FileHelper.createTempFolder("filemanager"), port);
@@ -82,6 +86,7 @@ public class GridImpl implements Grid {
 		config.setFileLastModificationCacheMaximumsize(gridConfig.getFileLastModificationCacheMaximumsize());
 		this.fileManager = new FileManagerImpl(fileManagerFolder, config);
 		this.gridConfig = gridConfig;
+		this.acceptRegistrationMessages = !gridConfig.deferAcceptingRegistrationMessages;
 	}
 	
 	public static class GridImplConfig {
@@ -91,7 +96,9 @@ public class GridImpl implements Grid {
 		int fileLastModificationCacheConcurrencyLevel = 4;
 		int fileLastModificationCacheMaximumsize = 1000;
 		int fileLastModificationCacheExpireAfter = 500;
-		
+
+		boolean deferAcceptingRegistrationMessages = false;
+
 		String tokenAffinityEvaluatorClass;
 		
 		Map<String, String> tokenAffinityEvaluatorProperties;
@@ -159,6 +166,40 @@ public class GridImpl implements Grid {
 		public void setTokenAffinityEvaluatorProperties(Map<String, String> tokenAffinityEvaluatorProperties) {
 			this.tokenAffinityEvaluatorProperties = tokenAffinityEvaluatorProperties;
 		}
+
+		public boolean isDeferAcceptingRegistrationMessages() {
+			return deferAcceptingRegistrationMessages;
+		}
+
+		public void setDeferAcceptingRegistrationMessages(boolean deferAcceptingRegistrationMessages) {
+			this.deferAcceptingRegistrationMessages = deferAcceptingRegistrationMessages;
+		}
+	}
+
+	public interface GridImplConfigModifier {
+		void modifyConfig(GridImplConfig config);
+	}
+
+	public static class GridImplConfigModifiers extends LinkedList<GridImplConfigModifier> {}
+
+	public void addAgentRegistrationCallback(RegistrationCallback<AgentRef> callback) {
+		agentRegistrationCallbacks.add(callback);
+	}
+
+	public void removeAgentRegistrationCallback(RegistrationCallback<AgentRef> callback) {
+		agentRegistrationCallbacks.remove(callback);
+	}
+
+	public void addTokenRegistrationCallback(RegistrationCallback<TokenWrapper> callback) {
+		tokenPool.addTokenRegistrationCallback(callback);
+	}
+
+	public void removeTokenRegistrationCallback(RegistrationCallback<TokenWrapper> callback) {
+		tokenPool.removeTokenRegistrationCallback(callback);
+	}
+
+	public void setAcceptRegistrationMessages(boolean acceptRegistrationMessages) {
+		this.acceptRegistrationMessages = acceptRegistrationMessages;
 	}
 
 	public void cleanupFileManagerCache() {
@@ -180,8 +221,16 @@ public class GridImpl implements Grid {
 
 	private void initializeAgentRefs() {
 		agentRefs = new ExpiringMap<>(keepAliveTimeout);
+		agentRefs.setExpiryCallback(this::unregisterAgents);
 	}
-	
+
+	private void unregisterAgents(List<AgentRef> expired) {
+		if (logger.isDebugEnabled() && agentRegistrationCallbacks.size() > 0 && expired.size() > 0) {
+			logger.debug("Unregistering agents with {} callbacks: {}", agentRegistrationCallbacks.size(), expired);
+		}
+		agentRegistrationCallbacks.forEach(callback -> callback.afterUnregistering(expired));
+	}
+
 	private void initializeTokenPool() throws Exception {
 		String tokenAffinityEvaluatorClass = gridConfig.getTokenAffinityEvaluatorClass();
 		SimpleAffinityEvaluator<Identity, TokenWrapper> tokenAffinityEvaluator;
@@ -242,11 +291,35 @@ public class GridImpl implements Grid {
 	}
 	
 	protected void handleRegistrationMessage(RegistrationMessage message) {
+		if (!acceptRegistrationMessages) {
+			if (logger.isDebugEnabled()) {
+				logger.debug("Currently not accepting registration messages, ignoring.");
+			}
+			return;
+		}
+
 		AgentRef agentRef = message.getAgentRef();
-		agentRefs.putOrTouch(agentRef.getAgentId(), agentRef);
-		for (Token token : message.getTokens()) {
-			tokenPool.offerToken(new TokenWrapper(token, agentRef));			
-		}	
+		boolean allowed = agentRegistrationCallbacks.stream().allMatch(cb -> cb.beforeRegistering(agentRef));
+		if (logger.isDebugEnabled()) {
+			if (!allowed) {
+				logger.debug("One or more callbacks vetoed agent registration, ignoring agent: {}", agentRef);
+			} else {
+				logger.debug("Allowing agent: {}", agentRef);
+			}
+		}
+		if (allowed) {
+			agentRefs.putOrTouch(agentRef.getAgentId(), agentRef);
+			for (Token token : message.getTokens()) {
+				tokenPool.offerToken(new TokenWrapper(token, agentRef));
+			}
+		} else {
+			if (agentRefs.remove(agentRef.getAgentId()) != null) {
+				unregisterAgents(List.of(agentRef));
+				for (Token token : message.getTokens()) {
+					tokenPool.invalidateToken(new TokenWrapper(token, agentRef));
+				}
+			}
+		}
 	}
 	
 	@Override

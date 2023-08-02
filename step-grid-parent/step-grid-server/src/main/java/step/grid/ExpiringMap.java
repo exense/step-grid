@@ -18,15 +18,9 @@
  ******************************************************************************/
 package step.grid;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.Timer;
-import java.util.TimerTask;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 
 import org.jvnet.hk2.internal.Closeable;
 
@@ -75,13 +69,16 @@ public class ExpiringMap<T,V> implements Map<T,V>, Closeable{
 	
 	private synchronized void keepaliveTimeoutCheck() {
 		if(keepaliveTimeout>0) {
-			long now = System.currentTimeMillis();			
+			long now = System.currentTimeMillis();
+			List<V> expired = new LinkedList<>();
 			Set<Map.Entry<T, ExpiringMap<T, V>.Wrapper>> set = map.entrySet();
 			for(Map.Entry<T, ExpiringMap<T, V>.Wrapper> entry:set) {
 				if(entry.getValue().lasttouch+keepaliveTimeout<now) {
 					set.remove(entry);
+					expired.add(entry.getValue().value);
 				}
 			}
+			notifyExpiry(expired);
 		}
 	}
 
@@ -212,5 +209,17 @@ public class ExpiringMap<T,V> implements Map<T,V>, Closeable{
 	@Override
 	public boolean isClosed() {
 		return false;
+	}
+
+	private Consumer<List<V>> expiryCallback;
+
+	public void setExpiryCallback(Consumer<List<V>> expiryCallback) {
+		this.expiryCallback = expiryCallback;
+	}
+
+	private void notifyExpiry(List<V> values) {
+		if (expiryCallback != null) {
+			expiryCallback.accept(values);
+		}
 	}
 }

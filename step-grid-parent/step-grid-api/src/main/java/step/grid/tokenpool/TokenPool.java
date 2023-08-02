@@ -29,12 +29,14 @@ import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import step.grid.TokenWrapper;
 
 public class TokenPool<P extends Identity, F extends Identity> implements Closeable {
 	
@@ -44,9 +46,11 @@ public class TokenPool<P extends Identity, F extends Identity> implements Closea
 	
 	final Map<String,Token<F>> tokens = new HashMap<>();
 	
-	final Map<String,Consumer<F>> listeners = new ConcurrentHashMap<>();
+	final Map<String,Consumer<F>> returnTokenListeners = new ConcurrentHashMap<>();
 	
 	final List<WaitingPretender<P,F>> waitingPretenders = Collections.synchronizedList(new LinkedList<WaitingPretender<P,F>>());
+
+	final List<RegistrationCallback<F>> tokenRegistrationCallbacks = new CopyOnWriteArrayList<>();
 	
 	long keepaliveTimeout;
 	
@@ -70,6 +74,14 @@ public class TokenPool<P extends Identity, F extends Identity> implements Closea
 			}
 		}, 10000,10000);
 	}
+
+	public void addTokenRegistrationCallback(RegistrationCallback<F> callback) {
+		tokenRegistrationCallbacks.add(callback);
+	}
+
+	public void removeTokenRegistrationCallback(RegistrationCallback<F> callback) {
+		tokenRegistrationCallbacks.remove(callback);
+	}
 	
 	public void setKeepaliveTimeout(long timeout) {
 		keepaliveTimeout = timeout;
@@ -86,8 +98,9 @@ public class TokenPool<P extends Identity, F extends Identity> implements Closea
 			MatchingResult matchingResult =  searchMatchesInTokenList(pretender);
 			Token<F> bestMatch = matchingResult.bestAvailableMatch;
 			if(matchingResult.bestAvailableMatch!=null) {
-				if(logger.isDebugEnabled())
-					logger.debug("Found token without queuing. Pretender=" + pretender.toString() + ". Token="+bestMatch.toString() );
+				if(logger.isDebugEnabled()) {
+					logger.debug("Found token without queuing. Pretender=" + pretender.toString() + ". Token=" + bestMatch.toString());
+				}
 				bestMatch.available = false;
 				return bestMatch.object;
 			} else if(matchingResult.bestMatch!=null) {
@@ -95,8 +108,9 @@ public class TokenPool<P extends Identity, F extends Identity> implements Closea
 			}
 		}
 		
-		if(logger.isDebugEnabled())
+		if(logger.isDebugEnabled()) {
 			logger.debug("No free token found. Enqueuing... Pretender=" + pretender.toString());
+		}
 		WaitingPretender<P, F> waitingPretender = new WaitingPretender<P,F>(pretender);
 		try {
 			waitingPretenders.add(waitingPretender);
@@ -107,8 +121,9 @@ public class TokenPool<P extends Identity, F extends Identity> implements Closea
 			}
 
 			if(waitingPretender.associatedToken!=null) {
-				if(logger.isDebugEnabled())
-					logger.debug("Found token after queuing. Pretender=" + pretender.toString() + ". Token="+waitingPretender.associatedToken.toString());
+				if(logger.isDebugEnabled()) {
+					logger.debug("Found token after queuing. Pretender=" + pretender.toString() + ". Token=" + waitingPretender.associatedToken.toString());
+				}
 				return waitingPretender.associatedToken.object;
 			} else {
 				logger.warn("Timeout occurred while selecting token. Pretender=" + pretender.toString());
@@ -178,32 +193,33 @@ public class TokenPool<P extends Identity, F extends Identity> implements Closea
 		synchronized (tokens) {
 			Token<F> token = tokens.get(tokenId);
 			if(token.available) {
-				callListener(token.getObject(), consumer);
+				callReturnTokenListener(token.getObject(), consumer);
 			} else {
-				listeners.put(tokenId, consumer);
+				returnTokenListeners.put(tokenId, consumer);
 			}
 		}
 	}
 	
 	public void returnToken(F object) {
 		synchronized (tokens) {
-			if(logger.isDebugEnabled())
-				logger.debug("Returning token. Token="+object.toString());
+			if(logger.isDebugEnabled()) {
+				logger.debug("Returning token. Token=" + object.toString());
+			}
 			Token<F> token = findToken(object);
 			if(token.invalidated) {
 				removeToken(token);
 			} else {
 				token.available = true;
-				Consumer<F> listener = listeners.remove(object.getID());
+				Consumer<F> listener = returnTokenListeners.remove(object.getID());
 				if(listener!=null) {
-					callListener(object, listener);
+					callReturnTokenListener(object, listener);
 				}
 				checkForMatchInPretenderWaitingQueue(token);
 			}
 		}
 	}
 
-	protected void callListener(F object, Consumer<F> listener) {
+	protected void callReturnTokenListener(F object, Consumer<F> listener) {
 		try {
 			listener.accept(object);
 		} catch(Exception e) {
@@ -213,6 +229,7 @@ public class TokenPool<P extends Identity, F extends Identity> implements Closea
 
 	private void removeToken(Token<F> token) {
 		tokens.remove(token.getObject().getID());
+		tokenRegistrationCallbacks.forEach(cb -> cb.afterUnregistering(List.of(token.object)));
 		notifyWaitingPretendersWithoutMatchInTokenList();
 	}
 	
@@ -223,18 +240,30 @@ public class TokenPool<P extends Identity, F extends Identity> implements Closea
 	
 	public String offerToken(F object) {
 		synchronized (tokens) {
-			if(logger.isDebugEnabled())
-				logger.debug("Offering token. Token="+object.toString());
-			Token<F> token = findToken(object);
-			if(token==null) {
-				token = new Token<F>(object);
-				token.available = true;
-				tokens.put(token.object.getID(),token);
-				checkForMatchInPretenderWaitingQueue(token);
+			if(logger.isTraceEnabled()) {
+				logger.trace("Offering token. Token=" + object.toString());
 			}
-			keepaliveToken(token);
-			
-			return token.getObject().getID();
+			Token<F> token;
+			Token<F> existingToken = findToken(object);
+			if (existingToken != null) {
+				token = existingToken;
+			} else {
+				token = new Token<>(object);
+				token.available = true;
+			}
+			boolean allowed = tokenRegistrationCallbacks.stream().allMatch(cb -> cb.beforeRegistering(token.object));
+			if (allowed) {
+				if (existingToken == null) {
+					// new token, put it in the map
+					tokens.put(token.object.getID(), token);
+					checkForMatchInPretenderWaitingQueue(token);
+				}
+				keepaliveToken(token);
+				return token.getObject().getID();
+			} else {
+				logger.debug("one or more callbacks vetoed token registration, token is ignored: {}", token.object);
+				return null;
+			}
 		}
 	}
 	
@@ -294,8 +323,9 @@ public class TokenPool<P extends Identity, F extends Identity> implements Closea
 	
 	private void invalidateToken(Token<F> token) {
 		if(token!=null) {
-			if(logger.isDebugEnabled())
-				logger.debug("Invalidating token. Token="+token.toString());
+			if(logger.isDebugEnabled()) {
+				logger.debug("Invalidating token. Token=" + token.object);
+			}
 			token.invalidated = true;
 			if(token.available) {
 				removeToken(token);
