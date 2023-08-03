@@ -229,7 +229,13 @@ public class TokenPool<P extends Identity, F extends Identity> implements Closea
 
 	private void removeToken(Token<F> token) {
 		tokens.remove(token.getObject().getID());
-		tokenRegistrationCallbacks.forEach(cb -> cb.afterUnregistering(List.of(token.object)));
+		for (RegistrationCallback<F> callback: tokenRegistrationCallbacks) {
+			try {
+				callback.afterUnregistering(List.of(token.object));
+			} catch (Exception e) {
+				logger.error("Unexpected exception", e);
+			}
+		}
 		notifyWaitingPretendersWithoutMatchInTokenList();
 	}
 	
