@@ -261,7 +261,10 @@ public class TokenPool<P extends Identity, F extends Identity> implements Closea
 				keepaliveToken(token);
 				return token.getObject().getID();
 			} else {
-				logger.debug("one or more callbacks vetoed token registration, token is ignored: {}", token.object);
+				if (logger.isDebugEnabled()) {
+					logger.debug("one or more callbacks vetoed token registration, token is ignored and invalidated if present: {}", token.object);
+				}
+				invalidateToken(token);
 				return null;
 			}
 		}
