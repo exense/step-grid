@@ -176,12 +176,6 @@ public class GridImpl implements Grid {
 		}
 	}
 
-	public interface GridImplConfigModifier {
-		void modifyConfig(GridImplConfig config);
-	}
-
-	public static class GridImplConfigModifiers extends LinkedList<GridImplConfigModifier> {}
-
 	public void addAgentRegistrationCallback(RegistrationCallback<AgentRef> callback) {
 		agentRegistrationCallbacks.add(callback);
 	}
