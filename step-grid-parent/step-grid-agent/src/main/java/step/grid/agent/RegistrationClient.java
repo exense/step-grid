@@ -60,11 +60,7 @@ public class RegistrationClient implements FileVersionProvider {
 	
 	public RegistrationClient(String registrationServer, int connectionTimeout, int callTimeout) {
 		super();
-
-		this.registrationServer = registrationServer.endsWith("/") ?
-				registrationServer.substring(0,registrationServer.length()-2) :
-				registrationServer;
-
+		this.registrationServer = registrationServer;
 		this.client = ClientBuilder.newClient();
 		this.client.register(ObjectMapperResolver.class);
 		this.client.register(JacksonJsonProvider.class);
