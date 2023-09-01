@@ -44,6 +44,8 @@ public class AgentConf {
 	String workingDir;
 	
 	Integer registrationPeriod = 10000;
+
+	Integer registrationOffset = 0;
 	
 	Integer gridReadTimeout = 3000;
 	
@@ -61,23 +63,23 @@ public class AgentConf {
 
 	public AgentConf(String gridHost, Integer agentPort, String agentUrl) {
 		super();
-		this.gridHost = gridHost;
 		this.agentPort = agentPort;
 		this.agentUrl = agentUrl;
+		setGridHost(gridHost);
 	}
 	
 	public AgentConf(String gridHost, String agentHost) {
 		super();
-		this.gridHost = gridHost;
 		this.agentHost = agentHost;
+		setGridHost(gridHost);
 	}
 
 	public AgentConf(String gridHost, Integer agentPort, String agentUrl, Integer registrationPeriod) {
 		super();
-		this.gridHost = gridHost;
 		this.agentPort = agentPort;
 		this.agentUrl = agentUrl;
 		this.registrationPeriod = registrationPeriod;
+		setGridHost(gridHost);
 	}
 
 	public String getGridHost() {
@@ -85,7 +87,9 @@ public class AgentConf {
 	}
 
 	public void setGridHost(String gridHost) {
-		this.gridHost = gridHost;
+		this.gridHost = gridHost.endsWith("/") ?
+				gridHost.substring(0,gridHost.length()-1) :
+				gridHost;
 	}
 
 	public String getFileServerHost() {
@@ -170,6 +174,14 @@ public class AgentConf {
 
 	public void setRegistrationPeriod(Integer registrationPeriod) {
 		this.registrationPeriod = registrationPeriod;
+	}
+
+	public Integer getRegistrationOffset() {
+		return registrationOffset;
+	}
+
+	public void setRegistrationOffset(Integer registrationOffset) {
+		this.registrationOffset = registrationOffset;
 	}
 
 	public String getWorkingDir() {

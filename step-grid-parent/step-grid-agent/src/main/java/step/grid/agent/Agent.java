@@ -74,7 +74,8 @@ public class Agent implements AutoCloseable {
 	private final AgentTokenServices agentTokenServices;
 	
 	private final String agentUrl;
-	private final long gracefulShutdownTimeout; 
+	private final long gracefulShutdownTimeout;
+	private final RegistrationClient registrationClient;
 	private volatile boolean stopped = false;
 	private volatile boolean registered = false;
 
@@ -132,7 +133,7 @@ public class Agent implements AutoCloseable {
 		String gridUrl = agentConf.getGridHost();
 		String fileServerHost = Optional.ofNullable(agentConf.getFileServerHost()).orElse(gridUrl);
 
-		RegistrationClient registrationClient = new RegistrationClient(gridUrl, fileServerHost,
+		registrationClient = new RegistrationClient(gridUrl, fileServerHost,
 				agentConf.getGridConnectTimeout(), agentConf.getGridReadTimeout());
 
 		FileManagerClient fileManagerClient = initFileManager(registrationClient, agentConf.getWorkingDir());
@@ -167,7 +168,7 @@ public class Agent implements AutoCloseable {
 
 	private Timer createGridRegistrationTimerAndRegisterTask(AgentConf agentConf) {
 		Timer timer = new Timer();
-		timer.schedule(registrationTask, 0, agentConf.getRegistrationPeriod());
+		timer.schedule(registrationTask, agentConf.getRegistrationOffset(), agentConf.getRegistrationPeriod());
 		return timer;
 	}
 
@@ -404,36 +405,49 @@ public class Agent implements AutoCloseable {
 		return tokens;
 	}
 
-	@Override
-	public synchronized void close() throws Exception {
+
+	public synchronized void preStop() throws Exception {
 		if(!stopped) {
 			logger.info("Shutting down...");
-			
+
 			// Stopping registration task
-			if(timer!=null) {
+			if (timer != null) {
 				timer.cancel();
 			}
-			
-			if(registrationTask!=null) {
+
+			if (registrationTask != null) {
 				registrationTask.cancel();
 				registrationTask.unregister();
 				registrationTask.destroy();
 			}
-			
+
 			logger.info("Waiting for tokens to be released...");
-			
+
 			// Wait until all tokens are released
 			boolean gracefullyStopped = pollUntil(tokenPool::areAllTokensFree, gracefulShutdownTimeout);
-			
-			if(gracefullyStopped) {
+
+			if (gracefullyStopped) {
 				logger.info("Agent gracefully stopped");
 			} else {
 				logger.warn("Timeout while waiting for all tokens to be released. Agent forcibly stopped");
 			}
-			
+
+			//client is shared between registration tasks and file manager, closing it only once all token are released
+			if (registrationClient != null) {
+				registrationClient.close();
+			}
+		}
+	}
+
+	@Override
+	public synchronized void close() throws Exception {
+		if(!stopped) {
+			preStop();
+
 			// Stopping HTTP server
 			server.stop();
-			
+			logger.info("Web server stopped");
+
 			stopped = true;
 		}
 	}

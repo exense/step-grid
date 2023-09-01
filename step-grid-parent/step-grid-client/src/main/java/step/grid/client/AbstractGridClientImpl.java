@@ -325,6 +325,9 @@ public abstract class AbstractGridClientImpl implements GridClient {
 	}
 
 	private void reserveSession(AgentRef agentRef, Token token) throws AgentCommunicationException {
+		if (logger.isDebugEnabled()) {
+			logger.debug("Reserving token: " + token.getId());
+		}
 		call(agentRef, token, "/reserve", builder-> {
 			return builder.get();
 		}, gridClientConfiguration.getReserveSessionTimeout());
@@ -340,6 +343,9 @@ public abstract class AbstractGridClientImpl implements GridClient {
 	}
 	
 	private void releaseSession(AgentRef agentRef, Token token) throws AgentCommunicationException {
+		if (logger.isDebugEnabled()) {
+			logger.debug("Releasing token: " + token.getId());
+		}
 		call(agentRef, token, "/release", builder->{
 			return builder.get();
 		}, gridClientConfiguration.getReleaseSessionTimeout());

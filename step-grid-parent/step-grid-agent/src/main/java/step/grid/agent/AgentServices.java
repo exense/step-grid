@@ -182,6 +182,9 @@ public class AgentServices {
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Path("/token/{id}/reserve")
 	public void reserveToken(@PathParam("id") String tokenId) throws InvalidTokenIdException {
+		if (logger.isDebugEnabled()) {
+			logger.debug("Reserving token: " + tokenId);
+		}
 		tokenPool.createTokenReservationSession(tokenId);
 	}
 
@@ -190,6 +193,9 @@ public class AgentServices {
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Path("/token/{id}/release")
 	public void releaseToken(@PathParam("id") String tokenId) throws InvalidTokenIdException {
+		if (logger.isDebugEnabled()) {
+			logger.debug("Releasing token: " + tokenId);
+		}
 		tokenPool.closeTokenReservationSession(tokenId);
 	}
 
@@ -279,6 +285,19 @@ public class AgentServices {
 			}
 		}.start();;
 	}
+
+	@GET
+	@Consumes(MediaType.APPLICATION_JSON)
+	@Path("/pre-stop")
+	public void preStop(@Context HttpServletRequest request) {
+		logger.info("Received pre-stop request from " + request.getRemoteAddr());
+		try {
+			agent.preStop();
+		} catch (Exception e) {
+			logger.error("Error while pre-stopping", e);
+		}
+	}
+
 
 	// For readiness probe
 	@GET
