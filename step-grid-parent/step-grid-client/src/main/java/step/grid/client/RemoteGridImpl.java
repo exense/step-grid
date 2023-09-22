@@ -165,6 +165,12 @@ public class RemoteGridImpl implements Grid {
 	}
 
 	@Override
+	public void invalidateToken(String tokenId) {
+		Builder r = requestBuilder("/grid/token/invalidate");
+		executeRequest(()->r.post(Entity.entity(tokenId, MediaType.APPLICATION_JSON)));
+	}
+
+	@Override
 	public void cleanupFileManagerCache() {
 		throw new RuntimeException("NotImplementedException"); //NotImplementedException();
 	}
