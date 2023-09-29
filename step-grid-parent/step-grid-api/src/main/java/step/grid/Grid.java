@@ -44,5 +44,7 @@ public interface Grid extends GridFileService {
 
 	void stopTokenMaintenance(String tokenId);
 
+	void invalidateToken(String tokenId);
+
 	void cleanupFileManagerCache();
 }

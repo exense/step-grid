@@ -177,7 +177,10 @@ public class TokenPool<P extends Identity, F extends Identity> implements Closea
 			for(WaitingPretender<P, F> waitingPretender:waitingPretenders) {
 				if(!hasWaitingPretenderAMatchInTokenList(waitingPretender)) {
 					synchronized (waitingPretender) {
-						waitingPretender.notify();						
+						if(logger.isTraceEnabled()) {
+							logger.trace("notifyWaitingPretendersWithoutMatchInTokenList, pretender: " + waitingPretender);
+						}
+						waitingPretender.notify();
 					}
 				}
 			}
@@ -349,7 +352,11 @@ public class TokenPool<P extends Identity, F extends Identity> implements Closea
 			token.available = false;
 			pretenderMatch.associatedToken = token;
 			synchronized (pretenderMatch) {
-				pretenderMatch.notify();				
+				if(logger.isTraceEnabled()) {
+					logger.trace("Pretender match found for token " + token.getObject().getID()
+							+ " notifying pretender: " + pretenderMatch);
+				}
+				pretenderMatch.notify();
 			}
 		}
 	}

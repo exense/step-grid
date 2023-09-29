@@ -100,6 +100,12 @@ public class GridServices {
 		grid.returnToken(id);
 	}
 
+	@POST
+	@Path("/token/invalidate")
+	public void invalidateToken(String id) {
+		grid.invalidateToken(id);
+	}
+
 	@GET
     @Path("/token/list")
 	public List<TokenWrapper> getTokens() {

@@ -24,6 +24,8 @@ import java.util.Map;
 public class AgentConf {
 	
 	String gridHost;
+
+	String fileServerHost;
 	
 	Integer agentPort;
 	
@@ -88,6 +90,14 @@ public class AgentConf {
 		this.gridHost = gridHost.endsWith("/") ?
 				gridHost.substring(0,gridHost.length()-1) :
 				gridHost;
+	}
+
+	public String getFileServerHost() {
+		return fileServerHost;
+	}
+
+	public void setFileServerHost(String fileServerHost) {
+		this.fileServerHost = fileServerHost;
 	}
 
 	public Integer getAgentPort() {

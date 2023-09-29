@@ -95,6 +95,10 @@ public class Agent implements AutoCloseable {
 			if(arguments.hasOption("gridHost")) {
 				agentConf.setGridHost(arguments.getOption("gridHost"));
 			}
+
+			if(arguments.hasOption("fileServerHost")) {
+				agentConf.setFileServerHost(arguments.getOption("fileServerHost"));
+			}
 			
 			if(arguments.hasOption("agentPort")) {
 				agentConf.setAgentPort(Integer.decode(arguments.getOption("agentPort")));
@@ -127,7 +131,9 @@ public class Agent implements AutoCloseable {
 		gracefulShutdownTimeout = agentConfGracefulShutdownTimeout != null ? agentConfGracefulShutdownTimeout : 30000;
 
 		String gridUrl = agentConf.getGridHost();
-		registrationClient = new RegistrationClient(gridUrl,
+		String fileServerHost = Optional.ofNullable(agentConf.getFileServerHost()).orElse(gridUrl);
+
+		registrationClient = new RegistrationClient(gridUrl, fileServerHost,
 				agentConf.getGridConnectTimeout(), agentConf.getGridReadTimeout());
 
 		FileManagerClient fileManagerClient = initFileManager(registrationClient, agentConf.getWorkingDir());
@@ -437,11 +443,11 @@ public class Agent implements AutoCloseable {
 	public synchronized void close() throws Exception {
 		if(!stopped) {
 			preStop();
-			
+
 			// Stopping HTTP server
 			server.stop();
 			logger.info("Web server stopped");
-			
+
 			stopped = true;
 		}
 	}

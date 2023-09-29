@@ -386,6 +386,11 @@ public class GridImpl implements Grid {
 	}
 
 	@Override
+	public void invalidateToken(String tokenId) {
+		tokenPool.invalidate(tokenId);
+	}
+
+	@Override
 	public List<TokenWrapper> getTokens() {
 		return tokenPool.getTokens();
 	}
