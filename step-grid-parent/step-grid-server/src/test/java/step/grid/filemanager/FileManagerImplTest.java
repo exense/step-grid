@@ -29,7 +29,6 @@ import org.junit.Before;
 import org.junit.Test;
 
 import ch.exense.commons.io.FileHelper;
-import step.grid.filemanager.FileManagerImpl.FileManagerImplConfig;
 
 public class FileManagerImplTest {
 
@@ -42,6 +41,7 @@ public class FileManagerImplTest {
 		FileManagerImplConfig config = new FileManagerImplConfig();
 		// disable caching
 		config.setFileLastModificationCacheExpireAfter(0);
+		config.setCleanupLastAccessTimeThresholdMinutes(0);
 		f = new FileManagerImpl(registryFolder, config);
 	}
 	
@@ -54,16 +54,16 @@ public class FileManagerImplTest {
 	public void testFile() throws IOException, FileManagerException {
 		File testFile = FileHelper.createTempFile();
 		
-		FileVersionId handle = f.registerFileVersion(testFile, false).getVersionId();
+		FileVersionId handle = f.registerFileVersion(testFile, false, true).getVersionId();
 		
 		FileVersion registeredFile = f.getFileVersion(handle);
 		Assert.assertNotNull(registeredFile);
 		
 		writeFileContent(testFile, "V2");
 
-		FileVersionId handle2 = f.registerFileVersion(testFile, false).getVersionId();
+		FileVersionId handle2 = f.registerFileVersion(testFile, false, true).getVersionId();
 		// Registering twice (this shouldn't throw any error)
-		handle2 = f.registerFileVersion(testFile, false).getVersionId();
+		handle2 = f.registerFileVersion(testFile, false, true).getVersionId();
 		
 		Assert.assertFalse(handle2.equals(handle));
 		
@@ -77,17 +77,17 @@ public class FileManagerImplTest {
 	
 	@Test
 	public void testStream() throws IOException, FileManagerException {
-		FileVersionId handle = f.registerFileVersion(this.getClass().getResourceAsStream("TestFile.txt"),"TestFile", false, false).getVersionId();;
+		FileVersionId handle = f.registerFileVersion(this.getClass().getResourceAsStream("TestFile.txt"),"TestFile", false, false, true).getVersionId();;
 		
 		FileVersion fileVersion = f.getFileVersion(handle);
 		FileVersion registeredFile = fileVersion;
 		Assert.assertNotNull(registeredFile);
 		
 		// register a different content under the same name "TestFile"
-		FileVersionId handle2 = f.registerFileVersion(this.getClass().getResourceAsStream("TestFile2.txt"),"TestFile", false, false).getVersionId();
+		FileVersionId handle2 = f.registerFileVersion(this.getClass().getResourceAsStream("TestFile2.txt"),"TestFile", false, false, true).getVersionId();
 		
 		// register the same content under a different name
-		FileVersionId handle3 = f.registerFileVersion(this.getClass().getResourceAsStream("TestFile.txt"),"AnotherResourceName", false, false).getVersionId();;
+		FileVersionId handle3 = f.registerFileVersion(this.getClass().getResourceAsStream("TestFile.txt"),"AnotherResourceName", false, false, true).getVersionId();;
 		
 		Assert.assertFalse(handle2.equals(handle));
 		Assert.assertFalse(handle3.equals(handle));
@@ -117,11 +117,11 @@ public class FileManagerImplTest {
 		File testFile = FileHelper.createTempFile();
 		
 		// Register a first version of the file
-		FileVersionId version1 = f.registerFileVersion(testFile, false).getVersionId();
+		FileVersionId version1 = f.registerFileVersion(testFile, false, true).getVersionId();
 		
 		// Register a second version of the file
 		writeFileContent(testFile, "V2");
-		FileVersionId version2 = f.registerFileVersion(testFile, false).getVersionId();
+		FileVersionId version2 = f.registerFileVersion(testFile, false, true).getVersionId();
 		
 		// Delete the source file. As soon as registered, it shouldn't be needed anymore
 		testFile.delete();
@@ -136,7 +136,7 @@ public class FileManagerImplTest {
 		
 		// Register a third version of the file and DELETE the other versions
 		writeFileContent(testFile, "V3");
-		FileVersionId version3 = f.registerFileVersion(testFile, true).getVersionId();
+		FileVersionId version3 = f.registerFileVersion(testFile, true, true).getVersionId();
 		
 		FileVersion fileVersion3 = f.getFileVersion(version3);
 		Assert.assertEquals("V3", new String(Files.readAllBytes(fileVersion3.getFile().toPath())));
@@ -152,17 +152,17 @@ public class FileManagerImplTest {
 		File testFile = FileHelper.createTempFile();
 		
 		// Register a first version of the file
-		FileVersionId version1 = f.registerFileVersion(testFile, false).getVersionId();
+		FileVersionId version1 = f.registerFileVersion(testFile, false, true).getVersionId();
 		
 		// Register the same file a second time
-		FileVersionId version2 = f.registerFileVersion(testFile, false).getVersionId();
+		FileVersionId version2 = f.registerFileVersion(testFile, false, true).getVersionId();
 		
 		// Delete the source file. As soon as registered, it shouldn't be needed anymore
 		testFile.delete();
 		
 		Assert.assertEquals(version1, version2);
 		
-		// Request deletion of the the file version
+		// Request deletion of the file version
 		f.unregisterFileVersion(version1);
 			
 		// The file is still not available anymore
@@ -185,23 +185,31 @@ public class FileManagerImplTest {
 	public void testDirectory() throws IOException, FileManagerException {
 		File testFile = FileHelper.createTempFile();
 		
-		FileVersionId handle = f.registerFileVersion(testFile, false).getVersionId();
+		FileVersionId handle = f.registerFileVersion(testFile, false, true).getVersionId();
 		
 		FileVersion file = f.getFileVersion(handle);
 		Assert.assertNotNull(file);
 	}
 	
 	@Test
-	public void testCleanup() throws IOException, FileManagerException {
+	public void testCleanup() throws IOException, FileManagerException, InterruptedException {
 		File testFile = FileHelper.createTempFile();
 		File testFile2 = FileHelper.createTempFile();
 		
-		f.registerFileVersion(testFile, false);
-		f.registerFileVersion(testFile2, false);
+		f.registerFileVersion(testFile, false, true);
+		f.registerFileVersion(testFile2, false, true);
 		
 		Assert.assertEquals(2, registryFolder.list().length);
+		Thread.sleep(1);
 		f.cleanupCache();
 		Assert.assertEquals(0, registryFolder.list().length);
+
+		f.registerFileVersion(testFile, false, true);
+		f.registerFileVersion(testFile2, false, false);
+		Assert.assertEquals(2, registryFolder.list().length);
+		Thread.sleep(1);
+		f.cleanupCache();
+		Assert.assertEquals(1, registryFolder.list().length);
 	}
 	
 	@Test
@@ -209,8 +217,8 @@ public class FileManagerImplTest {
 		File testFile = FileHelper.createTempFile();
 		File testFolder = FileHelper.createTempFolder();
 		
-		FileVersion fileVersion1 = f.registerFileVersion(testFile, false);
-		FileVersion fileVersion2 = f.registerFileVersion(testFolder, false);
+		FileVersion fileVersion1 = f.registerFileVersion(testFile, false, true);
+		FileVersion fileVersion2 = f.registerFileVersion(testFolder, false, true);
 		
 		f = new FileManagerImpl(registryFolder);
 		FileVersion fileVersionActual1 = f.getFileVersion(fileVersion1.getVersionId());

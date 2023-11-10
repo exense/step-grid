@@ -40,7 +40,7 @@ public abstract class AbstractMessageHandler implements MessageHandler, AgentCon
 	protected FileVersion retrieveFileVersion(String properyName, Map<String,String> properties) throws FileManagerException {
 		FileVersionId fileVersionId = getFileVersionId(properyName, properties);
 		if(fileVersionId!=null) {
-			return agentTokenServices.getFileManagerClient().requestFileVersion(fileVersionId);			
+			return agentTokenServices.getFileManagerClient().requestFileVersion(fileVersionId, true);
 		} else {
 			return null;
 		}

@@ -29,16 +29,27 @@ public class FileVersion {
 	protected FileVersionId versionId;
 
 	protected boolean directory;
+
+	protected boolean cleanable;
+
+	protected long lastAccessTime;
 	
 	public FileVersion() {
-		this(null, null, false);
+		this(null, null, false, true);
 	}
 
+	//Constructor only used in Junit
 	public FileVersion(File file, FileVersionId versionId, boolean directory) {
+		this(file, versionId, directory, true);
+	}
+
+	public FileVersion(File file, FileVersionId versionId, boolean directory, boolean cleanable) {
 		super();
 		this.file = file;
 		this.versionId = versionId;
 		this.directory = directory;
+		this.cleanable = cleanable;
+		this.lastAccessTime = System.currentTimeMillis();
 	}
 
 	public FileVersionId getVersionId() {
@@ -73,6 +84,26 @@ public class FileVersion {
 
 	public void setDirectory(boolean directory) {
 		this.directory = directory;
+	}
+
+	public boolean isCleanable() {
+		return cleanable;
+	}
+
+	public void setCleanable(boolean cleanable) {
+		this.cleanable = cleanable;
+	}
+
+	public long getLastAccessTime() {
+		return lastAccessTime;
+	}
+
+	public void setLastAccessTime(long lastAccessTime) {
+		this.lastAccessTime = lastAccessTime;
+	}
+
+	public void updateLastAccessTime() {
+		this.lastAccessTime = System.currentTimeMillis();
 	}
 
 	@Override

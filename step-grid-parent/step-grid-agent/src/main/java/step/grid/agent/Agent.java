@@ -44,6 +44,7 @@ import step.grid.agent.tokenpool.AgentTokenWrapper;
 import step.grid.contextbuilder.ApplicationContextBuilder;
 import step.grid.filemanager.FileManagerClient;
 import step.grid.filemanager.FileManagerClientImpl;
+import step.grid.filemanager.FileManagerConfiguration;
 import step.grid.tokenpool.Interest;
 
 import java.io.File;
@@ -76,6 +77,7 @@ public class Agent implements AutoCloseable {
 	private final String agentUrl;
 	private final long gracefulShutdownTimeout;
 	private final RegistrationClient registrationClient;
+	private final FileManagerClient fileManagerClient;
 	private volatile boolean stopped = false;
 	private volatile boolean registered = false;
 
@@ -136,7 +138,8 @@ public class Agent implements AutoCloseable {
 		registrationClient = new RegistrationClient(gridUrl, fileServerHost,
 				agentConf.getGridConnectTimeout(), agentConf.getGridReadTimeout());
 
-		FileManagerClient fileManagerClient = initFileManager(registrationClient, agentConf.getWorkingDir());
+
+		fileManagerClient = initFileManager(registrationClient, agentConf.getWorkingDir(), agentConf.getFileManagerConfiguration());
 
 		agentTokenServices = new AgentTokenServices(fileManagerClient);
 		agentTokenServices.setAgentProperties(agentConf.getProperties());
@@ -368,7 +371,7 @@ public class Agent implements AutoCloseable {
 		return result;
 	}
 
-	private FileManagerClient initFileManager(RegistrationClient registrationClient, String workingDir) throws IOException {
+	private FileManagerClient initFileManager(RegistrationClient registrationClient, String workingDir, FileManagerConfiguration fileManagerConfig) throws IOException {
 		String fileManagerDirPath;
 		if(workingDir!=null) {
 			fileManagerDirPath = workingDir;
@@ -381,7 +384,7 @@ public class Agent implements AutoCloseable {
 			Files.createDirectories(fileManagerDir.toPath());
 		}
 		
-		FileManagerClient fileManagerClient = new FileManagerClientImpl(fileManagerDir, registrationClient);
+		FileManagerClient fileManagerClient = new FileManagerClientImpl(fileManagerDir, registrationClient, fileManagerConfig);
 		return fileManagerClient;
 	}
 
@@ -435,6 +438,9 @@ public class Agent implements AutoCloseable {
 			//client is shared between registration tasks and file manager, closing it only once all token are released
 			if (registrationClient != null) {
 				registrationClient.close();
+			}
+			if (fileManagerClient != null) {
+				fileManagerClient.close();
 			}
 		}
 	}

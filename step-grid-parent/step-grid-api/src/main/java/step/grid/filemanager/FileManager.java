@@ -27,7 +27,7 @@ import java.io.InputStream;
  * This cache enables the registration, caching and retrieval of different versions of files.
  *
  */
-public interface FileManager {
+public interface FileManager extends AutoCloseable {
 
 	/**
 	 * Cache the content of the file provided as argument under a specific version for later retrieval
@@ -39,10 +39,11 @@ public interface FileManager {
 	 * @param fileName the file name of the resource to be registered
 	 * @param isDirectory if the resource is a directory (i.e. is zipped) or not
 	 * @param deletePreviousVersions if the previous versions of this file should be deleted
+	 * @param cleanable if this version of the file can be cleaned-up at runtime
 	 * @return the {@link FileVersion} of the registered file. The {@link FileVersionId} can be used for later retrival of this version
 	 * @throws FileManagerException
 	 */
-	public FileVersion registerFileVersion(InputStream inputStream, String fileName, boolean isDirectory, boolean deletePreviousVersions) throws FileManagerException;
+	public FileVersion registerFileVersion(InputStream inputStream, String fileName, boolean isDirectory, boolean deletePreviousVersions, boolean cleanable) throws FileManagerException;
 	
 	/**
 	 * Cache the content of the file provided as argument under a specific version for later retrieval
@@ -52,10 +53,11 @@ public interface FileManager {
 	 * 
 	 * @param file the file to be registered
 	 * @param deletePreviousVersions if the previous versions of this file should be deleted
+	 * @param cleanable if this version of the file can be cleaned-up at runtime
 	 * @return the {@link FileVersion} of the registered file. The {@link FileVersionId} can be used for later retrival of this version
 	 * @throws FileManagerException
 	 */
-	public FileVersion registerFileVersion(File file, boolean deletePreviousVersions) throws FileManagerException;
+	public FileVersion registerFileVersion(File file, boolean deletePreviousVersions, boolean cleanable) throws FileManagerException;
 	
 	/**
 	 * Delete a specific version of a file from the cache
@@ -72,10 +74,11 @@ public interface FileManager {
 	 * @throws FileManagerException
 	 */
 	public FileVersion getFileVersion(FileVersionId fileVersionId) throws FileManagerException;
-	
+
 	/**
 	 * Removes all cache entries of this cache
 	 */
 	public void cleanupCache();
+
 
 }

@@ -62,7 +62,7 @@ public class FileManagerClientImplTest {
 		};
 		
 		fileManagerFolder = FileHelper.createTempFolder();
-		f = new FileManagerClientImpl(fileManagerFolder, fileProvider);
+		f = new FileManagerClientImpl(fileManagerFolder, fileProvider, new FileManagerConfiguration());
 	}
 	
 	@After
@@ -79,11 +79,11 @@ public class FileManagerClientImplTest {
 	 */
 	@Test
 	public void testFileProvider() throws FileManagerException, IOException {
-		FileVersion fileVersionActual1 = f.requestFileVersion(fileVersionId1);
+		FileVersion fileVersionActual1 = f.requestFileVersion(fileVersionId1, true);
 		Assert.assertEquals(1, callCount.get());
 		Assert.assertNotNull(fileVersionActual1);
 		
-		fileVersionActual1 = f.requestFileVersion(fileVersionId1);
+		fileVersionActual1 = f.requestFileVersion(fileVersionId1, true);
 		Assert.assertNotNull(fileVersionActual1);
 		Assert.assertEquals(1, callCount.get());
 		

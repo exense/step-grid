@@ -34,6 +34,7 @@ import org.junit.Test;
 import step.grid.agent.conf.AgentConf;
 import step.grid.agent.conf.TokenConf;
 import step.grid.agent.conf.TokenGroupConf;
+import step.grid.filemanager.FileManagerConfiguration;
 import step.grid.io.AgentError;
 import step.grid.io.AgentErrorCode;
 import step.grid.io.InputMessage;
@@ -62,6 +63,7 @@ public class AgentServicesTest {
 		
 		conf.setTokenGroups(tokenGroups);
 		conf.setGracefulShutdownTimeout(GRACEFUL_SHUTDOWN_TIMEOUT);
+		conf.setFileManagerConfiguration(new FileManagerConfiguration());
 		
 		agent = new Agent(conf);
 	}

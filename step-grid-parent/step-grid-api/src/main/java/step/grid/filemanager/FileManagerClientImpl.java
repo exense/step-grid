@@ -41,14 +41,14 @@ public class FileManagerClientImpl extends AbstractFileManager implements FileMa
 	 * @param cacheFolder the folder to be used to store the {@link FileVersion}s
 	 * @param fileProvider the file provider responsible for the retrieval of the {@link FileVersion} if absent of the cache 
 	 */
-	public FileManagerClientImpl(File cacheFolder, FileVersionProvider fileProvider) {
-		super(cacheFolder);
+	public FileManagerClientImpl(File cacheFolder, FileVersionProvider fileProvider, FileManagerConfiguration fileManagerConfiguration) {
+		super(cacheFolder, fileManagerConfiguration);
 		this.fileProvider = fileProvider;
 		loadCache();
 	}
 
 	@Override
-	public FileVersion requestFileVersion(FileVersionId fileVersionId) throws FileManagerException {
+	public FileVersion requestFileVersion(FileVersionId fileVersionId, boolean cleanable) throws FileManagerException {
 		Map<FileVersionId, FileVersion> versionCache = getVersionMap(fileVersionId.getFileId());
 		synchronized(versionCache) {
 			FileVersion fileVersion = versionCache.get(fileVersionId);
@@ -58,6 +58,7 @@ public class FileManagerClientImpl extends AbstractFileManager implements FileMa
 					
 					long t1 = System.currentTimeMillis();
 					fileVersion = fileProvider.saveFileVersionTo(fileVersionId, container);
+					fileVersion.setCleanable(cleanable);
 					if(logger.isDebugEnabled()) {
 						logger.debug("Retrieved file version "+fileVersion+" in "+Long.toString(System.currentTimeMillis()-t1)+"ms");
 					}
@@ -69,6 +70,7 @@ public class FileManagerClientImpl extends AbstractFileManager implements FileMa
 					return null;
 				}
 			} else {
+				fileVersion.updateLastAccessTime();
 				return fileVersion;
 			}
 		}
@@ -76,13 +78,6 @@ public class FileManagerClientImpl extends AbstractFileManager implements FileMa
 	
 	@Override
 	public void removeFileVersionFromCache(FileVersionId fileVersionId) {
-		Map<FileVersionId, FileVersion> versionCache = getVersionMap(fileVersionId.getFileId());
-		synchronized(versionCache) {
-			FileVersion fileVersion = versionCache.get(fileVersionId);
-			if(fileVersion != null) {
-				FileHelper.deleteFolder(getContainerFolder(fileVersionId));
-				versionCache.remove(fileVersionId);
-			}
-		}
+		removeFileVersion(fileVersionId);
 	}
 }

@@ -34,15 +34,25 @@ public class RemoteApplicationContextFactoryTest {
 	public void test() throws FileManagerException {
 		final FileVersionId fileVersionId = new FileVersionId("id1", "1");
 		FileManagerClient fileManagerClient = new FileManagerClient() {
-			
+
 			@Override
-			public FileVersion requestFileVersion(FileVersionId fileVersionId) throws FileManagerException {
+			public FileVersion requestFileVersion(FileVersionId fileVersionId, boolean cleanable) throws FileManagerException {
 				return new FileVersion(new File(""), fileVersionId, false);
 			}
 
 			@Override
 			public void removeFileVersionFromCache(FileVersionId fileVersionId) {
 				
+			}
+
+			@Override
+			public void cleanupCache() {
+
+			}
+
+			@Override
+			public void close() throws Exception {
+
 			}
 		};
 		RemoteApplicationContextFactory f1 = new RemoteApplicationContextFactory(fileManagerClient, fileVersionId);

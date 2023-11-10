@@ -165,13 +165,23 @@ public abstract class AbstractGridClientImpl implements GridClient {
 	protected void initLocalAgentServices() {
 		FileManagerClient fileManagerClient = new FileManagerClient() {
 			@Override
-			public FileVersion requestFileVersion(FileVersionId fileVersionId) throws FileManagerException {
+			public FileVersion requestFileVersion(FileVersionId fileVersionId, boolean cleanable) throws FileManagerException {
 				return getRegisteredFile(fileVersionId);
 			}
 	
 			@Override
 			public void removeFileVersionFromCache(FileVersionId fileVersionId) {
 				unregisterFile(fileVersionId);
+			}
+
+			@Override
+			public void cleanupCache() {
+
+			}
+
+			@Override
+			public void close() throws Exception {
+
 			}
 		};
 		
@@ -469,13 +479,13 @@ public abstract class AbstractGridClientImpl implements GridClient {
 	}
 
 	@Override
-	public FileVersion registerFile(File file) throws FileManagerException {
-		return grid.registerFile(file);
+	public FileVersion registerFile(File file, boolean cleanable) throws FileManagerException {
+		return grid.registerFile(file, cleanable);
 	}
 
 	@Override
-	public FileVersion registerFile(InputStream inputStream, String fileName, boolean isDirectory) throws FileManagerException {
-		return grid.registerFile(inputStream, fileName, isDirectory);
+	public FileVersion registerFile(InputStream inputStream, String fileName, boolean isDirectory, boolean cleanable) throws FileManagerException {
+		return grid.registerFile(inputStream, fileName, isDirectory, cleanable);
 	}
 	
 	@Override

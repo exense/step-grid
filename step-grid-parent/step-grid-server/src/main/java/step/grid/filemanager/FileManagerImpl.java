@@ -25,7 +25,6 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.util.Arrays;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -60,7 +59,7 @@ public class FileManagerImpl extends AbstractFileManager implements FileManager 
 	}
 	
 	public FileManagerImpl(File cacheFolder, FileManagerImplConfig config) {
-		super(cacheFolder);
+		super(cacheFolder, config);
 		loadCache();
 		
 		fileModificationCache = CacheBuilder.newBuilder()
@@ -73,53 +72,6 @@ public class FileManagerImpl extends AbstractFileManager implements FileManager 
 						}
 					});
 	}
-	
-	public static class FileManagerImplConfig {
-		
-		int fileLastModificationCacheConcurrencyLevel = 4;
-		int fileLastModificationCacheMaximumsize = 1000;
-		int fileLastModificationCacheExpireAfter = 500;
-		
-		public FileManagerImplConfig() {
-			super();
-		}
-
-		public FileManagerImplConfig(int fileLastModificationCacheConcurrencyLevel,
-				int fileLastModificationCacheMaximumsize, int fileLastModificationCacheExpireAfter) {
-			super();
-			this.fileLastModificationCacheConcurrencyLevel = fileLastModificationCacheConcurrencyLevel;
-			this.fileLastModificationCacheMaximumsize = fileLastModificationCacheMaximumsize;
-			this.fileLastModificationCacheExpireAfter = fileLastModificationCacheExpireAfter;
-		}
-		
-		public int getFileLastModificationCacheConcurrencyLevel() {
-			return fileLastModificationCacheConcurrencyLevel;
-		}
-		
-		public void setFileLastModificationCacheConcurrencyLevel(int fileLastModificationCacheConcurrencyLevel) {
-			this.fileLastModificationCacheConcurrencyLevel = fileLastModificationCacheConcurrencyLevel;
-		}
-		
-		public int getFileLastModificationCacheMaximumsize() {
-			return fileLastModificationCacheMaximumsize;
-		}
-		
-		public void setFileLastModificationCacheMaximumsize(int fileLastModificationCacheMaximumsize) {
-			this.fileLastModificationCacheMaximumsize = fileLastModificationCacheMaximumsize;
-		}
-		
-		public int getFileLastModificationCacheExpireAfter() {
-			return fileLastModificationCacheExpireAfter;
-		}
-		
-		/**
-		 * Specifies the expiration duration of the last modification cache entries 
-		 * @param fileLastModificationCacheExpireAfter the expiration duration in ms. A 0 value disables the caching.
-		 */
-		public void setFileLastModificationCacheExpireAfter(int fileLastModificationCacheExpireAfter) {
-			this.fileLastModificationCacheExpireAfter = fileLastModificationCacheExpireAfter;
-		}
-	}
 
 	@Override
 	protected void onFileLoad(String registryIndex, String fileId) {
@@ -128,7 +80,7 @@ public class FileManagerImpl extends AbstractFileManager implements FileManager 
 	}
 	
 	@Override
-	public FileVersion registerFileVersion(File file, boolean deletePreviousVersions) throws FileManagerException {
+	public FileVersion registerFileVersion(File file, boolean deletePreviousVersions, boolean cleanable) throws FileManagerException {
 		String registryIndex = getRegistryIndex(file);
 		
 		String fileId = fileIdRegistry.computeIfAbsent(registryIndex, f->UUID.randomUUID().toString());
@@ -138,7 +90,7 @@ public class FileManagerImpl extends AbstractFileManager implements FileManager 
 
 		return registerFileVersion(deletePreviousVersions, registryIndex, fileId, fileVersionId, () -> {
 			try {
-				return storeFile(file, fileVersionId);
+				return storeFile(file, fileVersionId, cleanable);
 			} catch (FileManagerException | IOException e) {
 				throw new RuntimeException(e);
 			}
@@ -147,7 +99,7 @@ public class FileManagerImpl extends AbstractFileManager implements FileManager 
 
 
 	@Override
-	public FileVersion registerFileVersion(InputStream inputStream, String fileName, boolean isDirectory, boolean deletePreviousVersions) throws FileManagerException {
+	public FileVersion registerFileVersion(InputStream inputStream, String fileName, boolean isDirectory, boolean deletePreviousVersions, boolean cleanable) throws FileManagerException {
 		String registryIndex = fileName;
 		
 		String fileId = fileIdRegistry.computeIfAbsent(registryIndex, f->UUID.randomUUID().toString());
@@ -167,7 +119,7 @@ public class FileManagerImpl extends AbstractFileManager implements FileManager 
 		final FileVersionId fileVersionId = new FileVersionId(fileId, version);
 		FileVersion fileVersion = registerFileVersion(deletePreviousVersions, registryIndex, fileId, fileVersionId, () -> {
 			try {
-				return storeStream(tempFile.toFile(), fileName, fileVersionId, isDirectory);
+				return storeStream(tempFile.toFile(), fileName, fileVersionId, isDirectory, cleanable);
 			} catch (FileManagerException | IOException e) {
 				throw new RuntimeException(e);
 			}
@@ -211,6 +163,7 @@ public class FileManagerImpl extends AbstractFileManager implements FileManager 
 					logger.debug("Registered file version '" + fileVersion + "'");
 				}
 			} else {
+				fileVersion.updateLastAccessTime();
 				if(logger.isDebugEnabled()) {
 					logger.debug("File '" + filePath + "' with version "+fileVersionId + " already registered.");
 				}
@@ -220,7 +173,7 @@ public class FileManagerImpl extends AbstractFileManager implements FileManager 
 		}
 	}
 
-	private FileVersion storeFile(File source, FileVersionId fileVersionId) throws FileManagerException, IOException {
+	private FileVersion storeFile(File source, FileVersionId fileVersionId, boolean cleanable) throws FileManagerException, IOException {
 		File container = getFileVersionCacheFolder(fileVersionId);
 		container.mkdirs();
 		
@@ -236,12 +189,12 @@ public class FileManagerImpl extends AbstractFileManager implements FileManager 
 			isDirectory = true;
 		}
 		
-		FileVersion fileVersion = new FileVersion(target, fileVersionId, isDirectory);
+		FileVersion fileVersion = new FileVersion(target, fileVersionId, isDirectory, cleanable);
 		createMetaFile(source.getAbsolutePath(), fileVersion);
 		return fileVersion;
 	}
 	
-	private FileVersion storeStream(File tempFileFromStream, String fileName, FileVersionId fileVersionId, boolean isDirectory) throws FileManagerException, IOException {
+	private FileVersion storeStream(File tempFileFromStream, String fileName, FileVersionId fileVersionId, boolean isDirectory, boolean cleanable) throws FileManagerException, IOException {
 		File container = getFileVersionCacheFolder(fileVersionId);
 		container.mkdirs();
 		
@@ -253,7 +206,7 @@ public class FileManagerImpl extends AbstractFileManager implements FileManager 
 		}
 		Files.move(tempFileFromStream.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
 		
-		FileVersion fileVersion = new FileVersion(target, fileVersionId, isDirectory);
+		FileVersion fileVersion = new FileVersion(target, fileVersionId, isDirectory, cleanable);
 		createMetaFile(fileName, fileVersion);
 		return fileVersion;
 	}
@@ -275,6 +228,7 @@ public class FileManagerImpl extends AbstractFileManager implements FileManager 
 			if(fileVersion == null) {
 				return null;
 			} else {
+				fileVersion.updateLastAccessTime();
 				return fileVersion;
 			}
 		}
@@ -282,26 +236,10 @@ public class FileManagerImpl extends AbstractFileManager implements FileManager 
 	
 	@Override
 	public void unregisterFileVersion(FileVersionId fileVersionId) {
-		Map<FileVersionId, FileVersion> versionCache = getVersionMap(fileVersionId.getFileId());
-		synchronized(versionCache) {
-			FileVersion fileVersion = versionCache.get(fileVersionId);
-			if(fileVersion != null) {
-				deleteFileVersionContainer(fileVersionId);
-				versionCache.remove(fileVersionId);
-			}
-		}
+		removeFileVersion(fileVersionId);
 	}
 
-	protected void deleteFileVersionContainer(FileVersionId fileVersionId) {
-		FileHelper.deleteFolder(getContainerFolder(fileVersionId));
-	}
 
-	@Override
-	public void cleanupCache() {
-		fileHandleCache.clear();
-		fileIdRegistry.clear();
-		Arrays.asList(cacheFolder.listFiles()).forEach(f->FileHelper.deleteFolder(f));
-	}
 
 	private String getMD5Checksum(InputStream is) throws IOException {
 		return DigestUtils.md5Hex(is);

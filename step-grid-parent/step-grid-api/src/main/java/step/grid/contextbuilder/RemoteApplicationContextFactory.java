@@ -49,7 +49,7 @@ public class RemoteApplicationContextFactory extends ApplicationContextFactory {
 	}
 
 	private FileVersion requestLatestClassPathFolder() throws FileManagerException {
-		return fileManager.requestFileVersion(remoteClassLoaderFolder);			
+		return fileManager.requestFileVersion(remoteClassLoaderFolder, false);
 	}
 
 	@Override

@@ -134,7 +134,7 @@ public class RegistrationClient implements FileVersionProvider {
 						logger.debug("Uncompressed file "+ fileVersionId +" in "+(System.currentTimeMillis()-t2)+"ms to "+file.getAbsoluteFile());
 					}
 					
-					FileVersion fileVersion = new FileVersion(file, fileVersionId, isDirectory);
+					FileVersion fileVersion = new FileVersion(file, fileVersionId, isDirectory, true);
 					return fileVersion;				
 				} else {
 					throw new RuntimeException("Unable to find filename in header: "+response.getHeaderString("content-disposition"));
