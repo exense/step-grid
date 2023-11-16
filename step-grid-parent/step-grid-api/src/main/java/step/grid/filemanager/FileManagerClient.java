@@ -33,11 +33,11 @@ public interface FileManagerClient extends AutoCloseable {
 	 * Request the specific version of a file.
 	 * 
 	 * @param fileVersionId the version of the File to be retrieved
-	 * @param cleanable if this version of the file can be cleaned-up at runtime
+	 * @param cleanableFromClientCache if this version of the file can be cleaned-up from the client cache at runtime. Refer to the cleanup job for details {@link AbstractFileManager#scheduleCleanupJob() }
 	 * @return the {@link FileVersion} corresponding to the version specified or <code>null</code> if the version isn't available
 	 * @throws FileManagerException
 	 */
-	FileVersion requestFileVersion(FileVersionId fileVersionId, boolean cleanable) throws FileManagerException;
+	FileVersion requestFileVersion(FileVersionId fileVersionId, boolean cleanableFromClientCache) throws FileManagerException;
 	
 	/**
 	 * Delete a specific version of a file from the cache

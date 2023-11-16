@@ -165,7 +165,7 @@ public abstract class AbstractGridClientImpl implements GridClient {
 	protected void initLocalAgentServices() {
 		FileManagerClient fileManagerClient = new FileManagerClient() {
 			@Override
-			public FileVersion requestFileVersion(FileVersionId fileVersionId, boolean cleanable) throws FileManagerException {
+			public FileVersion requestFileVersion(FileVersionId fileVersionId, boolean cleanableFromClientCache) throws FileManagerException {
 				return getRegisteredFile(fileVersionId);
 			}
 	

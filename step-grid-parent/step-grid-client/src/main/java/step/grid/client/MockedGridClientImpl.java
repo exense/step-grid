@@ -50,7 +50,7 @@ public class MockedGridClientImpl extends AbstractGridClientImpl {
 	@Override
 	public FileVersion registerFile(File file, boolean cleanable) throws FileManagerException {
 		FileVersionId id = new FileVersionId(UUID.randomUUID().toString(), "");
-		FileVersion fileVersion = new FileVersion(file, id, false, cleanable);
+		FileVersion fileVersion = new FileVersion(file, id, false);
 		fileVersionCache.put(id, fileVersion);
 		return fileVersion;
 	}
@@ -97,7 +97,7 @@ public class MockedGridClientImpl extends AbstractGridClientImpl {
 		FileManagerClient fileManagerClient = new FileManagerClient() {
 
 			@Override
-			public FileVersion requestFileVersion(FileVersionId fileVersionId, boolean cleanable) throws FileManagerException {
+			public FileVersion requestFileVersion(FileVersionId fileVersionId, boolean cleanableFromClientCache) throws FileManagerException {
 				return getRegisteredFile(fileVersionId);
 			}
 

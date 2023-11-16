@@ -21,6 +21,7 @@ package step.grid;
 import java.io.File;
 import java.io.InputStream;
 
+import step.grid.filemanager.AbstractFileManager;
 import step.grid.filemanager.FileManagerException;
 import step.grid.filemanager.FileVersion;
 import step.grid.filemanager.FileVersionId;
@@ -32,7 +33,7 @@ public interface GridFileService {
 	 * 
 	 * @param file the file to be registered to the GRID
 	 * @return an handle to the registered file. This handle will be used to retrieve the registered file
-	 * @param cleanable if this version of the file can be cleaned-up at runtime
+	 * @param cleanable if this version of the file can be cleaned-up at runtime. Refer to the cleanup job for details {@link AbstractFileManager#scheduleCleanupJob() }
 	 * @throws FileManagerException 
 	 */
 	FileVersion registerFile(File file, boolean cleanable) throws FileManagerException;

@@ -22,6 +22,15 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -33,20 +42,24 @@ import ch.exense.commons.io.FileHelper;
 public class FileManagerImplTest {
 
 	protected File registryFolder;
-	protected FileManagerImpl f;
-	
+	protected TestFileManagerImpl f;
+	private FileManagerImplConfig config;
+
 	@Before
 	public void before() throws IOException {
 		registryFolder = FileHelper.createTempFolder();
-		FileManagerImplConfig config = new FileManagerImplConfig();
+		config = new FileManagerImplConfig();
 		// disable caching
 		config.setFileLastModificationCacheExpireAfter(0);
-		config.setCleanupLastAccessTimeThresholdMinutes(0);
-		f = new FileManagerImpl(registryFolder, config);
+		//disable file cache cleanup, it is enabled for individual tests
+		config.setCleanupJobEnabled(false);
+		config.setConfigurationTimeUnit(TimeUnit.MILLISECONDS);
+		f = new TestFileManagerImpl(registryFolder, config);
 	}
 	
 	@After
-	public void after() throws IOException {
+	public void after() throws Exception {
+		f.close();
 		FileHelper.deleteFolder(registryFolder);
 	}
 	
@@ -193,6 +206,8 @@ public class FileManagerImplTest {
 	
 	@Test
 	public void testCleanup() throws IOException, FileManagerException, InterruptedException {
+		config.setCleanupLastAccessTimeThresholdMinutes(1);
+
 		File testFile = FileHelper.createTempFile();
 		File testFile2 = FileHelper.createTempFile();
 		
@@ -211,6 +226,75 @@ public class FileManagerImplTest {
 		f.cleanupCache();
 		Assert.assertEquals(1, registryFolder.list().length);
 	}
+
+	@Test
+	public void testCleanupJob() throws IOException, FileManagerException, InterruptedException {
+		config.setCleanupLastAccessTimeThresholdMinutes(200);
+		config.setCleanupIntervalMinutes(100);
+		config.setCleanupJobEnabled(true);
+		f.scheduleCleanupJob();//start the job
+
+		File testFile = FileHelper.createTempFile();
+		File testFile2 = FileHelper.createTempFile();
+
+		f.registerFileVersion(testFile, false, true);
+		f.registerFileVersion(testFile2, false, true);
+
+		Assert.assertEquals(2, registryFolder.list().length);
+		Thread.sleep(100);//last access threshold is 200ms, files should still be in
+		Assert.assertEquals(2, registryFolder.list().length);
+		Thread.sleep(200);//job run every 100ms + 200 ms last access threshold, file should be cleaned up
+		Assert.assertEquals(0, registryFolder.list().length);
+
+		f.registerFileVersion(testFile, false, true);
+		f.registerFileVersion(testFile2, false, false);
+		Assert.assertEquals(2, registryFolder.list().length);
+		Thread.sleep(100);//last access threshold is 200ms, files should still be in
+		Assert.assertEquals(2, registryFolder.list().length);
+		Thread.sleep(200);
+		Assert.assertEquals(1, registryFolder.list().length);
+	}
+
+	@Test
+	public void testCleanupJobParallel() throws IOException, FileManagerException, InterruptedException, ExecutionException {
+		config.setCleanupLastAccessTimeThresholdMinutes(10);
+		config.setCleanupIntervalMinutes(5);
+		config.setCleanupJobEnabled(true);
+		f.scheduleCleanupJob();//start the job
+
+		File testFile = FileHelper.createTempFile();
+		File testFile2 = FileHelper.createTempFile();
+		AtomicReference<String> keyPairValidationStringRef = new AtomicReference<String>();
+		List<Future<?>> futures = new ArrayList<>();
+		int nThreads = 5;
+		int nIterations = 500;
+		ExecutorService threadPool = Executors.newFixedThreadPool(nThreads);
+		for (int i = 0; i < nThreads; i++) {
+			Future<?> future = threadPool.submit(() -> {
+				try {
+					for (int j = 0; j < nIterations; j++) {
+						f.registerFileVersion(testFile, false, true);
+						f.registerFileVersion(testFile2, false, false);
+					}
+				} catch (Exception e) {
+					throw new RuntimeException(e);
+				}
+			});
+			futures.add(future);
+		}
+		threadPool.shutdown();
+		threadPool.awaitTermination(10, TimeUnit.SECONDS);
+		for (Future<?> future : futures) {
+			future.get();
+		}
+
+		Assert.assertEquals(2, registryFolder.list().length);
+		int fileStoreCount = f.getStoreCount().get();
+		//depends on the perf of the system, should be at least 2 and way below 5*500
+		Assert.assertTrue( fileStoreCount >= 2 && fileStoreCount < 50 );
+		Thread.sleep(300);
+		Assert.assertEquals(1, registryFolder.list().length);
+	}
 	
 	@Test
 	public void testCacheReload() throws IOException, FileManagerException {
@@ -220,13 +304,30 @@ public class FileManagerImplTest {
 		FileVersion fileVersion1 = f.registerFileVersion(testFile, false, true);
 		FileVersion fileVersion2 = f.registerFileVersion(testFolder, false, true);
 		
-		f = new FileManagerImpl(registryFolder);
+		f = new TestFileManagerImpl(registryFolder, new FileManagerImplConfig());
 		FileVersion fileVersionActual1 = f.getFileVersion(fileVersion1.getVersionId());
 		FileVersion fileVersionActual2 = f.getFileVersion(fileVersion2.getVersionId());
 		
 		Assert.assertEquals(fileVersion1, fileVersionActual1);
 		Assert.assertEquals(fileVersion2, fileVersionActual2);
 	}
-	
+
+	public static class TestFileManagerImpl extends FileManagerImpl {
+		private AtomicInteger storeCount = new AtomicInteger(0);
+		public TestFileManagerImpl(File cacheFolder, FileManagerImplConfig config) {
+			super(cacheFolder, config);
+		}
+
+		@Override
+		protected CachedFileVersion storeFile(File source, FileVersionId fileVersionId, boolean cleanable) throws FileManagerException, IOException {
+			storeCount.incrementAndGet();
+			CachedFileVersion cachedFileVersion = super.storeFile(source, fileVersionId, cleanable);
+			return cachedFileVersion;
+		}
+
+		public AtomicInteger getStoreCount() {
+			return storeCount;
+		}
+	}
 	
 }

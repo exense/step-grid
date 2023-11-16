@@ -48,31 +48,36 @@ public class FileManagerClientImpl extends AbstractFileManager implements FileMa
 	}
 
 	@Override
-	public FileVersion requestFileVersion(FileVersionId fileVersionId, boolean cleanable) throws FileManagerException {
-		Map<FileVersionId, FileVersion> versionCache = getVersionMap(fileVersionId.getFileId());
-		synchronized(versionCache) {
-			FileVersion fileVersion = versionCache.get(fileVersionId);
-			if(fileVersion == null) {
-				if(fileProvider != null) {
-					File container = getContainerFolder(fileVersionId);
-					
-					long t1 = System.currentTimeMillis();
-					fileVersion = fileProvider.saveFileVersionTo(fileVersionId, container);
-					fileVersion.setCleanable(cleanable);
-					if(logger.isDebugEnabled()) {
-						logger.debug("Retrieved file version "+fileVersion+" in "+Long.toString(System.currentTimeMillis()-t1)+"ms");
+	public FileVersion requestFileVersion(FileVersionId fileVersionId, boolean cleanableFromClientCache) throws FileManagerException {
+		try {
+			readWriteLock.readLock().lock();
+			Map<FileVersionId, CachedFileVersion> versionCache = getVersionMap(fileVersionId.getFileId());
+			synchronized (versionCache) {
+				CachedFileVersion cachedFileVersion = versionCache.get(fileVersionId);
+				if (cachedFileVersion == null) {
+					if (fileProvider != null) {
+						File container = getContainerFolder(fileVersionId);
+
+						long t1 = System.currentTimeMillis();
+						FileVersion fileVersion = fileProvider.saveFileVersionTo(fileVersionId, container);
+						cachedFileVersion = new CachedFileVersion(fileVersion, cleanableFromClientCache);
+						if (logger.isDebugEnabled()) {
+							logger.debug("Retrieved file version " + fileVersion + " in " + Long.toString(System.currentTimeMillis() - t1) + "ms");
+						}
+
+						createMetaFile(null, cachedFileVersion);
+						versionCache.put(fileVersionId, cachedFileVersion);
+						return fileVersion;
+					} else {
+						return null;
 					}
-					
-					createMetaFile(null, fileVersion);
-					versionCache.put(fileVersionId, fileVersion);
-					return fileVersion;
 				} else {
-					return null;
+					cachedFileVersion.updateLastAccessTime();
+					return cachedFileVersion.getFileVersion();
 				}
-			} else {
-				fileVersion.updateLastAccessTime();
-				return fileVersion;
 			}
+		} finally {
+			readWriteLock.readLock().unlock();
 		}
 	}
 	

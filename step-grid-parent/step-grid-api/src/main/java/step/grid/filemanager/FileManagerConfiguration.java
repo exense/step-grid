@@ -18,17 +18,24 @@
  ******************************************************************************/
 package step.grid.filemanager;
 
+import java.util.concurrent.TimeUnit;
+
 public class FileManagerConfiguration {
 
-	long cleanupLastAccessTimeThresholdMinutes = 1440;
+	private TimeUnit configurationTimeUnit = TimeUnit.MINUTES;
 
-	boolean cleanupJobEnabled = true;
+	private long cleanupLastAccessTimeThresholdMinutes = 1440;
 
-	long cleanupIntervalMinutes = 60;
+	private boolean cleanupJobEnabled = true;
+
+	private long cleanupIntervalMinutes = 60;
 
 	public FileManagerConfiguration() {
 	}
 
+	/**
+	 * @return the period of time in minutes since the last access of a cached file before it becomes eligible for cleanup. Refer to the cleanup job for details {@link AbstractFileManager#scheduleCleanupJob() }
+	 */
 	public long getCleanupLastAccessTimeThresholdMinutes() {
 		return cleanupLastAccessTimeThresholdMinutes;
 	}
@@ -37,6 +44,9 @@ public class FileManagerConfiguration {
 		this.cleanupLastAccessTimeThresholdMinutes = cleanupLastAccessTimeThresholdMinutes;
 	}
 
+	/**
+	 * @return whether the {@link AbstractFileManager#scheduleCleanupJob() cleanup job} should be enabled
+	 */
 	public boolean isCleanupJobEnabled() {
 		return cleanupJobEnabled;
 	}
@@ -45,11 +55,26 @@ public class FileManagerConfiguration {
 		this.cleanupJobEnabled = cleanupJobEnabled;
 	}
 
+	/**
+	 * @return the frequency of cleanup job in minutes. Refer to {@link AbstractFileManager#scheduleCleanupJob() } for more details
+	 */
 	public long getCleanupIntervalMinutes() {
 		return cleanupIntervalMinutes;
 	}
 
 	public void setCleanupIntervalMinutes(long cleanupIntervalMinutes) {
 		this.cleanupIntervalMinutes = cleanupIntervalMinutes;
+	}
+
+	public TimeUnit getConfigurationTimeUnit() {
+		return configurationTimeUnit;
+	}
+
+	/**
+	 * Change the time unit used for the cleanup scheduled job for junit tests, default time unit is Minutes
+	 * @param configurationTimeUnit
+	 */
+	protected void setConfigurationTimeUnit(TimeUnit configurationTimeUnit) {
+		this.configurationTimeUnit = configurationTimeUnit;
 	}
 }

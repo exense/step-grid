@@ -39,7 +39,7 @@ public interface FileManager extends AutoCloseable {
 	 * @param fileName the file name of the resource to be registered
 	 * @param isDirectory if the resource is a directory (i.e. is zipped) or not
 	 * @param deletePreviousVersions if the previous versions of this file should be deleted
-	 * @param cleanable if this version of the file can be cleaned-up at runtime
+	 * @param cleanable if this version of the file can be cleaned-up at runtime. Refer to the cleanup job for details {@link AbstractFileManager#scheduleCleanupJob() }
 	 * @return the {@link FileVersion} of the registered file. The {@link FileVersionId} can be used for later retrival of this version
 	 * @throws FileManagerException
 	 */
@@ -53,7 +53,7 @@ public interface FileManager extends AutoCloseable {
 	 * 
 	 * @param file the file to be registered
 	 * @param deletePreviousVersions if the previous versions of this file should be deleted
-	 * @param cleanable if this version of the file can be cleaned-up at runtime
+	 * @param cleanable if this version of the file can be cleaned-up at runtime. Refer to the cleanup job for details {@link AbstractFileManager#scheduleCleanupJob() }
 	 * @return the {@link FileVersion} of the registered file. The {@link FileVersionId} can be used for later retrival of this version
 	 * @throws FileManagerException
 	 */

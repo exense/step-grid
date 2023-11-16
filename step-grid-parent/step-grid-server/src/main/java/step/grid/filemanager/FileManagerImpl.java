@@ -48,7 +48,7 @@ import ch.exense.commons.io.FileHelper;
  *
  */
 public class FileManagerImpl extends AbstractFileManager implements FileManager {
-	
+
 	private static final Logger logger = LoggerFactory.getLogger(FileManagerImpl.class);
 
 	protected ConcurrentHashMap<String, String> fileIdRegistry = new ConcurrentHashMap<>();
@@ -134,46 +134,47 @@ public class FileManagerImpl extends AbstractFileManager implements FileManager 
 	
 
 	private FileVersion registerFileVersion(boolean deletePreviousVersions, String filePath, String fileId,
-			FileVersionId fileVersionId, Supplier<FileVersion> storeFunction) throws FileManagerException {
+			FileVersionId fileVersionId, Supplier<CachedFileVersion> storeFunction) throws FileManagerException {
 		if(logger.isDebugEnabled()) {
 			logger.debug("Registering file '" + filePath + "' with version "+fileVersionId);
 		}
-		
-		Map<FileVersionId, FileVersion> versionCache = getVersionMap(fileId);
+		try {
+			readWriteLock.readLock().lock();
+			Map<FileVersionId, CachedFileVersion> versionCache = getVersionMap(fileId);
+			synchronized (versionCache) {
+				if (deletePreviousVersions) {
+					if (logger.isDebugEnabled()) {
+						logger.debug("Removing previous versions for file '" + filePath + "'");
+					}
+					versionCache.clear();
+					FileHelper.deleteFolder(getFileCacheFolder(fileId));
+				}
 
-		synchronized (versionCache) {
-			if(deletePreviousVersions) {
-				if(logger.isDebugEnabled()) {
-					logger.debug("Removing previous versions for file '" + filePath + "'");
-				}
-				versionCache.clear();
-				FileHelper.deleteFolder(getFileCacheFolder(fileId));
-			}
-			
-			FileVersion fileVersion = versionCache.get(fileVersionId);
-			
-			if(fileVersion == null) {
-				try {
-					fileVersion = storeFunction.get();
-				} catch (Exception e) {
+				CachedFileVersion cachedFileVersion = versionCache.get(fileVersionId);
+				if (cachedFileVersion == null) {
+					try {
+						cachedFileVersion = storeFunction.get();
+					} catch (Exception e) {
 					throw new FileManagerException(fileVersionId, "Error while registering file " + filePath, e);
+					}
+					versionCache.put(fileVersionId, cachedFileVersion);
+					if (logger.isDebugEnabled()) {
+						logger.debug("Registered file version '" + cachedFileVersion.getFileVersion() + "'");
+					}
+				} else {
+					cachedFileVersion.updateLastAccessTime();
+					if (logger.isDebugEnabled()) {
+						logger.debug("File '" + filePath + "' with version " + fileVersionId + " already registered.");
+					}
 				}
-				versionCache.put(fileVersionId, fileVersion);
-				if(logger.isDebugEnabled()) {
-					logger.debug("Registered file version '" + fileVersion + "'");
-				}
-			} else {
-				fileVersion.updateLastAccessTime();
-				if(logger.isDebugEnabled()) {
-					logger.debug("File '" + filePath + "' with version "+fileVersionId + " already registered.");
-				}
+				return cachedFileVersion.getFileVersion();
 			}
-			
-			return fileVersion;
+		} finally {
+			readWriteLock.readLock().unlock();
 		}
 	}
 
-	private FileVersion storeFile(File source, FileVersionId fileVersionId, boolean cleanable) throws FileManagerException, IOException {
+	protected CachedFileVersion storeFile(File source, FileVersionId fileVersionId, boolean cleanable) throws FileManagerException, IOException {
 		File container = getFileVersionCacheFolder(fileVersionId);
 		container.mkdirs();
 		
@@ -189,12 +190,13 @@ public class FileManagerImpl extends AbstractFileManager implements FileManager 
 			isDirectory = true;
 		}
 		
-		FileVersion fileVersion = new FileVersion(target, fileVersionId, isDirectory, cleanable);
-		createMetaFile(source.getAbsolutePath(), fileVersion);
-		return fileVersion;
+		FileVersion fileVersion = new FileVersion(target, fileVersionId, isDirectory);
+		CachedFileVersion cachedFileVersion = new CachedFileVersion(fileVersion, cleanable);
+		createMetaFile(source.getAbsolutePath(), cachedFileVersion);
+		return cachedFileVersion;
 	}
 	
-	private FileVersion storeStream(File tempFileFromStream, String fileName, FileVersionId fileVersionId, boolean isDirectory, boolean cleanable) throws FileManagerException, IOException {
+	private CachedFileVersion storeStream(File tempFileFromStream, String fileName, FileVersionId fileVersionId, boolean isDirectory, boolean cleanable) throws FileManagerException, IOException {
 		File container = getFileVersionCacheFolder(fileVersionId);
 		container.mkdirs();
 		
@@ -206,9 +208,10 @@ public class FileManagerImpl extends AbstractFileManager implements FileManager 
 		}
 		Files.move(tempFileFromStream.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
 		
-		FileVersion fileVersion = new FileVersion(target, fileVersionId, isDirectory, cleanable);
-		createMetaFile(fileName, fileVersion);
-		return fileVersion;
+		FileVersion fileVersion = new FileVersion(target, fileVersionId, isDirectory);
+		CachedFileVersion cachedFileVersion = new CachedFileVersion(fileVersion, cleanable);
+		createMetaFile(fileName, cachedFileVersion);
+		return cachedFileVersion;
 	}
 	
 
@@ -222,15 +225,20 @@ public class FileManagerImpl extends AbstractFileManager implements FileManager 
 	
 	@Override
 	public FileVersion getFileVersion(FileVersionId fileVersionId) throws FileManagerException {
-		Map<FileVersionId, FileVersion> versionCache = getVersionMap(fileVersionId.getFileId());
-		synchronized(versionCache) {
-			FileVersion fileVersion = versionCache.get(fileVersionId);
-			if(fileVersion == null) {
-				return null;
-			} else {
-				fileVersion.updateLastAccessTime();
-				return fileVersion;
+		try {
+			readWriteLock.readLock().lock();
+			Map<FileVersionId, CachedFileVersion> versionCache = getVersionMap(fileVersionId.getFileId());
+			synchronized (versionCache) {
+				CachedFileVersion cachedFileVersion = versionCache.get(fileVersionId);
+				if (cachedFileVersion == null) {
+					return null;
+				} else {
+					cachedFileVersion.updateLastAccessTime();
+					return cachedFileVersion.getFileVersion();
+				}
 			}
+		} finally {
+			readWriteLock.readLock().unlock();
 		}
 	}
 	

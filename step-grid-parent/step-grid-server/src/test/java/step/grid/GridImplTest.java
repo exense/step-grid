@@ -74,6 +74,8 @@ public class GridImplTest {
 
 		FileVersion version = grid.registerFile(testFile, false);
 
+		Thread.sleep(1);
+
 		grid.cleanupFileManagerCache();
 
 		Assert.assertEquals(version, grid.getRegisteredFile(version.getVersionId()));

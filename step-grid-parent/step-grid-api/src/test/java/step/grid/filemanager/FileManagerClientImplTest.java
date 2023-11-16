@@ -21,6 +21,7 @@ package step.grid.filemanager;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.After;
@@ -62,7 +63,12 @@ public class FileManagerClientImplTest {
 		};
 		
 		fileManagerFolder = FileHelper.createTempFolder();
-		f = new FileManagerClientImpl(fileManagerFolder, fileProvider, new FileManagerConfiguration());
+		FileManagerConfiguration fileManagerConfiguration = new FileManagerConfiguration();
+		//configure the cleanup schedule job for junit and start it
+		fileManagerConfiguration.setConfigurationTimeUnit(TimeUnit.MILLISECONDS);
+		fileManagerConfiguration.setCleanupLastAccessTimeThresholdMinutes(200);
+		fileManagerConfiguration.setCleanupIntervalMinutes(100);
+		f = new FileManagerClientImpl(fileManagerFolder, fileProvider, fileManagerConfiguration);
 	}
 	
 	@After
@@ -78,14 +84,24 @@ public class FileManagerClientImplTest {
 	 * @throws IOException
 	 */
 	@Test
-	public void testFileProvider() throws FileManagerException, IOException {
+	public void testFileProvider() throws FileManagerException, IOException, InterruptedException {
+		Assert.assertEquals(0, fileManagerFolder.list().length);
 		FileVersion fileVersionActual1 = f.requestFileVersion(fileVersionId1, true);
 		Assert.assertEquals(1, callCount.get());
+		Assert.assertEquals(1, fileManagerFolder.list().length);
 		Assert.assertNotNull(fileVersionActual1);
 		
 		fileVersionActual1 = f.requestFileVersion(fileVersionId1, true);
 		Assert.assertNotNull(fileVersionActual1);
 		Assert.assertEquals(1, callCount.get());
+
+		Thread.sleep(300); //cleanup job would delete the file from client cache
+		Assert.assertEquals(0, fileManagerFolder.list().length);
+
+		fileVersionActual1 = f.requestFileVersion(fileVersionId1, true);
+		Assert.assertNotNull(fileVersionActual1);
+		Assert.assertEquals(2, callCount.get());
+		Assert.assertEquals(1, fileManagerFolder.list().length);
 		
 		f.removeFileVersionFromCache(fileVersionId1);
 		// assert that the file has been deleted
