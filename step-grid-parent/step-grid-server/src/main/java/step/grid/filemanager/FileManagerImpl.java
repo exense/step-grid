@@ -139,7 +139,7 @@ public class FileManagerImpl extends AbstractFileManager implements FileManager 
 			logger.debug("Registering file '" + filePath + "' with version "+fileVersionId);
 		}
 		try {
-			readWriteLock.readLock().lock();
+			fileHandleCacheLock.readLock().lock();
 			Map<FileVersionId, CachedFileVersion> versionCache = getVersionMap(fileId);
 			synchronized (versionCache) {
 				if (deletePreviousVersions) {
@@ -170,7 +170,7 @@ public class FileManagerImpl extends AbstractFileManager implements FileManager 
 				return cachedFileVersion.getFileVersion();
 			}
 		} finally {
-			readWriteLock.readLock().unlock();
+			fileHandleCacheLock.readLock().unlock();
 		}
 	}
 
@@ -226,7 +226,7 @@ public class FileManagerImpl extends AbstractFileManager implements FileManager 
 	@Override
 	public FileVersion getFileVersion(FileVersionId fileVersionId) throws FileManagerException {
 		try {
-			readWriteLock.readLock().lock();
+			fileHandleCacheLock.readLock().lock();
 			Map<FileVersionId, CachedFileVersion> versionCache = getVersionMap(fileVersionId.getFileId());
 			synchronized (versionCache) {
 				CachedFileVersion cachedFileVersion = versionCache.get(fileVersionId);
@@ -238,7 +238,7 @@ public class FileManagerImpl extends AbstractFileManager implements FileManager 
 				}
 			}
 		} finally {
-			readWriteLock.readLock().unlock();
+			fileHandleCacheLock.readLock().unlock();
 		}
 	}
 	

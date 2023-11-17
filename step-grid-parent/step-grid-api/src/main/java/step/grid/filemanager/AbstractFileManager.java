@@ -33,7 +33,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -55,7 +54,12 @@ public class AbstractFileManager {
 	protected FileManagerConfiguration fileManagerConfiguration;
 	private ScheduledExecutorService scheduledPool;
 	private ScheduledFuture<?> future;
-	protected ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
+	/**
+	 * This ReadWriteLock is used to synchronize operations on the whole fileHandleCache ({@link ConcurrentHashMap}).
+	 * Only the cleanup task use the write lock as it is removing entries while iterating over the map. All
+	 * other operations only need a read lock since they only work on single map entry.
+	 */
+	protected ReadWriteLock fileHandleCacheLock = new ReentrantReadWriteLock();
 
 	public AbstractFileManager(File cacheFolder, FileManagerConfiguration fileManagerConfiguration) {
 		super();
@@ -189,7 +193,7 @@ public class AbstractFileManager {
 
 	protected void removeFileVersion(FileVersionId fileVersionId) {
 		try {
-			readWriteLock.readLock().lock();
+			fileHandleCacheLock.readLock().lock();
 			Map<FileVersionId, CachedFileVersion> versionCache = getVersionMap(fileVersionId.getFileId());
 			synchronized (versionCache) {
 				FileVersion fileVersion = versionCache.get(fileVersionId).getFileVersion();
@@ -199,13 +203,13 @@ public class AbstractFileManager {
 				}
 			}
 		} finally {
-			readWriteLock.readLock().unlock();
+			fileHandleCacheLock.readLock().unlock();
 		}
 	}
 
 	public void cleanupCache() {
 		try {
-			readWriteLock.writeLock().lock();
+			fileHandleCacheLock.writeLock().lock();
 			long millis = fileManagerConfiguration.getConfigurationTimeUnit().toMillis(fileManagerConfiguration.getCleanupLastAccessTimeThresholdMinutes());
 			final long fromLastAccessTime = System.currentTimeMillis() - (millis);
 			logger.info("Starting cleanup of file manager. Removing cleanable files older than " + new Date(fromLastAccessTime));
@@ -236,7 +240,7 @@ public class AbstractFileManager {
 			}
 			logger.info("Cleanup of file manager completed. " + atomicInteger.get() + " files removed.");
 		} finally {
-			readWriteLock.writeLock().unlock();
+			fileHandleCacheLock.writeLock().unlock();
 		}
 	}
 

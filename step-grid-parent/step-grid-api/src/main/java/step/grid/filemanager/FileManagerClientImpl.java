@@ -24,8 +24,6 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import ch.exense.commons.io.FileHelper;
-
 /**
  * Default implementation of {@link FileManagerClient} which delegates the retrieval of {@link FileVersion} to
  * a {@link FileVersionProvider}
@@ -50,7 +48,7 @@ public class FileManagerClientImpl extends AbstractFileManager implements FileMa
 	@Override
 	public FileVersion requestFileVersion(FileVersionId fileVersionId, boolean cleanableFromClientCache) throws FileManagerException {
 		try {
-			readWriteLock.readLock().lock();
+			fileHandleCacheLock.readLock().lock();
 			Map<FileVersionId, CachedFileVersion> versionCache = getVersionMap(fileVersionId.getFileId());
 			synchronized (versionCache) {
 				CachedFileVersion cachedFileVersion = versionCache.get(fileVersionId);
@@ -77,7 +75,7 @@ public class FileManagerClientImpl extends AbstractFileManager implements FileMa
 				}
 			}
 		} finally {
-			readWriteLock.readLock().unlock();
+			fileHandleCacheLock.readLock().unlock();
 		}
 	}
 	
