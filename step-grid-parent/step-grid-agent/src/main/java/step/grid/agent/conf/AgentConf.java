@@ -18,6 +18,8 @@
  ******************************************************************************/
 package step.grid.agent.conf;
 
+import step.grid.filemanager.FileManagerConfiguration;
+
 import java.util.List;
 import java.util.Map;
 
@@ -56,6 +58,8 @@ public class AgentConf {
 	Map<String, String> properties;
 	
 	Long gracefulShutdownTimeout;
+
+	FileManagerConfiguration fileManagerConfiguration = new FileManagerConfiguration();
 
 	public AgentConf() {
 		super();
@@ -222,5 +226,13 @@ public class AgentConf {
 
 	public void setGracefulShutdownTimeout(Long gracefulShutdownTimeout) {
 		this.gracefulShutdownTimeout = gracefulShutdownTimeout;
-	} 
+	}
+
+	public FileManagerConfiguration getFileManagerConfiguration() {
+		return fileManagerConfiguration;
+	}
+
+	public void setFileManagerConfiguration(FileManagerConfiguration fileManagerConfiguration) {
+		this.fileManagerConfiguration = fileManagerConfiguration;
+	}
 }

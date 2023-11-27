@@ -141,11 +141,13 @@ public class GridServices {
 	@Consumes(MediaType.MULTIPART_FORM_DATA)
 	@Produces(MediaType.APPLICATION_JSON)
 	public FileVersion registerFile(@FormDataParam("file") InputStream uploadedInputStream,
-			@FormDataParam("file") FormDataContentDisposition fileDetail, @QueryParam("type") String contentType) throws FileManagerException {
+			@FormDataParam("file") FormDataContentDisposition fileDetail, @QueryParam("type") String contentType,
+			@QueryParam("cleanable") String cleanable) throws FileManagerException {
 		if (uploadedInputStream == null || fileDetail == null)
 			throw new RuntimeException("Invalid arguments");
 		
-		return grid.registerFile(uploadedInputStream, fileDetail.getFileName(), contentType!=null && contentType.equals("dir"));
+		return grid.registerFile(uploadedInputStream, fileDetail.getFileName(), contentType!=null && contentType.equals("dir"),
+				Boolean.parseBoolean(cleanable));
 	}
 	
 	@POST

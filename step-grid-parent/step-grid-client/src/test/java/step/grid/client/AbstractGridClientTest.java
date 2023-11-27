@@ -64,7 +64,7 @@ public abstract class AbstractGridClientTest extends AbstractGridTest {
 		File testFile = ResourceExtractor.extractResource(this.getClass().getClassLoader(), "TestFile.txt");
 
 		// Register a single file
-		FileVersionId fileHandle = client.registerFile(testFile).getVersionId();
+		FileVersionId fileHandle = client.registerFile(testFile, true).getVersionId();
 		
 		JsonNode node = new ObjectMapper().createObjectNode().put("file", fileHandle.getFileId()).put("fileVersion", fileHandle.getVersion());
 		
@@ -93,10 +93,10 @@ public abstract class AbstractGridClientTest extends AbstractGridTest {
 		writeFile(file, "V1");
 		
 		// Register the directory
-		FileVersionId fileHandleVersion1 = client.registerFile(file).getVersionId();
+		FileVersionId fileHandleVersion1 = client.registerFile(file, true).getVersionId();
 		
 		writeFile(file, "V2");
-		FileVersionId fileHandleVersion2 = client.registerFile(file).getVersionId();
+		FileVersionId fileHandleVersion2 = client.registerFile(file, true).getVersionId();
 		
 		JsonNode node = new ObjectMapper().createObjectNode().put("file", fileHandleVersion1.getFileId()).put("fileVersion", fileHandleVersion1.getVersion());
 		OutputMessage output = client.call(token.getID(), node, TestMessageHandler.class.getName(), null, new HashMap<>(), 100000);
@@ -141,7 +141,7 @@ public abstract class AbstractGridClientTest extends AbstractGridTest {
 		file2.createNewFile();
 		
 		// Register the directory
-		FileVersionId fileHandle = client.registerFile(tempDir).getVersionId();
+		FileVersionId fileHandle = client.registerFile(tempDir, true).getVersionId();
 		
 		JsonNode node = new ObjectMapper().createObjectNode().put("folder", fileHandle.getFileId()).put("fileVersion", fileHandle.getVersion());
 		

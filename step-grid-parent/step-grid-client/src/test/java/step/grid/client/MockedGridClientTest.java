@@ -51,7 +51,7 @@ public class MockedGridClientTest extends AbstractGridClientTest {
 		File testFile = ResourceExtractor.extractResource(this.getClass().getClassLoader(), "TestFile.txt");
 
 		// Register a single file
-		FileVersionId fileHandle = client.registerFile(testFile).getVersionId();
+		FileVersionId fileHandle = client.registerFile(testFile, true).getVersionId();
 		
 		JsonNode node = new ObjectMapper().createObjectNode().put("file", fileHandle.getFileId()).put("fileVersion", fileHandle.getVersion());
 		
@@ -76,7 +76,7 @@ public class MockedGridClientTest extends AbstractGridClientTest {
 
 		// Register a single file
 		FileVersionId fileHandle = client
-				.registerFile(this.getClass().getClassLoader().getResourceAsStream("TestFile.txt"), "TestFile.txt", false).getVersionId();
+				.registerFile(this.getClass().getClassLoader().getResourceAsStream("TestFile.txt"), "TestFile.txt", false, true).getVersionId();
 		
 		JsonNode node = new ObjectMapper().createObjectNode().put("file", fileHandle.getFileId()).put("fileVersion", fileHandle.getVersion());
 		
@@ -98,14 +98,14 @@ public class MockedGridClientTest extends AbstractGridClientTest {
 		
 		// Register again
 		FileVersionId fileHandle2 = client
-				.registerFile(this.getClass().getClassLoader().getResourceAsStream("TestFile.txt"), "TestFile.txt", false).getVersionId();
+				.registerFile(this.getClass().getClassLoader().getResourceAsStream("TestFile.txt"), "TestFile.txt", false, true).getVersionId();
 		Assert.assertEquals(fileHandle, fileHandle2);
 		
 		// Unregister the stream
 		client.unregisterFile(fileHandle);
 		// Register it againg
 		FileVersionId fileHandle3 = client
-				.registerFile(this.getClass().getClassLoader().getResourceAsStream("TestFile.txt"), "TestFile.txt", false).getVersionId();
+				.registerFile(this.getClass().getClassLoader().getResourceAsStream("TestFile.txt"), "TestFile.txt", false, true).getVersionId();
 		// The new handle should be different
 		Assert.assertNotSame(fileHandle2, fileHandle3);
 		// But the content remains the same

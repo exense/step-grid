@@ -42,6 +42,7 @@ import step.grid.client.AbstractGridClientImpl.AgentCommunicationException;
 import step.grid.client.GridClientConfiguration;
 import step.grid.client.GridClientException;
 import step.grid.client.LocalGridClientImpl;
+import step.grid.filemanager.FileManagerImplConfig;
 
 public class AgentConfigurationTest {
 
@@ -54,7 +55,9 @@ public class AgentConfigurationTest {
 
 		GridImplConfig gridConfig = new GridImplConfig();
 		// disable last modification cache
-		gridConfig.setFileLastModificationCacheExpireAfter(0);
+		FileManagerImplConfig fileManagerImplConfig = new FileManagerImplConfig();
+		fileManagerImplConfig.setFileLastModificationCacheExpireAfter(0);
+		gridConfig.setFileManagerImplConfig(fileManagerImplConfig);
 		grid = new GridImpl(fileManagerFolder, 0, gridConfig);
 		grid.start();
 	}

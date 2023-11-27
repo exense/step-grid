@@ -19,6 +19,7 @@
 package step.grid;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -26,28 +27,58 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import ch.exense.commons.io.FileHelper;
 import org.junit.Test;
 
 import org.junit.Assert;
 import step.grid.agent.RegistrationMessage;
+import step.grid.filemanager.FileManagerImplConfig;
 import step.grid.filemanager.FileVersion;
 import step.grid.tokenpool.Interest;
 import step.grid.tokenpool.RegistrationCallback;
 
 public class GridImplTest {
 
+	private GridImpl getGridForCleanupTest() throws IOException {
+		GridImpl.GridImplConfig gridConfig = new GridImpl.GridImplConfig();
+		FileManagerImplConfig fileManagerConfiguration = new FileManagerImplConfig();
+		fileManagerConfiguration.setCleanupLastAccessTimeThresholdMinutes(0);
+		gridConfig.setFileManagerImplConfig(fileManagerConfiguration);
+		return new GridImpl(FileHelper.createTempFolder("filemanager"),0, gridConfig);
+	}
+
 	@Test
 	public void testCleanup() throws Exception {
-		GridImpl grid = new GridImpl(0);
+		GridImpl grid = getGridForCleanupTest();
 		grid.start();
 
 		File testFile = File.createTempFile("GridImplTest",".txt");
 
-		FileVersion version = grid.registerFile(testFile);
+		FileVersion version = grid.registerFile(testFile, true);
+
+		Thread.sleep(1);
 
 		grid.cleanupFileManagerCache();
 
 		Assert.assertNull(grid.getRegisteredFile(version.getVersionId()));
+
+		Assert.assertTrue(testFile.delete());
+	}
+
+	@Test
+	public void testCleanupNonCleanable() throws Exception {
+		GridImpl grid = getGridForCleanupTest();
+		grid.start();
+
+		File testFile = File.createTempFile("GridImplTest",".txt");
+
+		FileVersion version = grid.registerFile(testFile, false);
+
+		Thread.sleep(1);
+
+		grid.cleanupFileManagerCache();
+
+		Assert.assertEquals(version, grid.getRegisteredFile(version.getVersionId()));
 
 		Assert.assertTrue(testFile.delete());
 	}

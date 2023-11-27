@@ -24,11 +24,20 @@ import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.FilenameFilter;
 import java.io.IOException;
+import java.util.Date;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import ch.exense.commons.io.FileHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,16 +46,26 @@ public class AbstractFileManager {
 	private static final Logger logger = LoggerFactory.getLogger(AbstractFileManager.class);
 	
 	protected static final String DIRECTORY_PROPERTY = "directory";
+	protected static final String CLEANABLE_PROPERTY = "cleanable";
 	protected static final String ORIGINAL_FILE_PATH_PROPERTY = "originalfile";
 	protected static final String META_FILENAME = "filemanager.meta";
-
 	protected final File cacheFolder;
-	
-	protected ConcurrentHashMap<String, Map<FileVersionId, FileVersion>> fileHandleCache = new ConcurrentHashMap<>();
-	
-	public AbstractFileManager(File cacheFolder) {
+	protected ConcurrentHashMap<String, Map<FileVersionId, CachedFileVersion>> fileHandleCache = new ConcurrentHashMap<>();
+	protected FileManagerConfiguration fileManagerConfiguration;
+	private ScheduledExecutorService scheduledPool;
+	private ScheduledFuture<?> future;
+	/**
+	 * This ReadWriteLock is used to synchronize operations on the whole fileHandleCache ({@link ConcurrentHashMap}).
+	 * Only the cleanup task use the write lock as it is removing entries while iterating over the map. All
+	 * other operations only need a read lock since they only work on single map entry.
+	 */
+	protected ReadWriteLock fileHandleCacheLock = new ReentrantReadWriteLock();
+
+	public AbstractFileManager(File cacheFolder, FileManagerConfiguration fileManagerConfiguration) {
 		super();
 		this.cacheFolder = cacheFolder;
+		this.fileManagerConfiguration = fileManagerConfiguration;
+		scheduleCleanupJob();
 	}
 
 	protected void loadCache() {
@@ -63,6 +82,7 @@ public class AbstractFileManager {
 								
 								Properties metaProperties = getMetaProperties(fileVersionId);
 								boolean isDirectory = Boolean.parseBoolean(metaProperties.getProperty(DIRECTORY_PROPERTY));
+								boolean isCleanable = Boolean.parseBoolean(metaProperties.getProperty(CLEANABLE_PROPERTY, "true"));
 								String originalFilePath = metaProperties.getProperty(ORIGINAL_FILE_PATH_PROPERTY);
 								
 								if(originalFilePath != null) {
@@ -71,10 +91,11 @@ public class AbstractFileManager {
 								
 								File dataFile = getDataFile(fileVersionId);
 								FileVersion fileVersion = new FileVersion(dataFile, fileVersionId, isDirectory);
+								CachedFileVersion cachedFileVersion = new CachedFileVersion(fileVersion, isCleanable);
 								logger.debug("Adding file to cache. file id: "+fileId+" and version "+version);
 								
-								Map<FileVersionId, FileVersion> fileVersions = fileHandleCache.computeIfAbsent(fileId, f->new HashMap<FileVersionId, FileVersion>());
-								fileVersions.put(fileVersionId, fileVersion);
+								Map<FileVersionId, CachedFileVersion> fileVersions = fileHandleCache.computeIfAbsent(fileId, f->new ConcurrentHashMap<FileVersionId, CachedFileVersion>());
+								fileVersions.put(fileVersionId, cachedFileVersion);
 							} else {
 								logger.error("The file "+file.getAbsolutePath()+" is not a directory!");
 							}
@@ -95,7 +116,7 @@ public class AbstractFileManager {
 		
 	}
 	
-	protected Map<FileVersionId, FileVersion> getVersionMap(String fileId) {
+	protected Map<FileVersionId, CachedFileVersion> getVersionMap(String fileId) {
 		return fileHandleCache.computeIfAbsent(fileId, h->new HashMap<>());
 	}
 	
@@ -115,10 +136,12 @@ public class AbstractFileManager {
 		return container;
 	}
 	
-	protected void createMetaFile(String registryIndex, FileVersion fileVersion) throws FileManagerException {
+	protected void createMetaFile(String registryIndex, CachedFileVersion cachedFileVersion) throws FileManagerException {
+		FileVersion fileVersion = cachedFileVersion.getFileVersion();
 		File metaFile = getMetaFile(fileVersion.getVersionId());
 		Properties metaProperties = new Properties();
 		metaProperties.setProperty(DIRECTORY_PROPERTY, Boolean.toString(fileVersion.isDirectory()));
+		metaProperties.setProperty(CLEANABLE_PROPERTY, Boolean.toString(cachedFileVersion.isCleanable()));
 		if(registryIndex!=null) {
 			metaProperties.setProperty(ORIGINAL_FILE_PATH_PROPERTY, registryIndex);
 		}
@@ -162,6 +185,98 @@ public class AbstractFileManager {
 	
 	protected String getRegistryIndex(File file) {
 		return file.getAbsolutePath();
+	}
+
+	protected void deleteFileVersionContainer(FileVersionId fileVersionId) {
+		FileHelper.deleteFolder(getContainerFolder(fileVersionId));
+	}
+
+	protected void removeFileVersion(FileVersionId fileVersionId) {
+		try {
+			fileHandleCacheLock.readLock().lock();
+			Map<FileVersionId, CachedFileVersion> versionCache = getVersionMap(fileVersionId.getFileId());
+			synchronized (versionCache) {
+				FileVersion fileVersion = versionCache.get(fileVersionId).getFileVersion();
+				if (fileVersion != null) {
+					deleteFileVersionContainer(fileVersionId);
+					versionCache.remove(fileVersionId);
+				}
+			}
+		} finally {
+			fileHandleCacheLock.readLock().unlock();
+		}
+	}
+
+	public void cleanupCache() {
+		try {
+			fileHandleCacheLock.writeLock().lock();
+			long millis = fileManagerConfiguration.getConfigurationTimeUnit().toMillis(fileManagerConfiguration.getCleanupLastAccessTimeThresholdMinutes());
+			final long fromLastAccessTime = System.currentTimeMillis() - (millis);
+			logger.info("Starting cleanup of file manager. Removing cleanable files older than " + new Date(fromLastAccessTime));
+			AtomicInteger atomicInteger = new AtomicInteger();
+			Iterator<Map.Entry<String, Map<FileVersionId, CachedFileVersion>>> fileHandleCacheIterator = fileHandleCache.entrySet().iterator();
+			while (fileHandleCacheIterator.hasNext()) {
+				Map.Entry<String, Map<FileVersionId, CachedFileVersion>> fileHandleEntry = fileHandleCacheIterator.next();
+				String fileId = fileHandleEntry.getKey();
+				Map<FileVersionId, CachedFileVersion> versionCache = fileHandleEntry.getValue();
+				synchronized (versionCache) { //should not be required with the new ReadWriteLock but doesn't hurt
+					Iterator<Map.Entry<FileVersionId, CachedFileVersion>> iterator = versionCache.entrySet().iterator();
+					while (iterator.hasNext()) {
+						Map.Entry<FileVersionId, CachedFileVersion> next = iterator.next();
+						if (next.getValue().isCleanable() && next.getValue().getLastAccessTime() < fromLastAccessTime) {
+							deleteFileVersionContainer(next.getKey());
+							iterator.remove();
+							atomicInteger.incrementAndGet();
+						}
+					}
+					File fileCacheFolder = getFileCacheFolder(fileId);
+					if (versionCache.isEmpty()) {
+						if (fileCacheFolder.exists()) {
+							FileHelper.deleteFolder(fileCacheFolder);
+						}
+						fileHandleCacheIterator.remove();
+					}
+				}
+			}
+			logger.info("Cleanup of file manager completed. " + atomicInteger.get() + " files removed.");
+		} finally {
+			fileHandleCacheLock.writeLock().unlock();
+		}
+	}
+
+	/**
+	 * Schedule the cache cleanup job with the frequency defined with {@link FileManagerConfiguration#getCleanupIntervalMinutes()}.
+	 * <p>It can be disabled using the {@link FileManagerConfiguration#isCleanupJobEnabled()} flag.</p>
+	 * <p>The cleanup job browses all entries from the cache and remove the one marked as cleanable and not accessed for the period of time defined with {@link FileManagerConfiguration#getCleanupLastAccessTimeThresholdMinutes()}</p>
+	 *
+	 */
+	protected void scheduleCleanupJob() {
+		if (fileManagerConfiguration.isCleanupJobEnabled()) {
+			long cleanupIntervalMinutes = fileManagerConfiguration.getCleanupIntervalMinutes();
+			scheduledPool = Executors.newScheduledThreadPool(1);
+			future = scheduledPool.scheduleAtFixedRate(() -> {
+				Thread.currentThread().setName("FileManagerCleanupThread");
+				try {
+					this.cleanupCache();
+				} catch (Throwable e) {
+					logger.error("Unhandled error while running the file manager clean up task.", e);
+				}
+			}, cleanupIntervalMinutes, cleanupIntervalMinutes, fileManagerConfiguration.getConfigurationTimeUnit());
+		}
+	}
+
+	public void close() throws Exception {
+		if (future != null) {
+			future.cancel(false);
+		}
+		if (scheduledPool != null) {
+			scheduledPool.shutdown();
+			try {
+				scheduledPool.awaitTermination(1, fileManagerConfiguration.getConfigurationTimeUnit());
+			} catch (InterruptedException e) {
+				logger.error("Timeout occurred while stopping the file manager clean up task.");
+			}
+		}
 	}
 
 }

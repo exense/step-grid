@@ -135,7 +135,7 @@ public class RegistrationClient implements FileVersionProvider {
 					}
 					
 					FileVersion fileVersion = new FileVersion(file, fileVersionId, isDirectory);
-					return fileVersion;				
+					return fileVersion;
 				} else {
 					throw new RuntimeException("Unable to find filename in header: "+response.getHeaderString("content-disposition"));
 				}

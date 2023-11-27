@@ -48,7 +48,7 @@ public class MockedGridClientImpl extends AbstractGridClientImpl {
 	Map<FileVersionId, FileVersion> fileVersionCache = new HashMap<>();
 	
 	@Override
-	public FileVersion registerFile(File file) throws FileManagerException {
+	public FileVersion registerFile(File file, boolean cleanable) throws FileManagerException {
 		FileVersionId id = new FileVersionId(UUID.randomUUID().toString(), "");
 		FileVersion fileVersion = new FileVersion(file, id, false);
 		fileVersionCache.put(id, fileVersion);
@@ -58,7 +58,7 @@ public class MockedGridClientImpl extends AbstractGridClientImpl {
 	protected ConcurrentHashMap<String, FileVersion> resourceCache = new ConcurrentHashMap<>();
 	
 	@Override
-	public FileVersion registerFile(InputStream inputStream, String fileName, boolean isDirectory)
+	public FileVersion registerFile(InputStream inputStream, String fileName, boolean isDirectory, boolean cleanable)
 			throws FileManagerException {
 		// Ensure the resource is read only once
 		FileVersion fileVersion = resourceCache.computeIfAbsent(fileName, f->{
@@ -66,7 +66,7 @@ public class MockedGridClientImpl extends AbstractGridClientImpl {
 				File file = File.createTempFile(fileName + "-" + UUID.randomUUID(), fileName.substring(fileName.lastIndexOf(".")));
 				Files.copy(inputStream, file.toPath(), StandardCopyOption.REPLACE_EXISTING);
 				file.deleteOnExit();
-				return registerFile(file);
+				return registerFile(file, cleanable);
 			} catch (Exception e) {
 				throw new RuntimeException(e);
 			}
@@ -95,14 +95,25 @@ public class MockedGridClientImpl extends AbstractGridClientImpl {
 	
 	protected void initLocalAgentServices() {
 		FileManagerClient fileManagerClient = new FileManagerClient() {
+
 			@Override
-			public FileVersion requestFileVersion(FileVersionId fileVersionId) throws FileManagerException {
+			public FileVersion requestFileVersion(FileVersionId fileVersionId, boolean cleanableFromClientCache) throws FileManagerException {
 				return getRegisteredFile(fileVersionId);
 			}
 
 			@Override
 			public void removeFileVersionFromCache(FileVersionId fileVersionId) {
 				unregisterFile(fileVersionId);
+			}
+
+			@Override
+			public void cleanupCache() {
+
+			}
+
+			@Override
+			public void close() throws Exception {
+
 			}
 		};
 		

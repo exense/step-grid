@@ -38,6 +38,8 @@ import step.grid.agent.conf.AgentConf;
 import step.grid.client.AbstractGridClientImpl.AgentCommunicationException;
 import step.grid.client.GridClient;
 import step.grid.client.GridClientException;
+import step.grid.filemanager.FileManagerConfiguration;
+import step.grid.filemanager.FileManagerImplConfig;
 import step.grid.io.AgentErrorCode;
 import step.grid.io.OutputMessage;
 import step.grid.tokenpool.Interest;
@@ -67,12 +69,15 @@ public abstract class AbstractGridTest {
 		
 		GridImplConfig gridConfig = new GridImplConfig();
 		// disable last modification cache
-		gridConfig.setFileLastModificationCacheExpireAfter(0);
+		FileManagerImplConfig fileManagerImplConfig = new FileManagerImplConfig();
+		fileManagerImplConfig.setFileLastModificationCacheExpireAfter(0);
+		gridConfig.setFileManagerImplConfig(fileManagerImplConfig);
 		grid = new GridImpl(fileManagerFolder, 0, gridConfig);
 		grid.start();
 				
 		AgentConf agentConf = new AgentConf("http://localhost:"+grid.getServerPort(), 0, null, 100);
 		agentConf.setGracefulShutdownTimeout(100l);
+		agentConf.setFileManagerConfiguration(new FileManagerConfiguration());
 		agent = new Agent(agentConf);
 		Map<String, String> attributes = new HashMap<String, String>();
 		attributes.put("att1", "val1");

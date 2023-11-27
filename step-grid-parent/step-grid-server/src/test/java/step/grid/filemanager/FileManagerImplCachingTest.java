@@ -28,7 +28,6 @@ import org.junit.Before;
 import org.junit.Test;
 
 import ch.exense.commons.io.FileHelper;
-import step.grid.filemanager.FileManagerImpl.FileManagerImplConfig;
 
 public class FileManagerImplCachingTest {
 
@@ -54,7 +53,7 @@ public class FileManagerImplCachingTest {
 	public void testFileManagerCaching() throws IOException, FileManagerException, InterruptedException {
 		File testFile = FileHelper.createTempFile();
 		
-		FileVersionId handle = f.registerFileVersion(testFile, false).getVersionId();
+		FileVersionId handle = f.registerFileVersion(testFile, false, true).getVersionId();
 		
 		FileVersion registeredFile = f.getFileVersion(handle);
 		Assert.assertNotNull(registeredFile);
@@ -63,9 +62,9 @@ public class FileManagerImplCachingTest {
 		Thread.sleep(100);
 		writeFileContent(testFile, "V2");
 
-		FileVersionId handle2 = f.registerFileVersion(testFile, false).getVersionId();
+		FileVersionId handle2 = f.registerFileVersion(testFile, false, true).getVersionId();
 		// Registering twice (this shouldn't throw any error)
-		handle2 = f.registerFileVersion(testFile, false).getVersionId();
+		handle2 = f.registerFileVersion(testFile, false, true).getVersionId();
 		
 		Assert.assertFalse(handle2.equals(handle));
 		

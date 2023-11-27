@@ -34,7 +34,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import step.grid.agent.RegistrationMessage;
 import step.grid.filemanager.*;
-import step.grid.filemanager.FileManagerImpl.FileManagerImplConfig;
+import step.grid.filemanager.FileManagerImplConfig;
 import step.grid.tokenpool.*;
 import step.grid.tokenpool.affinityevaluator.TokenPoolAware;
 import step.grid.tokenpool.affinityevaluator.TokenWrapperAffinityEvaluatorImpl;
@@ -80,10 +80,7 @@ public class GridImpl implements Grid {
 		super();
 		this.port = port;
 		this.keepAliveTimeout = gridConfig.getTtl();
-		FileManagerImplConfig config = new FileManagerImplConfig();
-		config.setFileLastModificationCacheConcurrencyLevel(gridConfig.getFileLastModificationCacheConcurrencyLevel());
-		config.setFileLastModificationCacheExpireAfter(gridConfig.getFileLastModificationCacheExpireAfter());
-		config.setFileLastModificationCacheMaximumsize(gridConfig.getFileLastModificationCacheMaximumsize());
+		FileManagerImplConfig config = gridConfig.getFileManagerImplConfig();
 		this.fileManager = new FileManagerImpl(fileManagerFolder, config);
 		this.gridConfig = gridConfig;
 		this.acceptRegistrationMessages = !gridConfig.deferAcceptingRegistrationMessages;
@@ -93,9 +90,7 @@ public class GridImpl implements Grid {
 
 		int ttl = 60000;
 		
-		int fileLastModificationCacheConcurrencyLevel = 4;
-		int fileLastModificationCacheMaximumsize = 1000;
-		int fileLastModificationCacheExpireAfter = 500;
+		FileManagerImplConfig fileManagerImplConfig = new FileManagerImplConfig();
 
 		boolean deferAcceptingRegistrationMessages = false;
 
@@ -107,12 +102,9 @@ public class GridImpl implements Grid {
 			super();
 		}
 
-		public GridImplConfig(int fileLastModificationCacheConcurrencyLevel,
-				int fileLastModificationCacheMaximumsize, int fileLastModificationCacheExpireAfter) {
+		public GridImplConfig(FileManagerImplConfig fileManagerImplConfig) {
 			super();
-			this.fileLastModificationCacheConcurrencyLevel = fileLastModificationCacheConcurrencyLevel;
-			this.fileLastModificationCacheMaximumsize = fileLastModificationCacheMaximumsize;
-			this.fileLastModificationCacheExpireAfter = fileLastModificationCacheExpireAfter;
+			this.fileManagerImplConfig = fileManagerImplConfig;
 		}
 		
 		public int getTtl() {
@@ -123,32 +115,12 @@ public class GridImpl implements Grid {
 			this.ttl = ttl;
 		}
 
-		public int getFileLastModificationCacheConcurrencyLevel() {
-			return fileLastModificationCacheConcurrencyLevel;
+		public FileManagerImplConfig getFileManagerImplConfig() {
+			return fileManagerImplConfig;
 		}
-		
-		public void setFileLastModificationCacheConcurrencyLevel(int fileLastModificationCacheConcurrencyLevel) {
-			this.fileLastModificationCacheConcurrencyLevel = fileLastModificationCacheConcurrencyLevel;
-		}
-		
-		public int getFileLastModificationCacheMaximumsize() {
-			return fileLastModificationCacheMaximumsize;
-		}
-		
-		public void setFileLastModificationCacheMaximumsize(int fileLastModificationCacheMaximumsize) {
-			this.fileLastModificationCacheMaximumsize = fileLastModificationCacheMaximumsize;
-		}
-		
-		public int getFileLastModificationCacheExpireAfter() {
-			return fileLastModificationCacheExpireAfter;
-		}
-		
-		/**
-		 * Specifies the expiration duration of the last modification cache entries 
-		 * @param fileLastModificationCacheExpireAfter the expiration duration in ms. A 0 value disables the caching.
-		 */
-		public void setFileLastModificationCacheExpireAfter(int fileLastModificationCacheExpireAfter) {
-			this.fileLastModificationCacheExpireAfter = fileLastModificationCacheExpireAfter;
+
+		public void setFileManagerImplConfig(FileManagerImplConfig fileManagerImplConfig) {
+			this.fileManagerImplConfig = fileManagerImplConfig;
 		}
 
 		public String getTokenAffinityEvaluatorClass() {
@@ -204,6 +176,7 @@ public class GridImpl implements Grid {
 		server.stop();
 		agentRefs.close();
 		tokenPool.close();
+		fileManager.close();
 	}
 
 	public void start() throws Exception {
@@ -404,13 +377,13 @@ public class GridImpl implements Grid {
 	}
 
 	@Override
-	public FileVersion registerFile(InputStream inputStream, String fileName, boolean isDirectory) throws FileManagerException {
-		return fileManager.registerFileVersion(inputStream, fileName, isDirectory, false);
+	public FileVersion registerFile(InputStream inputStream, String fileName, boolean isDirectory, boolean cleanable) throws FileManagerException {
+		return fileManager.registerFileVersion(inputStream, fileName, isDirectory, false, cleanable);
 	}
 	
 	@Override
-	public FileVersion registerFile(File file) throws FileManagerException {
-		return fileManager.registerFileVersion(file, false);
+	public FileVersion registerFile(File file, boolean cleanable) throws FileManagerException {
+		return fileManager.registerFileVersion(file, false, cleanable);
 	}
 
 	@Override

@@ -176,7 +176,7 @@ public class RemoteGridImpl implements Grid {
 	}
 
 	@Override
-	public FileVersion registerFile(File file) throws FileManagerException {
+	public FileVersion registerFile(File file, boolean cleanable) throws FileManagerException {
 		File fileToBeSent;
 		boolean isDirectory;
 		if(file.isDirectory()) {
@@ -194,16 +194,17 @@ public class RemoteGridImpl implements Grid {
 			isDirectory = false;
 		}
 		FileDataBodyPart fileDataBodyPart = new FileDataBodyPart("file", fileToBeSent, MediaType.APPLICATION_OCTET_STREAM_TYPE);
-		return registerFile(fileDataBodyPart, isDirectory);
+		return registerFile(fileDataBodyPart, isDirectory, cleanable);
 	}
 
-	protected FileVersion registerFile(FormDataBodyPart formDataBodyPart, boolean isDirectory) {
+	protected FileVersion registerFile(FormDataBodyPart formDataBodyPart, boolean isDirectory, boolean cleanable) {
 		MultiPart multiPart = new MultiPart();
         multiPart.setMediaType(MediaType.MULTIPART_FORM_DATA_TYPE);
         multiPart.bodyPart(formDataBodyPart);
         
         HashMap<String, String> queryParams = new HashMap<>();
         queryParams.put("type", isDirectory?"dir":"file");
+		queryParams.put("cleanable", Boolean.toString(cleanable));
         Builder b = requestBuilder("/grid/file/register", queryParams);
         return executeRequest(()->b.post(Entity.entity(multiPart, multiPart.getMediaType()), FileVersion.class));
 	}
@@ -220,9 +221,9 @@ public class RemoteGridImpl implements Grid {
 	}
 
 	@Override
-	public FileVersion registerFile(InputStream inputStream, String fileName, boolean isDirectory) throws FileManagerException {
+	public FileVersion registerFile(InputStream inputStream, String fileName, boolean isDirectory, boolean cleanable) throws FileManagerException {
 		StreamDataBodyPart bodyPart = new StreamDataBodyPart("file", inputStream, fileName);
-		return registerFile(bodyPart, isDirectory);
+		return registerFile(bodyPart, isDirectory, cleanable);
 	}
 
 }
