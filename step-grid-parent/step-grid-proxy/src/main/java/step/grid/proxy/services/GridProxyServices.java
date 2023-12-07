@@ -97,7 +97,7 @@ public class GridProxyServices {
         logger.info("Received shutdown request from " + request.getRemoteAddr());
         new Thread(() -> {
             try {
-                gridProxy.stop();
+                gridProxy.close();
             } catch (Exception e) {
                 logger.error("Error while shutting down", e);
             }

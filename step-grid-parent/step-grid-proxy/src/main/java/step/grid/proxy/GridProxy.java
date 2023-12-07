@@ -47,7 +47,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class GridProxy {
+public class GridProxy implements AutoCloseable {
 
     private static final Logger logger = LoggerFactory.getLogger(GridProxy.class);
     private final Server server;
@@ -62,7 +62,15 @@ public class GridProxy {
     private final Integer readTimeout;
 
     public static void main(String[] args) throws Exception {
-        newInstanceFromArgs(args);
+        GridProxy gridProxy = newInstanceFromArgs(args);
+        Runtime.getRuntime().addShutdownHook(new Thread(()->{
+            try {
+                gridProxy.close();
+            } catch (Exception e) {
+                logger.error("Error while closing the grid proxy", e);
+            }
+        }));
+
     }
 
     public static GridProxy newInstanceFromArgs(String[] args) throws Exception {
@@ -202,7 +210,8 @@ public class GridProxy {
         return server != null && server.isRunning();
     }
 
-    public void stop() throws Exception {
+    @Override
+    public void close() throws Exception {
         if (server != null && !server.isStopped()) {
             server.stop();
         }
