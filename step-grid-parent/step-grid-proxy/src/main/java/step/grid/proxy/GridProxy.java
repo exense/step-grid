@@ -41,6 +41,8 @@ import step.grid.proxy.conf.GridProxyConfiguration;
 import step.grid.proxy.services.GridProxyServices;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.concurrent.ConcurrentHashMap;
@@ -158,12 +160,14 @@ public class GridProxy {
         }
     }
 
-    public Response forwardGetFileRequest(String fileId, String version) {
-        //TODO make sure this cause no leak
-        return client.target(gridUrl +  "/grid/file/" + fileId + "/" + version).request().property(ClientProperties.READ_TIMEOUT, readTimeout)
-                .property(ClientProperties.CONNECT_TIMEOUT, connectTimeout).get();
-        //Shallow copy to properly clean up the resources of the invocation to the grid server should be used, but this cause closed stream IO Exception
-        //  return Response.fromResponse(response).entity(response.readEntity(InputStream.class)).build();
+    public Response forwardGetFileRequest(String fileId, String version) throws IOException {
+        try (Response fromGrid = client.target(gridUrl +  "/grid/file/" + fileId + "/" + version).request().property(ClientProperties.READ_TIMEOUT, readTimeout)
+                .property(ClientProperties.CONNECT_TIMEOUT, connectTimeout).get()) {
+            //Shallow copy to properly clean up the resources of the invocation to the grid server
+            final InputStream inputStream = fromGrid.readEntity(InputStream.class);
+            Response.ResponseBuilder responseBuilder = Response.fromResponse(fromGrid);
+            return responseBuilder.entity(inputStream.readAllBytes()).build();
+        }
     }
 
     public OutputMessage forwardMessageToAgent(String agentContext, String operation, String tokenId, InputMessage message) {
