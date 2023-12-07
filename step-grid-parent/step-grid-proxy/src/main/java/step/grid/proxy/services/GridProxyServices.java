@@ -31,6 +31,8 @@ import step.grid.agent.RegistrationMessage;
 import step.grid.io.InputMessage;
 import step.grid.io.OutputMessage;
 import step.grid.proxy.GridProxy;
+
+import java.io.IOException;
 import java.net.MalformedURLException;
 
 @Singleton
@@ -51,7 +53,7 @@ public class GridProxyServices {
 
     @GET
     @Path("/grid/file/{id}/{version}")
-    public Response getFile(@PathParam("id") String id, @PathParam("version") String version) {
+    public Response getFile(@PathParam("id") String id, @PathParam("version") String version) throws IOException {
         return gridProxy.forwardGetFileRequest(id, version);
     }
 
