@@ -47,36 +47,61 @@ public class GridProxyServices {
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
     @Path("/grid/register")
-    public void register(RegistrationMessage message) throws MalformedURLException {
-        gridProxy.handleRegistrationMessage(message);
+    public void register(RegistrationMessage message) throws GridProxyException {
+        try {
+            gridProxy.handleRegistrationMessage(message);
+        } catch (Exception e) {
+            if (message != null && message.getAgentRef() != null && message.getAgentRef().getAgentUrl() != null) {
+                throw new GridProxyException("Registration failed for agent URL '" + message.getAgentRef().getAgentUrl() + "'", e);
+            } else {
+                throw new GridProxyException("Registration failed due to invalid payload", e);
+            }
+
+        }
     }
 
     @GET
     @Path("/grid/file/{id}/{version}")
-    public Response getFile(@PathParam("id") String id, @PathParam("version") String version) throws IOException {
-        return gridProxy.forwardGetFileRequest(id, version);
+    public Response getFile(@PathParam("id") String id, @PathParam("version") String version) throws GridProxyException {
+        try {
+            return gridProxy.forwardGetFileRequest(id, version);
+        } catch (Exception e) {
+            throw new GridProxyException("Unable to get file with id '" + id + "' and version '" + version + "'", e);
+        }
     }
 
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     @Path("{agentContext}/token/{id}/process")
-    public OutputMessage process(@PathParam("agentContext") String agentContext, @PathParam("id") String tokenId, final InputMessage message) {
-        return gridProxy.forwardMessageToAgent(agentContext, "process", tokenId, message );
+    public OutputMessage process(@PathParam("agentContext") String agentContext, @PathParam("id") String tokenId, final InputMessage message) throws GridProxyException {
+        try {
+            return gridProxy.forwardMessageToAgent(agentContext, "process", tokenId, message );
+        } catch (Exception e) {
+            throw new GridProxyException("Unable to forward process request to agent with context '" + agentContext + "'", e);
+        }
     }
 
     @GET
     @Consumes(MediaType.APPLICATION_JSON)
     @Path("{agentContext}/token/{id}/reserve")
-    public void reserveToken(@PathParam("agentContext") String agentContext, @PathParam("id") String tokenId)  {
-        gridProxy.forwardToAgent(agentContext, "reserve", tokenId);
+    public void reserveToken(@PathParam("agentContext") String agentContext, @PathParam("id") String tokenId) throws GridProxyException {
+        try {
+            gridProxy.forwardToAgent(agentContext, "reserve", tokenId);
+        } catch (Exception e) {
+            throw new GridProxyException("Unable to reserve token for agent with context '" + agentContext + "'", e);
+        }
     }
 
     @GET
     @Consumes(MediaType.APPLICATION_JSON)
     @Path("{agentContext}/token/{id}/release")
-    public void releaseToken(@PathParam("agentContext") String agentContext, @PathParam("id") String tokenId) {
-        gridProxy.forwardToAgent(agentContext, "release", tokenId);
+    public void releaseToken(@PathParam("agentContext") String agentContext, @PathParam("id") String tokenId) throws GridProxyException {
+        try {
+            gridProxy.forwardToAgent(agentContext, "release", tokenId);
+        } catch (Exception e) {
+            throw new GridProxyException("Unable to release token for agent with context '" + agentContext + "'", e);
+        }
     }
 
     // For liveness probe
