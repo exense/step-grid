@@ -32,9 +32,6 @@ import step.grid.io.InputMessage;
 import step.grid.io.OutputMessage;
 import step.grid.proxy.GridProxy;
 
-import java.io.IOException;
-import java.net.MalformedURLException;
-
 @Singleton
 @Path("/")
 public class GridProxyServices {
