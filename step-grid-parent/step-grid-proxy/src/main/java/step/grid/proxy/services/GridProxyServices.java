@@ -28,13 +28,14 @@ import jakarta.ws.rs.core.Response;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import step.grid.agent.RegistrationMessage;
+import step.grid.io.AbstractGridServices;
 import step.grid.io.InputMessage;
 import step.grid.io.OutputMessage;
 import step.grid.proxy.GridProxy;
 
 @Singleton
 @Path("/")
-public class GridProxyServices {
+public class GridProxyServices extends AbstractGridServices {
 
     private static final Logger logger = LoggerFactory.getLogger(GridProxyServices.class);
 
@@ -48,8 +49,8 @@ public class GridProxyServices {
         try {
             gridProxy.handleRegistrationMessage(message);
         } catch (Exception e) {
-            if (message != null && message.getAgentRef() != null && message.getAgentRef().getAgentUrl() != null) {
-                throw new GridProxyException("Registration failed for agent URL '" + message.getAgentRef().getAgentUrl() + "'", e);
+            if (message != null && message.getAgentRef() != null) {
+                throw new GridProxyException("Registration failed for agent ref '" + message.getAgentRef() + "'", e);
             } else {
                 throw new GridProxyException("Registration failed due to invalid payload", e);
             }
@@ -75,7 +76,7 @@ public class GridProxyServices {
         try {
             return gridProxy.forwardMessageToAgent(agentContext, "process", tokenId, message );
         } catch (Exception e) {
-            throw new GridProxyException("Unable to forward process request to agent with context '" + agentContext + "'", e);
+            return handleUnexpectedError(e);
         }
     }
 
