@@ -183,22 +183,31 @@ public class GridProxy extends BaseServer implements AutoCloseable {
     }
 
     public Response forwardGetFileRequest(String fileId, String version) throws IOException {
-        try (Response fromGrid = client.target(gridUrl +  "/grid/file/" + fileId + "/" + version).request().property(ClientProperties.READ_TIMEOUT, gridReadTimeout)
-                .property(ClientProperties.CONNECT_TIMEOUT, gridConnectTimeout).get()) {
+        Response fromGrid = null;
+        try {
+            fromGrid = client.target(gridUrl + "/grid/file/" + fileId + "/" + version).request().property(ClientProperties.READ_TIMEOUT, gridReadTimeout)
+                    .property(ClientProperties.CONNECT_TIMEOUT, gridConnectTimeout).get();
+
             //Shallow copy to properly clean up the resources of the invocation to the grid server
             final InputStream inputStream = fromGrid.readEntity(InputStream.class);
 
-            StreamingOutput fileStream = output -> {
+            StreamingOutput oupputStream = output -> {
                 try {
                     FileHelper.copy(inputStream, output, 2048);
                     output.flush();
                 } finally {
                     inputStream.close();
                 }
-           };
+            };
 
             Response.ResponseBuilder responseBuilder = Response.fromResponse(fromGrid);
-            return responseBuilder.entity(fileStream).build();
+            return responseBuilder.entity(oupputStream).build();
+        } catch (Exception e) {
+            //In case of exception, explicitly close the resource. For successful calls the inputStream/outputStream are closed when consumed
+            if (fromGrid != null) {
+                fromGrid.close();
+            }
+            throw e;
         }
     }
 

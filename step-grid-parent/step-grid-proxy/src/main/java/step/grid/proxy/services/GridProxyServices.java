@@ -51,10 +51,11 @@ public class GridProxyServices extends AbstractGridServices {
         } catch (Exception e) {
             if (message != null && message.getAgentRef() != null) {
                 throw new GridProxyException("Registration failed for agent ref '" + message.getAgentRef() + "'", e);
+            } else if (message != null) {
+                throw new GridProxyException("Registration failed due to invalid payload, agentRef is null, tokens list is " + message.getTokens(), e);
             } else {
-                throw new GridProxyException("Registration failed due to invalid payload", e);
+                throw new GridProxyException("Registration failed due to invalid payload, input message is null", e);
             }
-
         }
     }
 
