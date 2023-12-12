@@ -19,12 +19,14 @@
 package step.grid.proxy;
 
 import ch.exense.commons.app.ArgumentParser;
+import ch.exense.commons.io.FileHelper;
 import jakarta.ws.rs.ProcessingException;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.StreamingOutput;
 import org.eclipse.jetty.server.Server;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
 import org.glassfish.jersey.client.ClientProperties;
@@ -40,14 +42,12 @@ import step.grid.io.OutputMessage;
 import step.grid.proxy.conf.GridProxyConfiguration;
 import step.grid.proxy.services.GridProxyServices;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class GridProxy implements AutoCloseable {
+public class GridProxy extends BaseServer implements AutoCloseable {
 
     private static final Logger logger = LoggerFactory.getLogger(GridProxy.class);
     private final Server server;
@@ -58,8 +58,11 @@ public class GridProxy implements AutoCloseable {
     private Client client;
 
     private final String gridUrl;
-    private final Integer connectTimeout;
-    private final Integer readTimeout;
+    private final Integer gridConnectTimeout;
+    private final Integer gridReadTimeout;
+    private final Integer agentConnectTimeout;
+    private final Integer agentReserveTimeout;
+    private final Integer agentReleaseTimeout;
 
     public static void main(String[] args) throws Exception {
         GridProxy gridProxy = newInstanceFromArgs(args);
@@ -81,16 +84,24 @@ public class GridProxy implements AutoCloseable {
         if(gridProxyConfigPath!=null) {
             ConfigurationParser<GridProxyConfiguration> gridProxyConfigurationConfigurationParser = new ConfigurationParser<>();
             GridProxyConfiguration config = gridProxyConfigurationConfigurationParser.parse(arguments, new File(gridProxyConfigPath), GridProxyConfiguration.class);
-            return new GridProxy(config);
+            GridProxy gridProxy = new GridProxy(config);
+            Runtime.getRuntime().addShutdownHook(new Thread(()->{
+                try {
+                    gridProxy.close();
+                } catch (Exception e) {
+                    logger.error("Error while closing the grid proxy", e);
+                }
+            }));
+            return gridProxy;
         } else {
             throw new RuntimeException("Argument '-config' is missing.");
         }
     }
 
     public GridProxy(GridProxyConfiguration gridProxyConfiguration) throws Exception {
-        int serverPort = BaseServer.resolveServerPort(gridProxyConfiguration.getGridProxyUrl(), gridProxyConfiguration.getGridProxyPort());
+        int serverPort = this.resolveServerPort(gridProxyConfiguration.getGridProxyUrl(), gridProxyConfiguration.getGridProxyPort());
 
-        logger.info("Starting server...");
+        logger.info("Starting grid proxy...");
         ResourceConfig resourceConfig = new ResourceConfig();
         resourceConfig.packages(GridProxyServices.class.getPackage().getName());
         final GridProxy gridProxy = this;
@@ -101,22 +112,25 @@ public class GridProxy implements AutoCloseable {
             }
         });
 
-        server = BaseServer.startServer(gridProxyConfiguration, serverPort, resourceConfig);
+        server = this.startServer(gridProxyConfiguration, serverPort, resourceConfig);
 
-        int actualServerPort = BaseServer.getActualServerPort(server);
-        logger.info("Successfully started server on port " + actualServerPort);
+        int actualServerPort = this.getActualServerPort(server);
+        logger.info("Successfully started grid proxy on port " + actualServerPort);
 
         gridUrl = gridProxyConfiguration.getGridUrl();
         //Determine the actual Url of the grid proxy based either on configuration or actual system hostname and port
-        gridProxyUrl = BaseServer.getOrBuildActualUrl(gridProxyConfiguration.getGridProxyHost(),
+        gridProxyUrl = this.getOrBuildActualUrl(gridProxyConfiguration.getGridProxyHost(),
                 gridProxyConfiguration.getGridProxyUrl(),
                 actualServerPort, gridProxyConfiguration.isSsl());
 
         //Create REST client
         client = ClientBuilder.newClient();
         client.register(JacksonJsonProvider.class);
-        connectTimeout = gridProxyConfiguration.getGridConnectTimeout();
-        readTimeout = gridProxyConfiguration.getGridReadTimeout();
+        gridConnectTimeout = gridProxyConfiguration.getGridConnectTimeout();
+        gridReadTimeout = gridProxyConfiguration.getGridReadTimeout();
+        agentConnectTimeout = gridProxyConfiguration.getAgentConnectTimeout();
+        agentReserveTimeout = gridProxyConfiguration.getAgentReserveTimeout();
+        agentReleaseTimeout = gridProxyConfiguration.getAgentReleaseTimeout();
     }
 
     //Allow override for junits
@@ -129,8 +143,8 @@ public class GridProxy implements AutoCloseable {
         // replace by proxyfied url (proxy base url + context root) and maintain the mapping
         message.getAgentRef().setAgentUrl(gridProxyUrl + "/" + getContextRoot(agentUrl));
         //Forward registration message to grid server
-        try (Response r = client.target(gridUrl + "/grid/register").request().property(ClientProperties.READ_TIMEOUT, readTimeout)
-                    .property(ClientProperties.CONNECT_TIMEOUT, connectTimeout).post(Entity.entity(message, MediaType.APPLICATION_JSON))) {
+        try (Response r = client.target(gridUrl + "/grid/register").request().property(ClientProperties.READ_TIMEOUT, gridReadTimeout)
+                    .property(ClientProperties.CONNECT_TIMEOUT, gridConnectTimeout).post(Entity.entity(message, MediaType.APPLICATION_JSON))) {
 
             r.readEntity(String.class);
         } catch (ProcessingException e) {
@@ -154,36 +168,54 @@ public class GridProxy implements AutoCloseable {
      */
     private String getContextRoot(String agentUrl) throws MalformedURLException {
         //Not using computeIfAbsent for rethrowing MalformedURLException
-        if (agentUrlToContextRoot.containsKey(agentUrl)) {
-            return agentUrlToContextRoot.get(agentUrl);
-        } else {
+        String contextRoot = agentUrlToContextRoot.get(agentUrl);
+        if (contextRoot == null) {
             URL url = new URL(agentUrl);
             String host = url.getHost();
             int port = url.getPort();
-            String contextRoot = host + "-" + port;
+            contextRoot = host + "-" + port;
             agentUrlToContextRoot.put(agentUrl, contextRoot);
             contextRootToAgentUrl.put(contextRoot, agentUrl);
             logger.info("Registering new agent from url '" + agentUrl + "' with contextRoot: " + contextRoot);
             return contextRoot;
         }
+        return contextRoot;
     }
 
     public Response forwardGetFileRequest(String fileId, String version) throws IOException {
-        try (Response fromGrid = client.target(gridUrl +  "/grid/file/" + fileId + "/" + version).request().property(ClientProperties.READ_TIMEOUT, readTimeout)
-                .property(ClientProperties.CONNECT_TIMEOUT, connectTimeout).get()) {
+        try (Response fromGrid = client.target(gridUrl +  "/grid/file/" + fileId + "/" + version).request().property(ClientProperties.READ_TIMEOUT, gridReadTimeout)
+                .property(ClientProperties.CONNECT_TIMEOUT, gridConnectTimeout).get()) {
             //Shallow copy to properly clean up the resources of the invocation to the grid server
             final InputStream inputStream = fromGrid.readEntity(InputStream.class);
+
+            StreamingOutput fileStream = output -> {
+                try {
+                    FileHelper.copy(inputStream, output, 2048);
+                    output.flush();
+                } finally {
+                    inputStream.close();
+                }
+           };
+
             Response.ResponseBuilder responseBuilder = Response.fromResponse(fromGrid);
-            return responseBuilder.entity(inputStream.readAllBytes()).build();
+            return responseBuilder.entity(fileStream).build();
         }
     }
 
+    public void reserveToken(String agentContext, String tokenId) {
+        forwardToAgent(agentContext, "reserve", tokenId, agentReserveTimeout);
+    }
+
+    public void releaseToken(String agentContext, String tokenId) {
+        forwardToAgent(agentContext, "release", tokenId, agentReleaseTimeout);
+    }
+
     public OutputMessage forwardMessageToAgent(String agentContext, String operation, String tokenId, InputMessage message) {
-        if (contextRootToAgentUrl.containsKey(agentContext)) {
-            String agentUrl = contextRootToAgentUrl.get(agentContext);
+        String agentUrl = contextRootToAgentUrl.get(agentContext);
+        if (agentUrl != null) {
             try (Response response = client.target(agentUrl + "/token/" + tokenId + "/" + operation).request()
-                    .property(ClientProperties.READ_TIMEOUT, readTimeout + message.getCallTimeout())
-                    .property(ClientProperties.CONNECT_TIMEOUT, connectTimeout).post(Entity.entity(message, MediaType.APPLICATION_JSON))) {
+                    .property(ClientProperties.READ_TIMEOUT, agentConnectTimeout + message.getCallTimeout())
+                    .property(ClientProperties.CONNECT_TIMEOUT, agentConnectTimeout).post(Entity.entity(message, MediaType.APPLICATION_JSON))) {
                 return response.readEntity(OutputMessage.class);
             }
         } else {
@@ -192,13 +224,13 @@ public class GridProxy implements AutoCloseable {
         }
     }
 
-    public void forwardToAgent(String agentContext, String operation, String tokenId) {
-        if (contextRootToAgentUrl.containsKey(agentContext)) {
-            String agentUrl = contextRootToAgentUrl.get(agentContext);
+    public void forwardToAgent(String agentContext, String operation, String tokenId, Integer callTimeout) {
+        String agentUrl = contextRootToAgentUrl.get(agentContext);
+        if (agentUrl != null) {
             //Event if the variable is not used, use try-with-resource construct to make use resources are cleaned-up
             try (Response response = client.target(agentUrl + "/token/" + tokenId + "/" + operation).request()
-                    .property(ClientProperties.READ_TIMEOUT, readTimeout)
-                    .property(ClientProperties.CONNECT_TIMEOUT, connectTimeout).get()) {
+                    .property(ClientProperties.READ_TIMEOUT, callTimeout)
+                    .property(ClientProperties.CONNECT_TIMEOUT, agentConnectTimeout).get()) {
             }
         } else {
             logger.error("Received request for unknown agent Id " + agentContext);
@@ -216,4 +248,5 @@ public class GridProxy implements AutoCloseable {
             server.stop();
         }
     }
+
 }

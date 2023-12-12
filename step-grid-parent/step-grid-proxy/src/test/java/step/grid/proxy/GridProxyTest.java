@@ -39,7 +39,7 @@ public class GridProxyTest {
         String agentContextRoot = matcher.group(1);
 
         //Simualte call from grid server to proxyfied agent
-        assertThrows("http://agenturl:1234/token/sometokenId/reserve", ProxyTestException.class, () -> gridProxy.forwardToAgent(agentContextRoot, "reserve", "sometokenId"));
+        assertThrows("http://agenturl:1234/token/sometokenId/reserve", ProxyTestException.class, () -> gridProxy.reserveToken(agentContextRoot, "sometokenId"));
     }
 
 }

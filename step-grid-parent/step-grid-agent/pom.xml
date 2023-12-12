@@ -30,7 +30,7 @@
 	<dependencies>
 		<dependency>
 			<groupId>ch.exense.step</groupId>
-			<artifactId>step-grid-base-app-server</artifactId>
+			<artifactId>step-grid-server-common</artifactId>
 			<version>${project.version}</version>
 		</dependency>
 		<dependency>

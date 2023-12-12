@@ -19,14 +19,13 @@
 package step.grid.app.configuration;
 
 public class AppConfiguration {
-
-    boolean ssl = false;
-    String keyStorePath;
-    String keyStorePassword;
-    String keyManagerPassword;
-    boolean exposeMetrics = false;
-    Integer gridReadTimeout = 3000;
-    Integer gridConnectTimeout = 3000;
+    private boolean ssl = false;
+    private String keyStorePath;
+    private String keyStorePassword;
+    private String keyManagerPassword;
+    private boolean exposeMetrics = false;
+    private Integer gridReadTimeout = 3000;
+    private Integer gridConnectTimeout = 3000;
 
     public AppConfiguration() {
     }

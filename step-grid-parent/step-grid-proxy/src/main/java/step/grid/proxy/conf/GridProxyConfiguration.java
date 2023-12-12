@@ -25,8 +25,10 @@ public class GridProxyConfiguration extends AppConfiguration {
     private String gridProxyHost;
     private Integer gridProxyPort;
     private String gridProxyUrl;
-
     private String gridUrl;
+    private Integer agentConnectTimeout = 3000;
+    private Integer agentReserveTimeout = 3000;
+    private Integer agentReleaseTimeout = 3000;
 
     public GridProxyConfiguration() {
         super();
@@ -62,5 +64,29 @@ public class GridProxyConfiguration extends AppConfiguration {
 
     public void setGridUrl(String gridUrl) {
         this.gridUrl = gridUrl;
+    }
+
+    public Integer getAgentConnectTimeout() {
+        return agentConnectTimeout;
+    }
+
+    public void setAgentConnectTimeout(Integer agentConnectTimeout) {
+        this.agentConnectTimeout = agentConnectTimeout;
+    }
+
+    public Integer getAgentReserveTimeout() {
+        return agentReserveTimeout;
+    }
+
+    public void setAgentReserveTimeout(Integer agentReserveTimeout) {
+        this.agentReserveTimeout = agentReserveTimeout;
+    }
+
+    public Integer getAgentReleaseTimeout() {
+        return agentReleaseTimeout;
+    }
+
+    public void setAgentReleaseTimeout(Integer agentReleaseTimeout) {
+        this.agentReleaseTimeout = agentReleaseTimeout;
     }
 }

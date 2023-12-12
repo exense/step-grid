@@ -47,7 +47,7 @@ import java.util.Map.Entry;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
 
-public class Agent implements AutoCloseable {
+public class Agent extends BaseServer implements AutoCloseable {
 	
 	private static final Logger logger = LoggerFactory.getLogger(Agent.class);
 
@@ -134,15 +134,15 @@ public class Agent implements AutoCloseable {
 
 		buildTokenList(agentConf);
 
-		int serverPort = BaseServer.resolveServerPort(agentUrl, agentPort);
+		int serverPort = this.resolveServerPort(agentUrl, agentPort);
 
 		logger.info("Starting server...");
 		server = startServer(agentConf, serverPort);
 
-		int actualServerPort = BaseServer.getActualServerPort(server);
+		int actualServerPort = this.getActualServerPort(server);
 		logger.info("Successfully started server on port " + actualServerPort);
 
-		this.agentUrl = BaseServer.getOrBuildActualUrl(agentHost, agentUrl, actualServerPort, agentConf.isSsl());
+		this.agentUrl = this.getOrBuildActualUrl(agentHost, agentUrl, actualServerPort, agentConf.isSsl());
 
 		logger.info("Starting grid registration task using grid URL " + gridUrl + "...");
 		registrationTask = createGridRegistrationTask(registrationClient);
@@ -193,7 +193,7 @@ public class Agent implements AutoCloseable {
 			}
 		});
 
-		return BaseServer.startServer(agentConf, port, resourceConfig);
+		return this.startServer(agentConf, port, resourceConfig);
 	}
 
 	private void validateConfiguration(AgentConf agentConf) {

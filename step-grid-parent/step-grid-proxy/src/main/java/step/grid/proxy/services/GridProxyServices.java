@@ -85,7 +85,7 @@ public class GridProxyServices extends AbstractGridServices {
     @Path("{agentContext}/token/{id}/reserve")
     public void reserveToken(@PathParam("agentContext") String agentContext, @PathParam("id") String tokenId) throws GridProxyException {
         try {
-            gridProxy.forwardToAgent(agentContext, "reserve", tokenId);
+            gridProxy.reserveToken(agentContext, tokenId);
         } catch (Exception e) {
             throw new GridProxyException("Unable to reserve token for agent with context '" + agentContext + "'", e);
         }
@@ -96,7 +96,7 @@ public class GridProxyServices extends AbstractGridServices {
     @Path("{agentContext}/token/{id}/release")
     public void releaseToken(@PathParam("agentContext") String agentContext, @PathParam("id") String tokenId) throws GridProxyException {
         try {
-            gridProxy.forwardToAgent(agentContext, "release", tokenId);
+            gridProxy.releaseToken(agentContext, tokenId);
         } catch (Exception e) {
             throw new GridProxyException("Unable to release token for agent with context '" + agentContext + "'", e);
         }
@@ -104,7 +104,7 @@ public class GridProxyServices extends AbstractGridServices {
 
     // For liveness probe
     @GET
-    @Path("/running")
+    @Path("/ready")
     public Response isRunning() {
         if(gridProxy.isRunning()) {
             return Response.status(Response.Status.OK).entity("Grid Proxy is running").build();
@@ -115,7 +115,7 @@ public class GridProxyServices extends AbstractGridServices {
 
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
-    @Path("/shutdown")
+    @Path("/stop")
     public void shutdown(@Context HttpServletRequest request) {
         logger.info("Received shutdown request from " + request.getRemoteAddr());
         new Thread(() -> {

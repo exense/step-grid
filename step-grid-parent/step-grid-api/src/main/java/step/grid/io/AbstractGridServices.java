@@ -10,6 +10,7 @@ public abstract class AbstractGridServices {
         output.addAttachment(generateAttachmentForException(e));
         return output;
     }
+
     protected OutputMessage handleUnexpectedError(InputMessage inputMessage, Exception e) {
         OutputMessage output = newAgentErrorOutput(new AgentError(AgentErrorCode.UNEXPECTED));
         output.addAttachment(generateAttachmentForException(e));

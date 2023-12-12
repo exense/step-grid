@@ -41,7 +41,7 @@ import java.net.UnknownHostException;
 public class BaseServer {
 
     private static final Logger logger = LoggerFactory.getLogger(BaseServer.class);
-    public static Server startServer(AppConfiguration appConfiguration, int port, ResourceConfig resourceConfig) throws Exception {
+    protected Server startServer(AppConfiguration appConfiguration, int port, ResourceConfig resourceConfig) throws Exception {
         resourceConfig.register(JacksonJsonProvider.class);
         resourceConfig.register(JacksonFeature.class);
 
@@ -92,7 +92,7 @@ public class BaseServer {
         return server;
     }
 
-    private static void addMetricServletIfRequired(AppConfiguration appConfiguration, ContextHandlerCollection handlers) {
+    private void addMetricServletIfRequired(AppConfiguration appConfiguration, ContextHandlerCollection handlers) {
         if (appConfiguration.isExposeMetrics()) {
             ServletContextHandler servletContext = new ServletContextHandler();
             servletContext.setContextPath("/metrics");
@@ -105,7 +105,7 @@ public class BaseServer {
         }
     }
 
-    public static int resolveServerPort(String configUrl, Integer configPort) throws MalformedURLException {
+    protected int resolveServerPort(String configUrl, Integer configPort) throws MalformedURLException {
         int port;
         if (configPort != null) {
             port = configPort;
@@ -121,11 +121,11 @@ public class BaseServer {
         return port;
     }
 
-    public static int getActualServerPort(Server server) {
+    protected int getActualServerPort(Server server) {
         return ((ServerConnector) server.getConnectors()[0]).getLocalPort();
     }
 
-    public static String getOrBuildActualUrl(String serverHost, String serverUrl, int localPort, boolean ssl)
+    protected String getOrBuildActualUrl(String serverHost, String serverUrl, int localPort, boolean ssl)
             throws UnknownHostException {
         String actualAgentUrl;
         if (serverUrl == null) {

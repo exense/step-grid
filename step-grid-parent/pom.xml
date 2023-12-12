@@ -79,13 +79,13 @@
 	</properties>
 
 	<modules>
-		<module>step-grid-base-app-server</module>
+		<module>step-grid-server-common</module>
 		<module>step-grid-server</module>
 		<module>step-grid-client</module>
 		<module>step-grid-agent</module>
 		<module>step-grid-api</module>
-        <module>step-grid-proxy</module>
-    </modules>
+		<module>step-grid-proxy</module>
+	</modules>
 
 	<dependencies>
 		<dependency>
