@@ -50,7 +50,7 @@ public abstract class AbstractGridTest {
 	
 	protected GridClient client;
 	
-	int nTokens = 1;
+	protected int nTokens = 1;
 
 	public AbstractGridTest() {
 		super();
@@ -94,9 +94,15 @@ public abstract class AbstractGridTest {
 	
 	@After
 	public void tearDown() throws Exception {
-		agent.close();
-		grid.stop();
-		client.close();
+		if (agent != null) {
+			agent.close();
+		}
+		if (grid != null) {
+			grid.stop();
+		}
+		if (client != null) {
+			client.close();
+		}
 	}
 	
 	protected ObjectNode newDummyJson() {

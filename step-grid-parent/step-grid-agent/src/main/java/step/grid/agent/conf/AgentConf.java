@@ -18,10 +18,12 @@
  ******************************************************************************/
 package step.grid.agent.conf;
 
+import step.grid.app.configuration.AppConfiguration;
+
 import java.util.List;
 import java.util.Map;
 
-public class AgentConf {
+public class AgentConf extends AppConfiguration {
 	
 	String gridHost;
 
@@ -32,25 +34,12 @@ public class AgentConf {
 	String agentHost;
 	
 	String agentUrl;
-	
-	boolean ssl = false;
-	String keyStorePath;
-	String keyStorePassword;
-	String keyManagerPassword;
 
-
-	boolean exposeMetrics = false;
-	
 	String workingDir;
 	
 	Integer registrationPeriod = 10000;
 
 	Integer registrationOffset = 0;
-	
-	Integer gridReadTimeout = 3000;
-	
-	Integer gridConnectTimeout = 3000;
-
 	List<TokenGroupConf> tokenGroups;
 	
 	Map<String, String> properties;
@@ -124,42 +113,6 @@ public class AgentConf {
 		this.agentUrl = agentUrl;
 	}
 
-	public boolean isSsl() {
-		return ssl;
-	}
-
-	public void setSsl(boolean ssl) {
-		this.ssl = ssl;
-	}
-
-	public String getKeyStorePath() {
-		return keyStorePath;
-	}
-
-	public void setKeyStorePath(String keyStorePath) {
-		this.keyStorePath = keyStorePath;
-	}
-
-	public String getKeyStorePassword() {
-		return keyStorePassword;
-	}
-
-	public void setKeyStorePassword(String keyStorePassword) {
-		this.keyStorePassword = keyStorePassword;
-	}
-
-	public String getKeyManagerPassword() {
-		return keyManagerPassword;
-	}
-
-	public void setKeyManagerPassword(String keyManagerPassword) {
-		this.keyManagerPassword = keyManagerPassword;
-	}
-
-	public boolean isExposeMetrics() { return exposeMetrics; }
-
-	public void setExposeMetrics(boolean exposeMetrics) { this.exposeMetrics = exposeMetrics; }
-
 	public List<TokenGroupConf> getTokenGroups() {
 		return tokenGroups;
 	}
@@ -192,22 +145,6 @@ public class AgentConf {
 		this.workingDir = workingDir;
 	}
 
-	public Integer getGridReadTimeout() {
-		return gridReadTimeout;
-	}
-
-	public void setGridReadTimeout(Integer gridReadTimeout) {
-		this.gridReadTimeout = gridReadTimeout;
-	}
-
-	public Integer getGridConnectTimeout() {
-		return gridConnectTimeout;
-	}
-
-	public void setGridConnectTimeout(Integer gridConnectTimeout) {
-		this.gridConnectTimeout = gridConnectTimeout;
-	}
-
 	public Map<String, String> getProperties() {
 		return properties;
 	}
@@ -222,5 +159,5 @@ public class AgentConf {
 
 	public void setGracefulShutdownTimeout(Long gracefulShutdownTimeout) {
 		this.gracefulShutdownTimeout = gracefulShutdownTimeout;
-	} 
+	}
 }

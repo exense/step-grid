@@ -20,27 +20,19 @@ package step.grid.agent;
 
 import ch.exense.commons.app.ArgumentParser;
 
-import io.prometheus.client.hotspot.DefaultExports;
-import io.prometheus.client.servlet.jakarta.exporter.MetricsServlet;
 import org.eclipse.jetty.server.*;
-import org.eclipse.jetty.server.handler.ContextHandlerCollection;
-import org.eclipse.jetty.servlet.ServletContextHandler;
-import org.eclipse.jetty.servlet.ServletHolder;
-import org.eclipse.jetty.util.ssl.SslContextFactory;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
-import org.glassfish.jersey.jackson.JacksonFeature;
-import org.glassfish.jersey.jackson.internal.jackson.jaxrs.json.JacksonJsonProvider;
 import org.glassfish.jersey.server.ResourceConfig;
-import org.glassfish.jersey.servlet.ServletContainer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import step.grid.Token;
 import step.grid.agent.conf.AgentConf;
-import step.grid.agent.conf.AgentConfParser;
 import step.grid.agent.conf.TokenConf;
 import step.grid.agent.conf.TokenGroupConf;
 import step.grid.agent.tokenpool.AgentTokenPool;
 import step.grid.agent.tokenpool.AgentTokenWrapper;
+import step.grid.app.configuration.ConfigurationParser;
+import step.grid.app.server.BaseServer;
 import step.grid.contextbuilder.ApplicationContextBuilder;
 import step.grid.filemanager.FileManagerClient;
 import step.grid.filemanager.FileManagerClientImpl;
@@ -48,17 +40,13 @@ import step.grid.tokenpool.Interest;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.Inet4Address;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.net.UnknownHostException;
 import java.nio.file.Files;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
 
-public class Agent implements AutoCloseable {
+public class Agent extends BaseServer implements AutoCloseable {
 	
 	private static final Logger logger = LoggerFactory.getLogger(Agent.class);
 
@@ -89,8 +77,8 @@ public class Agent implements AutoCloseable {
 		String agentConfStr = arguments.getOption("config");
 		
 		if(agentConfStr!=null) {
-			AgentConfParser parser = new AgentConfParser();
-			AgentConf agentConf = parser.parse(arguments, new File(agentConfStr));
+			ConfigurationParser<AgentConf> parser = new ConfigurationParser<AgentConf>();
+			AgentConf agentConf = parser.parse(arguments, new File(agentConfStr), AgentConf.class);
 
 			if(arguments.hasOption("gridHost")) {
 				agentConf.setGridHost(arguments.getOption("gridHost"));
@@ -126,7 +114,6 @@ public class Agent implements AutoCloseable {
 		String agentHost = agentConf.getAgentHost();
 		String agentUrl = agentConf.getAgentUrl();
 		Integer agentPort = agentConf.getAgentPort();
-		boolean ssl = agentConf.isSsl();
 		Long agentConfGracefulShutdownTimeout = agentConf.getGracefulShutdownTimeout();
 		gracefulShutdownTimeout = agentConfGracefulShutdownTimeout != null ? agentConfGracefulShutdownTimeout : 30000;
 
@@ -144,15 +131,15 @@ public class Agent implements AutoCloseable {
 
 		buildTokenList(agentConf);
 
-		int serverPort = getServerPort(agentUrl, agentPort);
+		int serverPort = this.resolveServerPort(agentUrl, agentPort);
 
 		logger.info("Starting server...");
-		server = startServer(agentConf, serverPort, ssl);
+		server = startServer(agentConf, serverPort);
 
-		int actualServerPort = getActualServerPort();
+		int actualServerPort = this.getActualServerPort(server);
 		logger.info("Successfully started server on port " + actualServerPort);
 
-		this.agentUrl = getOrBuildActualAgentUrl(agentHost, agentUrl, actualServerPort, ssl);
+		this.agentUrl = this.getOrBuildActualUrl(agentHost, agentUrl, actualServerPort, agentConf.isSsl());
 
 		logger.info("Starting grid registration task using grid URL " + gridUrl + "...");
 		registrationTask = createGridRegistrationTask(registrationClient);
@@ -187,61 +174,13 @@ public class Agent implements AutoCloseable {
 		}
 	}
 
-	private int getServerPort(String agentUrl, Integer agentPort) throws MalformedURLException {
-		int port;
-		if (agentPort != null) {
-			port = agentPort;
-		} else {
-			if (agentUrl != null) {
-				URL url = new URL(agentUrl);
-				int urlPort = url.getPort();
-				port = urlPort != -1 ? urlPort : url.getDefaultPort();
-			} else {
-				port = 0;
-			}
-		}
-		return port;
-	}
-
-	private String getOrBuildActualAgentUrl(String agentHost, String agentUrl, int localPort, boolean ssl)
-			throws UnknownHostException {
-		String actualAgentUrl;
-		if (agentUrl == null) {
-			// agentUrl not set. generate it
-			String scheme;
-			if (ssl) {
-				scheme = "https://";
-			} else {
-				scheme = "http://";
-			}
-
-			String host;
-			if (agentHost == null) {
-				// agentHost not specified. Calculate it
-				host = Inet4Address.getLocalHost().getCanonicalHostName();
-			} else {
-				host = agentHost;
-			}
-			actualAgentUrl = scheme + host + ":" + localPort;
-		} else {
-			actualAgentUrl = agentUrl;
-		}
-		return actualAgentUrl;
-	}
-
-	private int getActualServerPort() {
-		return ((ServerConnector) server.getConnectors()[0]).getLocalPort();
-	}
-
 	public boolean isRunning() {
 		return server.isRunning();
 	}
 
-	private Server startServer(AgentConf agentConf, int port, boolean ssl) throws Exception {
+	private Server startServer(AgentConf agentConf, int port) throws Exception {
 		ResourceConfig resourceConfig = new ResourceConfig();
 		resourceConfig.packages(AgentServices.class.getPackage().getName());
-		resourceConfig.register(JacksonJsonProvider.class);
-		resourceConfig.register(JacksonFeature.class);
 		resourceConfig.register(ObjectMapperResolver.class);
 		final Agent agent = this;
 		resourceConfig.register(new AbstractBinder() {
@@ -250,64 +189,8 @@ public class Agent implements AutoCloseable {
 				bind(agent).to(Agent.class);
 			}
 		});
-		ServletContainer servletContainer = new ServletContainer(resourceConfig);
-		ServletHolder sh = new ServletHolder(servletContainer);
-		ServletContextHandler context = new ServletContextHandler(ServletContextHandler.SESSIONS);
-		context.setContextPath("/");
-		context.addServlet(sh, "/*");
 
-		Server server = new Server();
-
-		ServerConnector connector;
-		if (ssl) {
-			String keyStorePath = agentConf.getKeyStorePath();
-			String keyStorePassword = agentConf.getKeyStorePassword();
-			String keyManagerPassword = agentConf.getKeyManagerPassword();
-
-			HttpConfiguration https = new HttpConfiguration();
-			SecureRequestCustomizer secureRequestCustomizer = new SecureRequestCustomizer();
-			//require to accept local host connection
-			secureRequestCustomizer.setSniHostCheck(false);
-			https.addCustomizer(secureRequestCustomizer);
-
-			SslContextFactory.Server sslContextFactory = new SslContextFactory.Server();
-			sslContextFactory.setKeyStorePath(keyStorePath);
-			sslContextFactory.setKeyStorePassword(keyStorePassword);
-			sslContextFactory.setKeyManagerPassword(keyManagerPassword);
-
-			connector = new ServerConnector(server, new SslConnectionFactory(sslContextFactory, "http/1.1"),
-					new HttpConnectionFactory(https));
-		} else {
-			HttpConfiguration http = new HttpConfiguration();
-			http.addCustomizer(new SecureRequestCustomizer());
-
-			connector = new ServerConnector(server);
-			connector.addConnectionFactory(new HttpConnectionFactory(http));
-		}
-		connector.setPort(port);
-		server.addConnector(connector);
-
-		ContextHandlerCollection contexts = new ContextHandlerCollection();
-		contexts.addHandler(context);
-		addMetricServletIfRequired(agentConf, contexts);
-		server.setHandler(contexts);
-
-		server.start();
-
-		return server;
-	}
-
-	private void addMetricServletIfRequired(AgentConf agentConf, ContextHandlerCollection handlers) {
-		if (agentConf.isExposeMetrics()) {
-			ServletContextHandler servletContext = new ServletContextHandler();
-			servletContext.setContextPath("/metrics");
-			servletContext.addServlet(new ServletHolder(new MetricsServlet()), "");
-			//Start default JVM metrics
-			DefaultExports.initialize();
-			handlers.addHandler(servletContext);
-
-			logger.info("Exposing prometheus JVM metrics under path '/metrics'");
-		}
+		return this.startServer(agentConf, port, resourceConfig);
 	}
 
 	private void validateConfiguration(AgentConf agentConf) {
