@@ -16,24 +16,23 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with STEP.  If not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************/
-package step.grid.agent.conf;
+package step.grid.app.configuration;
+
+import ch.exense.commons.app.ArgumentParser;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 
 import java.io.File;
 import java.nio.file.Files;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-
-import ch.exense.commons.app.ArgumentParser;
-
-public class AgentConfParser {
+public class ConfigurationParser<T extends AppConfiguration> {
 	
 	private static final String JSON = "json";
 	private static final String YAML = "yaml";
 
-	public AgentConf parse(ArgumentParser arguments, File file) throws Exception {
+	public T parse(ArgumentParser arguments, File file, Class<T> clazz) throws Exception {
 		byte[] bytes = Files.readAllBytes(file.toPath());
 		
 		String content = new String(bytes);
@@ -50,7 +49,7 @@ public class AgentConfParser {
 					+ file.getAbsolutePath() + ". Supported file types are .yaml and .json");
 		}
 		
-		return mapper.readValue(resolvedContent, AgentConf.class);
+		return mapper.readValue(resolvedContent, clazz);
 	}
 	
 	private String replacePlaceholders(ArgumentParser arguments, String configXml) {

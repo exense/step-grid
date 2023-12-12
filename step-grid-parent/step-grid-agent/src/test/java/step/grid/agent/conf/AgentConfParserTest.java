@@ -6,40 +6,46 @@ import org.junit.Test;
 
 import ch.exense.commons.app.ArgumentParser;
 import ch.exense.commons.io.FileHelper;
+import step.grid.agent.Agent;
+import step.grid.app.configuration.ConfigurationParser;
 
 public class AgentConfParserTest {
 
 	@Test
 	public void testYaml() throws Exception {
-		AgentConfParser agentConfParser = new AgentConfParser();
+		ConfigurationParser<AgentConf> agentConfParser = new ConfigurationParser<AgentConf>();
 		AgentConf agentConf = agentConfParser.parse(new ArgumentParser(new String[] {}),
-				FileHelper.getClassLoaderResourceAsFile(this.getClass().getClassLoader(), "AgentConf.yaml"));
+				FileHelper.getClassLoaderResourceAsFile(this.getClass().getClassLoader(), "AgentConf.yaml"),
+				AgentConf.class);
 		assertAgentConf(agentConf);
 	}
 	
 	@Test
 	public void testYamlWithPlaceholders() throws Exception {
-		AgentConfParser agentConfParser = new AgentConfParser();
+		ConfigurationParser<AgentConf> agentConfParser = new ConfigurationParser<AgentConf>();
 		AgentConf agentConf = agentConfParser.parse(new ArgumentParser(new String[] {"-host=localhost"}),
-				FileHelper.getClassLoaderResourceAsFile(this.getClass().getClassLoader(), "AgentConfWithPlaceholders.yaml"));
+				FileHelper.getClassLoaderResourceAsFile(this.getClass().getClassLoader(), "AgentConfWithPlaceholders.yaml"),
+				AgentConf.class);
 		assertAgentConf(agentConf);
 	}
 	
 	@Test
 	public void testJson() throws Exception {
-		AgentConfParser agentConfParser = new AgentConfParser();
+		ConfigurationParser<AgentConf> agentConfParser = new ConfigurationParser<AgentConf>();
 		AgentConf agentConf = agentConfParser.parse(new ArgumentParser(new String[] {}),
-				FileHelper.getClassLoaderResourceAsFile(this.getClass().getClassLoader(), "AgentConf.json"));
+				FileHelper.getClassLoaderResourceAsFile(this.getClass().getClassLoader(), "AgentConf.json"),
+				AgentConf.class);
 		assertAgentConf(agentConf);
 	}
 	
 	@Test
 	public void testInvalidFile() throws Exception {
-		AgentConfParser agentConfParser = new AgentConfParser();
+		ConfigurationParser<AgentConf> agentConfParser = new ConfigurationParser<AgentConf>();
 		Exception actualException = null;
 		try {
 			agentConfParser.parse(new ArgumentParser(new String[] {}),
-					FileHelper.getClassLoaderResourceAsFile(this.getClass().getClassLoader(), "AgentConf.properties"));
+					FileHelper.getClassLoaderResourceAsFile(this.getClass().getClassLoader(), "AgentConf.properties"),
+					AgentConf.class);
 		} catch (Exception e) {
 			actualException = e;
 		}
