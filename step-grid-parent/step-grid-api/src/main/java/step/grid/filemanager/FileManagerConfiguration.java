@@ -24,7 +24,7 @@ public class FileManagerConfiguration {
 
 	private TimeUnit configurationTimeUnit = TimeUnit.MINUTES;
 
-	private long cleanupLastAccessTimeThresholdMinutes = 1440;
+	private long cleanupLastAccessTimeThresholdMinutes = 120;
 
 	private boolean cleanupJobEnabled = true;
 
