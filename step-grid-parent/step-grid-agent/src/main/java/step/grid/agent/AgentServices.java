@@ -155,6 +155,25 @@ public class AgentServices extends AbstractGridServices {
 		}
 	}
 
+	@POST
+	@Consumes(MediaType.APPLICATION_JSON)
+	@Produces(MediaType.APPLICATION_JSON)
+	@Path("/token/{id}/interrupt-execution")
+	public void interruptTokenExecution(@PathParam("id") String tokenId) {
+		try {
+			final AgentTokenWrapper tokenWrapper = tokenPool.getTokenForExecution(tokenId);
+			if(tokenWrapper != null) {
+				tokenWrapper.getTokenReservationSession().getEventListeners().forEach(e -> {
+					e.onTokenInterruption();
+				});
+			}
+		} catch(InvalidTokenIdException e) {
+
+		} catch (Exception e) {
+
+		}
+	}
+
 	private boolean tryInterruption(final AgentTokenWrapper tokenWrapper, final ExecutionContext context,
 			List<Attachment> attachments) throws InterruptedException {
 		if(tokenWrapper.isInUse()) {
