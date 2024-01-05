@@ -281,11 +281,8 @@ public abstract class AbstractGridClientImpl implements GridClient {
 
 	@Override
 	public OutputMessage call(String tokenId, JsonNode argument, String handler, FileVersionId handlerPackage, Map<String,String> properties, int callTimeout) throws GridClientException, AgentCommunicationException, Exception {
-		TokenReservation tokenReservation = reservedTokens.get(tokenId);
-		if(tokenReservation == null) {
-			throw new GridClientException("The token with id "+tokenId+" isn't reserved. You might already have released it.");
-		}
-		
+		TokenReservation tokenReservation = getTokenReservation(tokenId);
+
 		TokenWrapper tokenWrapper = tokenReservation.getTokenWrapper();
 		Token token = tokenWrapper.getToken();
 		AgentRef agent = tokenWrapper.getAgent();
@@ -310,6 +307,14 @@ public abstract class AbstractGridClientImpl implements GridClient {
 			}
 		}
 		return output;
+	}
+
+	private TokenReservation getTokenReservation(String tokenId) throws GridClientException {
+		TokenReservation tokenReservation = reservedTokens.get(tokenId);
+		if(tokenReservation == null) {
+			throw new GridClientException("The token with id "+ tokenId +" isn't reserved. You might already have released it.");
+		}
+		return tokenReservation;
 	}
 
 	protected TokenLifecycleStrategyCallback getTokenLifecycleCallback(TokenWrapper tokenWrapper) {
@@ -354,17 +359,14 @@ public abstract class AbstractGridClientImpl implements GridClient {
 
 	@Override
 	public void interruptTokenExecution(String tokenId) throws GridClientException, AgentCommunicationException {
-		TokenReservation tokenReservation = reservedTokens.get(tokenId);
-		if(tokenReservation == null) {
-			throw new GridClientException("The token with id "+tokenId+" isn't reserved. You might already have released it.");
-		}
+		TokenReservation tokenReservation = getTokenReservation(tokenId);
 
 		TokenWrapper tokenWrapper = tokenReservation.getTokenWrapper();
 		Token token = tokenWrapper.getToken();
 		AgentRef agent = tokenWrapper.getAgent();
 
-		call(agent, token, "/interrupt-execution", builder-> builder.post(null),
-				response-> null, gridClientConfiguration.getReadTimeoutOffset());
+		call(agent, token, "/interrupt-execution", builder -> builder.post(null),
+				response -> null, gridClientConfiguration.getReadTimeoutOffset());
 	}
 
 	private void releaseSession(AgentRef agentRef, Token token) throws AgentCommunicationException {

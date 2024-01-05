@@ -31,7 +31,15 @@ public class TokenReservationSession extends AbstractSession {
         return eventListeners.add(tokenEventListener);
     }
 
+    public boolean removeEventListener(TokenEventListener tokenEventListener) {
+        return eventListeners.remove(tokenEventListener);
+    }
+
     public List<TokenEventListener> getEventListeners() {
         return eventListeners;
+    }
+
+    public void clearEventListeners() {
+        eventListeners.clear();
     }
 }
