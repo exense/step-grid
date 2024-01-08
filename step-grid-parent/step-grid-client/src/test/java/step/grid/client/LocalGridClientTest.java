@@ -57,6 +57,11 @@ public class LocalGridClientTest extends AbstractGridClientTest {
 	public void testAgentCallTimeoutException() throws Exception {
 		super.testAgentCallTimeoutException();
 	}
+
+	@Test
+	public void testTokenInterruption() throws Exception {
+		super.testTokenInterruption();
+	}
 	
 	@Test
 	public void testHappyPathWithoutSession() throws Exception {

@@ -366,7 +366,7 @@ public abstract class AbstractGridClientImpl implements GridClient {
 		AgentRef agent = tokenWrapper.getAgent();
 
 		call(agent, token, "/interrupt-execution", builder -> builder.post(null),
-				response -> null, gridClientConfiguration.getReadTimeoutOffset());
+				response -> null, gridClientConfiguration.getTokenExecutionInterruptionTimeout());
 	}
 
 	private void releaseSession(AgentRef agentRef, Token token) throws AgentCommunicationException {
