@@ -215,14 +215,14 @@ public class FileManagerImplTest {
 		f.registerFileVersion(testFile2, false, true);
 		
 		Assert.assertEquals(2, registryFolder.list().length);
-		Thread.sleep(1);
+		Thread.sleep(2);
 		f.cleanupCache();
 		Assert.assertEquals(0, registryFolder.list().length);
 
 		f.registerFileVersion(testFile, false, true);
 		f.registerFileVersion(testFile2, false, false);
 		Assert.assertEquals(2, registryFolder.list().length);
-		Thread.sleep(1);
+		Thread.sleep(2);
 		f.cleanupCache();
 		Assert.assertEquals(1, registryFolder.list().length);
 	}

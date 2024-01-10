@@ -56,16 +56,11 @@ import step.grid.bootstrap.BootstrapManager;
 import step.grid.contextbuilder.ApplicationContextBuilderException;
 import step.grid.filemanager.ControllerCallTimeout;
 import step.grid.filemanager.FileManagerException;
-import step.grid.io.AgentError;
-import step.grid.io.AgentErrorCode;
-import step.grid.io.Attachment;
-import step.grid.io.AttachmentHelper;
-import step.grid.io.InputMessage;
-import step.grid.io.OutputMessage;
+import step.grid.io.*;
 
 @Singleton
 @Path("/")
-public class AgentServices {
+public class AgentServices extends AbstractGridServices {
 
 	private static final Logger logger = LoggerFactory.getLogger(AgentServices.class);
 
@@ -223,43 +218,6 @@ public class AgentServices {
 		OutputMessage output = newAgentErrorOutput(error);
 		output.addAttachment(generateAttachmentForException(e));
 		return output;
-	}
-
-	protected OutputMessage handleUnexpectedError(InputMessage inputMessage, Exception e) {
-		OutputMessage output = newAgentErrorOutput(new AgentError(AgentErrorCode.UNEXPECTED));
-		output.addAttachment(generateAttachmentForException(e));
-		return output;
-	}
-
-	protected OutputMessage newAgentErrorOutput(AgentError error, Attachment...attachments) {
-		OutputMessage output = new OutputMessage();
-		output.setAgentError(error);
-		if(attachments!=null) {
-			for (Attachment attachment : attachments) {
-				output.addAttachment(attachment);			
-			}
-		}
-		return output;
-	}
-
-	protected Attachment generateAttachmentForException(Throwable e) {
-		Attachment attachment = new Attachment();	
-		attachment.setName("exception.log");
-		StringWriter w = new StringWriter();
-		e.printStackTrace(new PrintWriter(w));
-		attachment.setHexContent(AttachmentHelper.getHex(w.toString().getBytes()));
-		return attachment;
-	}
-
-	protected Attachment generateAttachmentForStacktrace(String attachmentName, StackTraceElement[] e) {
-		Attachment attachment = new Attachment();	
-		StringWriter str = new StringWriter();
-		PrintWriter w = new PrintWriter(str);
-		for (StackTraceElement traceElement : e)
-			w.println("\tat " + traceElement);
-		attachment.setName(attachmentName);
-		attachment.setHexContent(AttachmentHelper.getHex(str.toString().getBytes()));
-		return attachment;
 	}
 
 	@GET
