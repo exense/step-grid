@@ -18,10 +18,6 @@
  ******************************************************************************/
 package step.grid.client;
 
-import java.io.Closeable;
-import java.io.IOException;
-import java.nio.file.Files;
-
 import step.grid.agent.handler.AbstractMessageHandler;
 import step.grid.agent.handler.context.OutputMessageBuilder;
 import step.grid.agent.tokenpool.AgentTokenWrapper;
@@ -30,8 +26,18 @@ import step.grid.filemanager.FileVersionId;
 import step.grid.io.InputMessage;
 import step.grid.io.OutputMessage;
 
+import java.io.Closeable;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+
 public class TestMessageHandler extends AbstractMessageHandler {
-	
+
+	public static final String TEST_TOKEN_INTERRUPTION = "testTokenInterruption";
+	public static final String RESULT = "Result";
+	public static final String INTERRUPTED = "Interrupted";
+
 	@Override
 	public OutputMessage handle(AgentTokenWrapper token, InputMessage message) throws Exception {
 		
@@ -77,6 +83,14 @@ public class TestMessageHandler extends AbstractMessageHandler {
 					}
 				}
 			});
+		} else if(message.getPayload().has(TEST_TOKEN_INTERRUPTION)) {
+			CountDownLatch countDownLatch = new CountDownLatch(1);
+			token.getTokenReservationSession().registerEventListener(() -> countDownLatch.countDown());
+			// Wait for event listener to get called
+			countDownLatch.await(5, TimeUnit.SECONDS);
+			OutputMessageBuilder builder = new OutputMessageBuilder();
+			builder.add(RESULT, INTERRUPTED);
+			return builder.build();
 		}
 		
 		try {
@@ -86,7 +100,7 @@ public class TestMessageHandler extends AbstractMessageHandler {
 		}
 		
 		OutputMessageBuilder builder = new OutputMessageBuilder();
-		builder.add("Result", "OK");
+		builder.add(RESULT, "OK");
 		
 		return builder.build();
 	}

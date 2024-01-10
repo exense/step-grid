@@ -91,6 +91,8 @@ public interface GridClient extends GridFileService, Closeable {
 	 */
 	void returnTokenHandle(String tokenId) throws GridClientException, AgentCommunicationException;
 
+	void interruptTokenExecution(String tokenId) throws GridClientException, AgentCommunicationException;
+
 	void markTokenAsFailing(String tokenId, String errorMessage, Exception e);
 
 	void removeTokenError(String tokenId);

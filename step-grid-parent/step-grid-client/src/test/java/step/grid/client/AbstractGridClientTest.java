@@ -45,9 +45,11 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 import static org.junit.Assert.*;
+import static step.grid.client.TestMessageHandler.*;
 
 public abstract class AbstractGridClientTest extends AbstractGridTest {
 	
@@ -195,6 +197,32 @@ public abstract class AbstractGridClientTest extends AbstractGridTest {
 		
 		Assert.assertNotNull(actualException);
 		Assert.assertTrue(actualException instanceof AgentCallTimeoutException);
+	}
+
+	protected void testTokenInterruption() throws Exception {
+		getClient(0, 10000, 10000);
+
+		TokenWrapper token = selectToken(false);
+
+		ObjectNode o = newDummyJson();
+		o.put(TEST_TOKEN_INTERRUPTION, "");
+
+		// Call the token asynchronously
+		CompletableFuture<OutputMessage> future = CompletableFuture.supplyAsync(() -> {
+			try {
+				return client.call(token.getID(), o, TestMessageHandler.class.getName(), null, null, 5000);
+			} catch (Exception e) {
+				throw new RuntimeException(e);
+			}
+		});
+		// Wait 500ms to ensure that the TestMessageHandler has registered the interruption hook
+		Thread.sleep(500);
+		// Interrupt the token execution
+		client.interruptTokenExecution(token.getID());
+		OutputMessage outputMessage = future.get();
+		client.returnTokenHandle(token.getID());
+		// Ensure the hooks has been called
+		assertEquals(INTERRUPTED, outputMessage.getPayload().get(RESULT).asText());
 	}
 	
 	protected void testHappyPathWithoutSession() throws Exception {

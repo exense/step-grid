@@ -25,7 +25,8 @@ public class GridClientConfiguration {
 	
 	private int releaseSessionTimeout = 60000;
 	private int reserveSessionTimeout = 10000;
-	
+	private int tokenExecutionInterruptionTimeout = 10000;
+
 	private int readTimeoutOffset = 3000;
 	
 	private boolean allowInvalidSslCertificates = false;
@@ -60,6 +61,14 @@ public class GridClientConfiguration {
 
 	public void setReserveSessionTimeout(int reserveSessionTimeout) {
 		this.reserveSessionTimeout = reserveSessionTimeout;
+	}
+
+	public int getTokenExecutionInterruptionTimeout() {
+		return tokenExecutionInterruptionTimeout;
+	}
+
+	public void setTokenExecutionInterruptionTimeout(int tokenExecutionInterruptionTimeout) {
+		this.tokenExecutionInterruptionTimeout = tokenExecutionInterruptionTimeout;
 	}
 
 	public int getReadTimeoutOffset() {
