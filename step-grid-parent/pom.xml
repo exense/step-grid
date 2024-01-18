@@ -69,7 +69,7 @@
 		<step-api.version>2024.1.8-659bac4accbcc87c8061a552</step-api.version>
 		<exense-commons.version>2.0.6</exense-commons.version>
 		<!-- external dependencies -->
-		<slf4j.version>1.7.36</slf4j.version>
+		<slf4j.version>2.0.9</slf4j.version>
 		<jersey.version>3.0.4</jersey.version>
 		<hk2.version>3.0.1</hk2.version>
 		<jetty.version>11.0.9</jetty.version>
