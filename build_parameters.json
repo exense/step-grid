@@ -6,7 +6,7 @@
 		{
 			"NAME": "ALL",
 			"URL": "nexus-staging::https://nexus-enterprise-staging.exense.ch/repository/staging-maven/",
-			"CONFIG": ""
+			"CONFIG": "Default"
 		},
 		{
 			"NAME": "PRODUCTION",
