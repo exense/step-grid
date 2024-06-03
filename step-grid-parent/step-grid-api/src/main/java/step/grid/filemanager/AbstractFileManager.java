@@ -187,8 +187,8 @@ public class AbstractFileManager {
 		return file.getAbsolutePath();
 	}
 
-	protected void deleteFileVersionContainer(FileVersionId fileVersionId) {
-		FileHelper.deleteFolder(getContainerFolder(fileVersionId));
+	protected boolean deleteFileVersionContainer(FileVersionId fileVersionId) {
+		return FileHelper.safeDeleteFolder(getContainerFolder(fileVersionId));
 	}
 
 	protected void removeFileVersion(FileVersionId fileVersionId) {
@@ -224,9 +224,13 @@ public class AbstractFileManager {
 					while (iterator.hasNext()) {
 						Map.Entry<FileVersionId, CachedFileVersion> next = iterator.next();
 						if (next.getValue().isCleanable() && next.getValue().getLastAccessTime() < fromLastAccessTime) {
-							deleteFileVersionContainer(next.getKey());
-							iterator.remove();
-							atomicInteger.incrementAndGet();
+							if (deleteFileVersionContainer(next.getKey())) {
+								iterator.remove();
+								atomicInteger.incrementAndGet();
+							} else {
+								logger.debug("Cannot delete the file manager folder " + getContainerFolder(next.getKey()) +
+										", skipping cleanup of this entry.");
+							}
 						}
 					}
 					File fileCacheFolder = getFileCacheFolder(fileId);
