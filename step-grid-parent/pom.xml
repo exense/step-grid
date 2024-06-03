@@ -67,7 +67,7 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<!-- internal dependencies -->
 		<step-api.version>1.2.5</step-api.version>
-		<exense-commons.version>2024.5.31-66597f0c0bc9f273da23c483</exense-commons.version>
+		<exense-commons.version>2.0.8</exense-commons.version>
 		<!-- external dependencies -->
 		<slf4j.version>2.0.9</slf4j.version>
 		<jersey.version>3.0.4</jersey.version>
