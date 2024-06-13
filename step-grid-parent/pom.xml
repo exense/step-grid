@@ -1,21 +1,3 @@
-<!--
-  Copyright (C) 2020, exense GmbH
-   
-  This file is part of STEP
-   
-  STEP is free software: you can redistribute it and/or modify
-  it under the terms of the GNU Affero General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
-   
-  STEP is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  GNU Affero General Public License for more details.
-   
-  You should have received a copy of the GNU Affero General Public License
-  along with STEP.  If not, see <http://www.gnu.org/licenses/>.
--->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
@@ -25,31 +7,13 @@
 	<packaging>pom</packaging>
 
 	<name>Step Grid</name>
-	<description>
-		Step Grid
-	</description>
-	<url>http://exense.ch/</url>
+	<description>Step Grid</description>
 	<licenses>
 		<license>
 			<name>The GNU Affero General Public License 3.0</name>
 			<url>http://www.gnu.org/licenses/</url>
 		</license>
 	</licenses>
-	<developers>
-		<developer>
-			<name>exense Team</name>
-			<email>contact@exense.ch</email>
-			<organization>exense GmbH</organization>
-			<organizationUrl>http://www.exense.ch</organizationUrl>
-			<url>http://step.exense.ch</url>
-		</developer>
-	</developers>
-	<scm>
-		<connection>scm:git:https://github.com/exense/step-grid/</connection>
-		<developerConnection>scm:git:https://github.com/exense/step-grid.git</developerConnection>
-		<url>https://github.com/exense/step-grid/</url>
-  	</scm>
-
 	<repositories>
 		<!-- staging nexus -->
 		<repository>
@@ -65,17 +29,30 @@
 	
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<maven.compiler.source>11</maven.compiler.source>
+		<maven.compiler.target>11</maven.compiler.target>
+
 		<!-- internal dependencies -->
-		<step-api.version>1.2.5</step-api.version>
-		<exense-commons.version>2.0.8</exense-commons.version>
+<!--		<step-api.version>1.2.5</step-api.version>-->
+<!--		<exense-commons.version>2.0.8</exense-commons.version>-->
+		<dependencies.version>0.0.0-SNAPSHOT</dependencies.version>
+		<step-api.version>0.0.0-SNAPSHOT</step-api.version>
+		<exense-commons.version>0.0.0-SNAPSHOT</exense-commons.version>
 		<!-- external dependencies -->
-		<slf4j.version>2.0.9</slf4j.version>
-		<jersey.version>3.0.4</jersey.version>
-		<hk2.version>3.0.1</hk2.version>
-		<jetty.version>11.0.9</jetty.version>
-		<junit.version>4.13.1</junit.version>
-		<jackson.version>2.13.3</jackson.version>
-		<guava.version>30.1.1-jre</guava.version>
+
+		<!-- maven build dependencies -->
+		<dep.mvn.jacoco.version>0.8.12</dep.mvn.jacoco.version>
+		<dep.mvn.jar.version>3.1.1</dep.mvn.jar.version>
+		<dep.mvn.deploy.version>3.0.0-M1</dep.mvn.deploy.version>
+		<dep.mvn.compiler.version>3.8.0</dep.mvn.compiler.version>
+		<dep.mvn.javadoc.version>3.3.2</dep.mvn.javadoc.version>
+		<dep.mvn.surefire.version>2.19.1</dep.mvn.surefire.version>
+		<dep.mvn.source.version>3.0.1</dep.mvn.source.version>
+		<dep.mvn.gpg.version>1.6</dep.mvn.gpg.version>
+		<dep.mvn.download.version>1.2.1</dep.mvn.download.version>
+		<dep.mvn.resources.version>2.6</dep.mvn.resources.version>
+		<dep.mvn.dependency-check.version>9.2.0</dep.mvn.dependency-check.version>
+
 	</properties>
 
 	<modules>
@@ -87,16 +64,113 @@
 		<module>step-grid-proxy</module>
 	</modules>
 
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>ch.exense.commons</groupId>
+				<artifactId>exense-commons-parent</artifactId>
+				<version>${exense-commons.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+
+			<dependency>
+				<groupId>ch.exense.step</groupId>
+				<artifactId>step-api</artifactId>
+				<version>${step-api.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+
+			<!-- other managed dependencies which are not transitively imported from the above projects -->
+			<dependency>
+				<groupId>ch.exense.dependencies</groupId>
+				<artifactId>dependencies-apache-commons</artifactId>
+				<version>${dependencies.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+
+			<dependency>
+				<groupId>ch.exense.dependencies</groupId>
+				<artifactId>dependencies-guava</artifactId>
+				<version>${dependencies.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+
+			<dependency>
+				<groupId>ch.exense.dependencies</groupId>
+				<artifactId>dependencies-hk2</artifactId>
+				<version>${dependencies.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+
+			<dependency>
+				<groupId>ch.exense.dependencies</groupId>
+				<artifactId>dependencies-jersey</artifactId>
+				<version>${dependencies.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+
+			<dependency>
+				<groupId>ch.exense.dependencies</groupId>
+				<artifactId>dependencies-jakarta</artifactId>
+				<version>${dependencies.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+
+			<dependency>
+				<groupId>ch.exense.dependencies</groupId>
+				<artifactId>dependencies-jetty</artifactId>
+				<version>${dependencies.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+
+			<dependency>
+				<groupId>ch.exense.dependencies</groupId>
+				<artifactId>dependencies-mockito</artifactId>
+				<version>${dependencies.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+
+			<dependency>
+				<groupId>ch.exense.dependencies</groupId>
+				<artifactId>dependencies-prometheus</artifactId>
+				<version>${dependencies.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+
+			<dependency>
+				<groupId>ch.exense.dependencies</groupId>
+				<artifactId>dependencies-swagger</artifactId>
+				<version>${dependencies.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+
+		</dependencies>
+	</dependencyManagement>
+
 	<dependencies>
 		<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-api</artifactId>
-			<version>${slf4j.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
-			<version>${junit.version}</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>ch.qos.logback</groupId>
+			<artifactId>logback-classic</artifactId>
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
@@ -106,12 +180,12 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-deploy-plugin</artifactId>
-				<version>3.0.0-M1</version>
+				<version>${dep.mvn.deploy.version}</version>
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
-				<version>3.8.0</version>
+				<version>${dep.mvn.compiler.version}</version>
 				<configuration>
 					<source>11</source>
 					<target>11</target>
@@ -120,7 +194,7 @@
 			<plugin>
 				<groupId>org.jacoco</groupId>
 				<artifactId>jacoco-maven-plugin</artifactId>
-				<version>0.8.8</version>
+				<version>${dep.mvn.jacoco.version}</version>
 				<executions>
 					<execution>
 						<id>default-prepare-agent</id>
@@ -139,12 +213,12 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
-				<version>2.19.1</version>
+				<version>${dep.mvn.surefire.version}</version>
 				<dependencies>
 					<dependency>
 						<groupId>org.apache.maven.surefire</groupId>
 						<artifactId>surefire-junit47</artifactId>
-						<version>2.19.1</version>
+						<version>${dep.mvn.surefire.version}</version>
 					</dependency>
 				</dependencies>
 				<configuration>
@@ -157,7 +231,7 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-source-plugin</artifactId>
-				<version>3.0.1</version>
+				<version>${dep.mvn.source.version}</version>
 				<executions>
 					<execution>
 						<id>attach-sources</id>
@@ -171,7 +245,7 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-javadoc-plugin</artifactId>
-				<version>3.3.2</version>
+				<version>${dep.mvn.javadoc.version}</version>
 				<configuration>
 					<header><![CDATA[<meta name='viewport' content='width=device-width, initial-scale=1.0'>]]></header>
 					<!-- detectLinks MUST NOT be set to true in a production context, as it derives random domain names
@@ -220,7 +294,7 @@
 					<plugin>
 						<groupId>org.owasp</groupId>
 						<artifactId>dependency-check-maven</artifactId>
-						<version>7.1.0</version>
+						<version>${dep.mvn.dependency-check.version}</version>
 						<executions>
 							<execution>
 								<goals>
@@ -243,7 +317,7 @@
 					<plugin>
 						<groupId>org.apache.maven.plugins</groupId>
 						<artifactId>maven-gpg-plugin</artifactId>
-						<version>1.6</version>
+						<version>${dep.mvn.gpg.version}</version>
 						<executions>
 							<execution>
 								<id>sign-artifacts</id>
