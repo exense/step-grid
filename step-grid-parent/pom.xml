@@ -158,9 +158,11 @@
 			<!-- TRANSITIVES: These are not directly used by ourselves, but transitively imported in multiple dependencies,
              with different versions; declare this here to ensure consistent versions. -->
 			<dependency>
-				<groupId>org.javassist</groupId>
-				<artifactId>javassist</artifactId>
-				<version>3.30.2-GA</version>
+				<groupId>ch.exense.dependencies</groupId>
+				<artifactId>dependencies-javassist</artifactId>
+				<version>${dependencies.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
 			</dependency>
 			<!-- END TRANSITIVES -->
 		</dependencies>
