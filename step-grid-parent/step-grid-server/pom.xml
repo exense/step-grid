@@ -15,6 +15,21 @@
 			<artifactId>step-grid-api</artifactId>
 			<version>${project.version}</version>
 		</dependency>
+
+		<!-- TRANSITIVES: These are not directly used by ourselves, but transitively imported in multiple dependencies,
+		 with different versions; make sure to use consistent versions.
+		 (If not specified, the actual version is determined via the dependencyManagement) -->
+		<dependency>
+			<groupId>jakarta.annotation</groupId>
+			<artifactId>jakarta.annotation-api</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>jakarta.inject</groupId>
+			<artifactId>jakarta.inject-api</artifactId>
+		</dependency>
+		<!-- END TRANSITIVES -->
+
 		<dependency>
 			<groupId>org.eclipse.jetty</groupId>
 			<artifactId>jetty-server</artifactId>
