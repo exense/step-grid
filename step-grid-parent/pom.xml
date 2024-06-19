@@ -35,9 +35,13 @@
 		<!-- internal dependencies -->
 <!--		<step-api.version>1.2.5</step-api.version>-->
 <!--		<exense-commons.version>2.0.8</exense-commons.version>-->
-		<dependencies.version>2024.6.18-66716e5998006b6bee3bf068</dependencies.version>
-		<exense-commons.version>2024.6.18-667173f698006b6bee447719</exense-commons.version>
-		<step-api.version>2024.6.18-6671760a98006b6bee470276</step-api.version>
+		<dependencies.version>2024.6.19-6672de8798006b6bee29c2ad</dependencies.version>
+		<exense-commons.version>2024.6.19-6672e10298006b6bee2c613b</exense-commons.version>
+		<step-api.version>2024.6.19-6672e13898006b6bee2cbe00</step-api.version>
+
+<!--		<dependencies.version>0.0.0-SNAPSHOT</dependencies.version>-->
+<!--		<exense-commons.version>0.0.0-SNAPSHOT</exense-commons.version>-->
+<!--		<step-api.version>0.0.0-SNAPSHOT</step-api.version>-->
 
 		<!-- maven build dependencies -->
 		<dep.mvn.jacoco.version>0.8.12</dep.mvn.jacoco.version>
