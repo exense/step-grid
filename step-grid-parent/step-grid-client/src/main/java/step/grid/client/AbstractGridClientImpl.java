@@ -279,6 +279,11 @@ public abstract class AbstractGridClientImpl implements GridClient {
 		}
 	}
 
+	public void pingAgent(AgentRef agentRef) throws AgentCommunicationException {
+		call(agentRef,  "/running", builder -> builder.get(),
+				response -> null, gridClientConfiguration.getTokenExecutionInterruptionTimeout());
+	}
+
 	@Override
 	public OutputMessage call(String tokenId, JsonNode argument, String handler, FileVersionId handlerPackage, Map<String,String> properties, int callTimeout) throws GridClientException, AgentCommunicationException, Exception {
 		TokenReservation tokenReservation = getTokenReservation(tokenId);
@@ -383,17 +388,21 @@ public abstract class AbstractGridClientImpl implements GridClient {
 	}
 	
 	private Object call(AgentRef agentRef, Token token, String cmd, Function<Builder, Response> f, Function<Response, Object> mapper, int readTimeout) throws AgentCommunicationException {
+		return call( agentRef, "/token/" + token.getId() + cmd, f, mapper, readTimeout);
+	}
+
+	private Object call(AgentRef agentRef, String path, Function<Builder, Response> f, Function<Response, Object> mapper, int readTimeout) throws AgentCommunicationException {
 		String agentUrl = agentRef.getAgentUrl();
 		int connectionTimeout = gridClientConfiguration.getReadTimeoutOffset();
 
-		Builder builder =  client.target(agentUrl + "/token/" + token.getId() + cmd).request()
+		Builder builder =  client.target(agentUrl + path).request()
 				.property(ClientProperties.READ_TIMEOUT, readTimeout)
 				.property(ClientProperties.CONNECT_TIMEOUT, connectionTimeout);
-		
+
 		Response response = null;
 		try {
 			try {
-				response = f.apply(builder);				
+				response = f.apply(builder);
 			} catch(ProcessingException e) {
 				Throwable cause = e.getCause();
 				if(cause!=null && cause instanceof SocketTimeoutException) {
@@ -421,7 +430,7 @@ public abstract class AbstractGridClientImpl implements GridClient {
 			}
 		} finally {
 			if(response!=null) {
-				response.close();				
+				response.close();
 			}
 		}
 	}
