@@ -35,9 +35,9 @@
 		<!-- internal dependencies -->
 <!--		<step-api.version>1.2.5</step-api.version>-->
 <!--		<exense-commons.version>2.0.8</exense-commons.version>-->
-		<dependencies.version>2024.6.19-6672de8798006b6bee29c2ad</dependencies.version>
-		<exense-commons.version>2024.6.19-6672e10298006b6bee2c613b</exense-commons.version>
-		<step-api.version>2024.6.19-6672e13898006b6bee2cbe00</step-api.version>
+		<dependencies.version>2024.7.12-669121da4fe7006fcd2fe5c4</dependencies.version>
+		<exense-commons.version>2024.7.12-669123e04fe7006fcd32085a</exense-commons.version>
+		<step-api.version>2024.7.12-669124384fe7006fcd326a96</step-api.version>
 
 <!--		<dependencies.version>0.0.0-SNAPSHOT</dependencies.version>-->
 <!--		<exense-commons.version>0.0.0-SNAPSHOT</exense-commons.version>-->
