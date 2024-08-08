@@ -50,6 +50,7 @@
 
 	</properties>
 
+	<!-- Reminder: don't forget to add all modules to the end of the dependencyManagement section just below -->
 	<modules>
 		<module>step-grid-server-common</module>
 		<module>step-grid-server</module>
@@ -59,6 +60,7 @@
 		<module>step-grid-proxy</module>
 	</modules>
 
+	<!-- available dependencies, can be used in dependent projects WITHOUT specifying a version number -->
 	<dependencyManagement>
 		<dependencies>
 			<dependency>
@@ -150,19 +152,42 @@
 				<scope>import</scope>
 			</dependency>
 
-			<!-- TRANSITIVES: These are not directly used by ourselves, but transitively imported in multiple dependencies,
-             with different versions; declare this here to ensure consistent versions. -->
+			<!-- BOM of *this* project, exporting our OWN modules -->
 			<dependency>
-				<groupId>ch.exense.dependencies</groupId>
-				<artifactId>dependencies-javassist</artifactId>
-				<version>${dependencies.version}</version>
-				<type>pom</type>
-				<scope>import</scope>
+				<groupId>ch.exense.step</groupId>
+				<artifactId>step-grid-agent</artifactId>
+				<version>${project.version}</version>
 			</dependency>
-			<!-- END TRANSITIVES -->
+			<dependency>
+				<groupId>ch.exense.step</groupId>
+				<artifactId>step-grid-api</artifactId>
+				<version>${project.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>ch.exense.step</groupId>
+				<artifactId>step-grid-client</artifactId>
+				<version>${project.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>ch.exense.step</groupId>
+				<artifactId>step-grid-proxy</artifactId>
+				<version>${project.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>ch.exense.step</groupId>
+				<artifactId>step-grid-server</artifactId>
+				<version>${project.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>ch.exense.step</groupId>
+				<artifactId>step-grid-server-common</artifactId>
+				<version>${project.version}</version>
+			</dependency>
+
 		</dependencies>
 	</dependencyManagement>
 
+	<!-- actually used dependencies, exported to all modules (but not externally referring projects) -->
 	<dependencies>
 		<dependency>
 			<groupId>org.slf4j</groupId>
