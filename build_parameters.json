@@ -1,7 +1,7 @@
 {
 	"ACTION": "COMPILE",
 	"TYPE": "POM",
-	"FOLDER": "step-grid-parent/",
+	"FOLDER": ".",
 	"PARAMETERS": [
 		{
 			"NAME": "ALL",
