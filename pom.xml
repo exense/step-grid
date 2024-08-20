@@ -27,7 +27,7 @@
 		<!-- internal dependencies -->
 <!--		<step-api.version>1.2.5</step-api.version>-->
 <!--		<exense-commons.version>2.0.8</exense-commons.version>-->
-		<exense-commons.version>2024.8.8-66b4c22362cc6a1a093a2735</exense-commons.version>
+		<exense-commons.version>2024.8.20-66c4a22263cd14607985712f</exense-commons.version>
 		<step-api.version>2024.8.8-66b4e26862cc6a1a0983769a</step-api.version>
 		<dependencies.version>2024.8.8-66b4bbe662cc6a1a0934c750</dependencies.version>
 
