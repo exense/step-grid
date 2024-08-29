@@ -1,3 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Copyright (c) exense GmbH -->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
@@ -5,6 +7,35 @@
 	<artifactId>step-grid</artifactId>
 	<version>0.0.0-SNAPSHOT</version>
 	<packaging>pom</packaging>
+
+	<!-- required metadata for maven central -->
+	<name>${project.groupId}:${project.artifactId}</name>
+	<description>Step Grid</description>
+	<url>https://github.com/exense/exense-commons</url>
+
+	<licenses>
+		<license>
+			<name>The GNU Affero General Public License, Version 3</name>
+			<url>https://www.gnu.org/licenses/#AGPL</url>
+		</license>
+	</licenses>
+
+	<developers>
+		<developer>
+			<name>Exense GmbH</name>
+			<organization>Exense GmbH</organization>
+			<organizationUrl>https://exense.ch</organizationUrl>
+			<email>support@exense.ch</email>
+		</developer>
+	</developers>
+
+	<scm>
+		<connection>scm:git:https://github.com/exense/step-grid.git</connection>
+		<developerConnection>scm:git:https://github.com/exense/step-grid.git</developerConnection>
+		<url>https://github.com/exense/step-grid</url>
+	</scm>
+	<!-- metadata end -->
+
 
 	<repositories>
 		<!-- staging nexus -->
@@ -25,15 +56,9 @@
 		<maven.compiler.target>11</maven.compiler.target>
 
 		<!-- internal dependencies -->
-<!--		<step-api.version>1.2.5</step-api.version>-->
-<!--		<exense-commons.version>2.0.8</exense-commons.version>-->
-		<exense-commons.version>2024.8.20-66c4a22263cd14607985712f</exense-commons.version>
-		<step-api.version>2024.8.8-66b4e26862cc6a1a0983769a</step-api.version>
-		<dependencies.version>2024.8.8-66b4bbe662cc6a1a0934c750</dependencies.version>
-
-<!--		<dependencies.version>0.0.0-SNAPSHOT</dependencies.version>-->
-<!--		<exense-commons.version>0.0.0-SNAPSHOT</exense-commons.version>-->
-<!--		<step-api.version>0.0.0-SNAPSHOT</step-api.version>-->
+		<exense-commons.version>2024.8.29-66d0408ee9f5583e61b7fb52</exense-commons.version>
+		<step-api.version>2024.8.29-66d03fd6e9f5583e61b6bb8c</step-api.version>
+		<dependencies.version>2024.8.27</dependencies.version>
 
 		<!-- maven build dependencies -->
 		<dep.mvn.jacoco.version>0.8.12</dep.mvn.jacoco.version>
