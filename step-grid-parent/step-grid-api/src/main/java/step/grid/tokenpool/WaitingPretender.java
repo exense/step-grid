@@ -23,9 +23,15 @@ public class WaitingPretender<P extends Identity, F extends Identity> {
 	final P pretender;
 
 	Token<F> associatedToken;
+
+	/**
+	 * If the waiting pretender had a match in the grid at the beginning of the selection
+	 */
+	final boolean hadMatchAtSelectionBegin;
 	
-	public WaitingPretender(P pretender) {
+	public WaitingPretender(P pretender, boolean hadMatchAtSelectionBegin) {
 		super();
 		this.pretender = pretender;
+		this.hadMatchAtSelectionBegin = hadMatchAtSelectionBegin;
 	}
 }
