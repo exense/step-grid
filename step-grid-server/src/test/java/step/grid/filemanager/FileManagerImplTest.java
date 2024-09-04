@@ -251,7 +251,7 @@ public class FileManagerImplTest {
 		Assert.assertEquals(2, registryFolder.list().length);
 		Thread.sleep(100);//last access threshold is 200ms, files should still be in
 		Assert.assertEquals(2, registryFolder.list().length);
-		Thread.sleep(200);
+		Thread.sleep(250); // following check occasionally (seldom) fails when 200, so give it just a tad more time
 		Assert.assertEquals(1, registryFolder.list().length);
 	}
 
