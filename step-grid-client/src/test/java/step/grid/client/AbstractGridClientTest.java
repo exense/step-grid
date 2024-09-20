@@ -24,7 +24,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Test;
 import step.grid.AgentRef;
 import step.grid.TokenWrapper;
 import step.grid.TokenWrapperState;
@@ -253,6 +252,8 @@ public abstract class AbstractGridClientTest extends AbstractGridTest {
 		// Test getTokens method of grid client
 		tokens = client.getTokens();
 		assertEquals(1, tokens.size());
+
+		client.pingAgent(agents.get(0));
 	}
 
 	protected void testHappyPathWithSession() throws AgentCommunicationException, Exception {

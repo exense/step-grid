@@ -36,7 +36,6 @@ import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import step.grid.TokenWrapper;
 
 public class TokenPool<P extends Identity, F extends Identity> implements Closeable {
 	
@@ -111,7 +110,7 @@ public class TokenPool<P extends Identity, F extends Identity> implements Closea
 		if(logger.isDebugEnabled()) {
 			logger.debug("No free token found. Enqueuing... Pretender=" + pretender.toString());
 		}
-		WaitingPretender<P, F> waitingPretender = new WaitingPretender<P,F>(pretender);
+		WaitingPretender<P, F> waitingPretender = new WaitingPretender<P,F>(pretender, poolContainsMatchingToken);
 		try {
 			waitingPretenders.add(waitingPretender);
 			
@@ -126,7 +125,12 @@ public class TokenPool<P extends Identity, F extends Identity> implements Closea
 				}
 				return waitingPretender.associatedToken.object;
 			} else {
-				logger.warn("Timeout occurred while selecting token. Pretender=" + pretender.toString());
+				if(poolContainsMatchingToken) {
+					logger.warn("Timeout occurred while selecting token (match existed at selection). Pretender=" + pretender.toString());
+				} else {
+					logger.warn("Timeout occurred while selecting token (no match existed at selection). Pretender=" + pretender.toString());
+
+				}
 				throw new TimeoutException("Timeout occurred while selecting token.");
 			}
 		} finally {
@@ -175,7 +179,9 @@ public class TokenPool<P extends Identity, F extends Identity> implements Closea
 	private void notifyWaitingPretendersWithoutMatchInTokenList() {
 		synchronized (waitingPretenders) {
 			for(WaitingPretender<P, F> waitingPretender:waitingPretenders) {
-				if(!hasWaitingPretenderAMatchInTokenList(waitingPretender)) {
+				// If the waiting pretender had a matching token in the grid at selection begin AND it has no match anymore now, we notify it
+				// to interrupt the selection and avoid infinite waits
+				if(waitingPretender.hadMatchAtSelectionBegin && !hasWaitingPretenderAMatchInTokenList(waitingPretender)) {
 					synchronized (waitingPretender) {
 						if(logger.isTraceEnabled()) {
 							logger.trace("notifyWaitingPretendersWithoutMatchInTokenList, pretender: " + waitingPretender);

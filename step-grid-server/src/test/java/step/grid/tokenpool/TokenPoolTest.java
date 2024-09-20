@@ -325,6 +325,48 @@ public class TokenPoolTest {
 		Assert.assertEquals(1, l.size());
 		Assert.assertTrue(l.get(0) instanceof TimeoutException);
 	}
+
+	/**
+	 * This test covers the case where a token is invalidated while another thread is waiting for a token that doesn't exist in the grid at selection time.
+	 * In this case the token invalidation should not interrupt the selection.
+	 * @throws Exception
+	 */
+	@Test
+	public void test_Pool_NotifyAfterTokenRemove_NoMatchAtSelection() throws Exception {
+		final TokenPool<IdentityImpl, IdentityImpl> pool = new TokenPool<>(new SimpleAffinityEvaluator<>());
+
+		final IdentityImpl tokenBlue = new IdentityImpl();
+		tokenBlue.addAttribute("color", "blue");
+
+		final IdentityImpl tokenRed = new IdentityImpl();
+		tokenRed.addAttribute("color", "red");
+
+		pool.offerToken(tokenBlue);
+
+		// Invalidate the blue token after 100ms
+		(new Thread(() -> {
+			try {
+				Thread.sleep(100);
+			} catch (InterruptedException e) {}
+			pool.invalidateToken(tokenBlue);
+		})).start();
+
+		// Offer the red token after 500ms
+		(new Thread(() -> {
+			try {
+				Thread.sleep(500);
+			} catch (InterruptedException e) {}
+			pool.offerToken(tokenRed);
+		})).start();
+
+		// Select the red token
+		IdentityImpl tokenRedPretender = new IdentityImpl();
+		tokenRedPretender.addInterest("color",new Interest( Pattern.compile("red"), true));
+		IdentityImpl token = pool.selectToken(tokenRedPretender, 5000, 5000);
+
+		// Ensure the red token could be selected
+		Assert.assertNotNull(token);
+	}
 	
 	@Test
 	public void test_Pool_WaitingQueue() throws Exception {
@@ -553,5 +595,4 @@ public class TokenPoolTest {
 
 		//Assert.assertTrue(duration<testDurationMs + 100);
 	}
-
 }

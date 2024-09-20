@@ -19,7 +19,6 @@
 package step.grid.client;
 
 import java.io.Closeable;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
@@ -106,5 +105,13 @@ public interface GridClient extends GridFileService, Closeable {
 	List<AgentRef> getAgents();
 
 	List<TokenWrapper> getTokens();
+
+	/**
+	 * Try to call the liveness endpoint "/running" of provided agent
+	 * @param agentRef the reference of the agent. This can be retrieved with the method getAgents
+	 * @throws AgentCommunicationException if any error occurs while calling the liveness probe. This could be the case
+	 * if the agent is not ready or if any communication error occurs
+	 */
+	void pingAgent(AgentRef agentRef) throws AgentCommunicationException;
 
 }
