@@ -56,9 +56,9 @@
 		<maven.compiler.target>11</maven.compiler.target>
 
 		<!-- internal dependencies -->
-		<exense-commons.version>2024.8.29-66d0408ee9f5583e61b7fb52</exense-commons.version>
-		<step-api.version>2024.8.29-66d03fd6e9f5583e61b6bb8c</step-api.version>
-		<dependencies.version>2024.8.27</dependencies.version>
+		<exense-commons.version>2.0.9</exense-commons.version>
+		<step-api.version>1.2.8</step-api.version>
+		<dependencies.version>2024.9.26</dependencies.version>
 
 		<!-- maven build dependencies -->
 		<dep.mvn.jacoco.version>0.8.12</dep.mvn.jacoco.version>
