@@ -362,7 +362,7 @@
 			</build>
 		</profile>
 		<profile>
-			<id>DefaultBuild</id>
+			<id>SignedBuild</id>
 			<activation>
 				<activeByDefault>false</activeByDefault>
 			</activation>
