@@ -30,6 +30,8 @@ public class GridClientConfiguration {
 	private int readTimeoutOffset = 3000;
 	
 	private boolean allowInvalidSslCertificates = false;
+
+	private int maxStringLength = 20000000;
 	
 	public long getNoMatchExistsTimeout() {
 		return noMatchExistsTimeout;
@@ -85,5 +87,13 @@ public class GridClientConfiguration {
 
 	public void setAllowInvalidSslCertificates(boolean allowInvalidSslCertificates) {
 		this.allowInvalidSslCertificates = allowInvalidSslCertificates;
+	}
+
+	public int getMaxStringLength() {
+		return maxStringLength;
+	}
+
+	public void setMaxStringLength(int maxStringLength) {
+		this.maxStringLength = maxStringLength;
 	}
 }
