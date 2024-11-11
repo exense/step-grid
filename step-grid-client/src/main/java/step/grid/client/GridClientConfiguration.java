@@ -31,7 +31,7 @@ public class GridClientConfiguration {
 	
 	private boolean allowInvalidSslCertificates = false;
 
-	private int maxStringLength = 20000000;
+	private int maxStringLength = 50000000;
 	
 	public long getNoMatchExistsTimeout() {
 		return noMatchExistsTimeout;
