@@ -28,7 +28,6 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
-import java.util.regex.Pattern;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
@@ -134,8 +133,9 @@ public abstract class AbstractGridClientImpl implements GridClient {
 		}
 		
 		client = newBuilder.build();
-		
-		client.register(ObjectMapperResolver.class);
+
+		GridObjectMapperResolver gridObjectMapperResolver = new GridObjectMapperResolver(gridClientConfiguration.getMaxStringLength());
+		client.register(gridObjectMapperResolver);
 		client.register(JacksonJsonProvider.class);
 		
 		initLocalAgentServices();

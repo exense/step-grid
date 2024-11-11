@@ -65,7 +65,7 @@ public class RemoteGridImpl implements Grid {
 		this.gridHost = gridHost;
 		
 		client = ClientBuilder.newClient();
-		client.register(ObjectMapperResolver.class);
+		client.register(GridObjectMapperResolver.class);
 		client.register(JacksonJsonProvider.class);
 		client.register(MultiPartFeature.class);
 	}
