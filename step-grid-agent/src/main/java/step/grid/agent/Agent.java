@@ -66,6 +66,7 @@ public class Agent extends BaseServer implements AutoCloseable {
 	private final long gracefulShutdownTimeout;
 	private final RegistrationClient registrationClient;
 	private final FileManagerClient fileManagerClient;
+	private final ApplicationContextBuilder applicationContextBuilder;
 	private volatile boolean stopped = false;
 	private volatile boolean registered = false;
 
@@ -130,7 +131,8 @@ public class Agent extends BaseServer implements AutoCloseable {
 
 		agentTokenServices = new AgentTokenServices(fileManagerClient);
 		agentTokenServices.setAgentProperties(agentConf.getProperties());
-		agentTokenServices.setApplicationContextBuilder(new ApplicationContextBuilder());
+		applicationContextBuilder = new ApplicationContextBuilder();
+		agentTokenServices.setApplicationContextBuilder(applicationContextBuilder);
 
 		buildTokenList(agentConf);
 
@@ -336,6 +338,9 @@ public class Agent extends BaseServer implements AutoCloseable {
 			// Stopping HTTP server
 			server.stop();
 			logger.info("Web server stopped");
+
+			applicationContextBuilder.close();
+			logger.info("Application context stopped");
 
 			stopped = true;
 		}

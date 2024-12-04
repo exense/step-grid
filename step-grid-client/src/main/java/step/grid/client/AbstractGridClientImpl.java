@@ -186,7 +186,8 @@ public abstract class AbstractGridClientImpl implements GridClient {
 		};
 		
 		localAgentTokenServices = new AgentTokenServices(fileManagerClient);
-		localAgentTokenServices.setApplicationContextBuilder(new ApplicationContextBuilder());
+		ApplicationContextBuilder applicationContextBuilder = new ApplicationContextBuilder();
+		localAgentTokenServices.setApplicationContextBuilder(applicationContextBuilder);
 	}
 
 	protected void initLocalMessageHandlerPool() {

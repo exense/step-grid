@@ -60,14 +60,14 @@ import step.grid.filemanager.FileManagerException;
  * @author Jerome Comte
  *
  */
-public class ApplicationContextBuilder {
+public class ApplicationContextBuilder implements AutoCloseable {
 	
 	public static final String MASTER = "master";
 
 	private static final Logger logger = LoggerFactory.getLogger(ApplicationContextBuilder.class);
 		
 	private ConcurrentHashMap<String, Branch> branches = new ConcurrentHashMap<>();
-	
+
 	protected class Branch {
 		
 		private ApplicationContext rootContext;
@@ -131,7 +131,23 @@ public class ApplicationContextBuilder {
 		
 		@Override
 		public void close() throws IOException {
+			if(logger.isDebugEnabled()) {
+				logger.debug("Closing application context, starting with all children");
+			}
+			childContexts.forEach((k, a) -> {
+                try {
+                    a.close();
+                } catch (IOException e) {
+					logger.error("Unable to close the child application context with key {}.", k, e);
+                }
+            });
+			if(logger.isDebugEnabled()) {
+				logger.debug("Closing application context associated classloader if any");
+			}
 			if(classLoader!=null && classLoader instanceof Closeable) {
+				if(logger.isDebugEnabled()) {
+					logger.debug("Application context class loader found, closing it");
+				}
 				((Closeable)classLoader).close();
 			}
 		}
@@ -273,6 +289,16 @@ public class ApplicationContextBuilder {
 		if(logger.isDebugEnabled()) {
 			logger.debug("Loading classloader for "+descriptor.getId());
 		}
+		if (context.classLoader != null  && classLoader instanceof Closeable) {
+			if(logger.isDebugEnabled()) {
+				logger.debug("Previous classloader found, closing it");
+			}
+            try {
+                ((Closeable) context.classLoader).close();
+            } catch (IOException e) {
+                logger.error("Unable to close the application context classloader for {}", descriptor.getId(), e);
+            }
+        }
 		context.classLoader = classLoader;
 	}
 	
@@ -311,5 +337,33 @@ public class ApplicationContextBuilder {
 		} finally {
 			Thread.currentThread().setContextClassLoader(previousCl);
 		}
+	}
+
+	@Override
+	public void close() {
+		if(logger.isDebugEnabled()) {
+			logger.debug("Closing all application contexts");
+		}
+		branches.forEach((k,b) -> {
+			if(logger.isDebugEnabled()) {
+				logger.debug("Closing application contexts for branch {}", k);
+			}
+			if (b.rootContext != null) {
+				try {
+					b.rootContext.close();
+				} catch (IOException e) {
+					logger.error("Unable to close the root application context of branch {}.", k, e);
+				}
+			}
+			ThreadLocal<ApplicationContext> branch = b.getCurrentContexts();
+			ApplicationContext parentContext = branch.get();
+			if (parentContext != null) {
+				try {
+					parentContext.close();
+				} catch (IOException e) {
+					logger.error("Unable to close the current thread application context of branch {}.", k, e);
+				}
+			}
+		});
 	}
 }
