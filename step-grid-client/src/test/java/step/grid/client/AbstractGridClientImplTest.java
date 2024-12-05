@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.concurrent.TimeoutException;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class AbstractGridClientImplTest {
 
@@ -47,7 +48,8 @@ public class AbstractGridClientImplTest {
         } catch (Exception e) {
             exception = e;
         }
-        assertEquals("Failed to establish a connection to http://127.0.0.1:1/token/test/release after 3 retries: jakarta.ws.rs.ProcessingException: java.net.ConnectException: Connection refused: no further information", exception.getMessage());
+        // We're forced to use startsWith as the error message contains more information on windows: "Connection refused: no further information"
+        assertTrue(exception.getMessage().startsWith("Failed to establish a connection to http://127.0.0.1:1/token/test/release after 3 retries: jakarta.ws.rs.ProcessingException: java.net.ConnectException: Connection refused"));
     }
 
     private static Grid newGridMock(String agentUrl) {
