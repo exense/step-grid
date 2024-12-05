@@ -77,19 +77,24 @@ public abstract class AbstractGridTest {
 				
 		AgentConf agentConf = new AgentConf("http://localhost:"+grid.getServerPort(), 0, null, 100);
 		agentConf.setGracefulShutdownTimeout(100l);
+		configureAgent(agentConf);
 		agentConf.setFileManagerConfiguration(new FileManagerConfiguration());
 		agent = new Agent(agentConf);
 		Map<String, String> attributes = new HashMap<String, String>();
 		attributes.put("att1", "val1");
 		agent.addTokens(nTokens, attributes, null, null);
 	}
+
+	protected void configureAgent(AgentConf agentConf) {
+
+	}
 	
 	protected void addToken(int count, Map<String, String> attributes) {
-		agent.addTokens(nTokens, attributes, null, null);
+		agent.addTokens(count, attributes, null, null);
 	}
 	
 	protected void addToken(int count, Map<String, String> attributes, Map<String, String> properties) {
-		agent.addTokens(nTokens, attributes, null, properties);
+		agent.addTokens(count, attributes, null, properties);
 		try {
 			Thread.sleep(150);
 		} catch (InterruptedException e) {

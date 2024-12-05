@@ -23,6 +23,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.net.SocketTimeoutException;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -40,6 +41,7 @@ import org.slf4j.LoggerFactory;
 import org.glassfish.jersey.jackson.internal.jackson.jaxrs.json.JacksonJsonProvider;
 
 import ch.exense.commons.io.FileHelper;
+import step.grid.Token;
 import step.grid.filemanager.ControllerCallException;
 import step.grid.filemanager.ControllerCallTimeout;
 import step.grid.filemanager.FileManagerException;
@@ -143,5 +145,16 @@ public class RegistrationClient implements FileVersionProvider {
 		} catch(Exception e) {
 			throw new FileManagerException(fileVersionId, e);
 		}
+	}
+
+	public void switchTokensToMaintenanceMode(List<Token> tokens) {
+		tokens.forEach(token -> {
+			try {
+				client.target(registrationServer + "/grid/token/" + token.getId() + "/maintenance").request().property(ClientProperties.READ_TIMEOUT, callTimeout)
+						.property(ClientProperties.CONNECT_TIMEOUT, connectionTimeout).post(Entity.entity(null, MediaType.APPLICATION_JSON));
+			} catch (ProcessingException e) {
+				logger.error("Error while unregistering token " + token.getId() + " from grid", e);
+			}
+		});
 	}
 }
