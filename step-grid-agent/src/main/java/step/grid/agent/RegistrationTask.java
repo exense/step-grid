@@ -53,7 +53,8 @@ public class RegistrationTask extends TimerTask {
 	}
 	
 	protected void unregister() {
-		// TODO IMPLEMENT
+		logger.info("Switching agent to maintenance mode to prevent new incoming sessions....");
+		client.switchTokensToMaintenanceMode(agent.getTokens());
 	}
 	
 	protected void destroy() {

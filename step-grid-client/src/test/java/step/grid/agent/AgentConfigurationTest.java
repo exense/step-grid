@@ -18,12 +18,10 @@
  ******************************************************************************/
 package step.grid.agent;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-
 import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.regex.Pattern;
 
 import org.junit.After;
 import org.junit.Before;
@@ -43,6 +41,8 @@ import step.grid.client.GridClientConfiguration;
 import step.grid.client.GridClientException;
 import step.grid.client.LocalGridClientImpl;
 import step.grid.filemanager.FileManagerImplConfig;
+
+import static org.junit.Assert.*;
 
 public class AgentConfigurationTest {
 
@@ -192,7 +192,8 @@ public class AgentConfigurationTest {
 			actualException = e;
 		}
 		assertNotNull(actualException);
-		assertEquals("jakarta.ws.rs.ProcessingException: java.net.UnknownHostException: invalid", actualException.getMessage());
+		Pattern pattern = Pattern.compile("Failed to establish a connection to .+? after 3 retries: jakarta.ws.rs.ProcessingException: java.net.UnknownHostException: invalid");
+		assertTrue(pattern.matcher(actualException.getMessage()).matches());
 	}
 	
 	@Test
@@ -223,6 +224,7 @@ public class AgentConfigurationTest {
 		GridClientConfiguration gridClientConfiguration = new GridClientConfiguration();
 		gridClientConfiguration.setAllowInvalidSslCertificates(true);
 		gridClientConfiguration.setNoMatchExistsTimeout(2000);
+		gridClientConfiguration.setConnectionRetryGracePeriod(0);
 		LocalGridClientImpl client = new LocalGridClientImpl(gridClientConfiguration, grid);
 
 		TokenWrapper token = client.getTokenHandle(new HashMap<>(), new HashMap<>(), false);

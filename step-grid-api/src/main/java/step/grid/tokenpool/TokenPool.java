@@ -110,14 +110,21 @@ public class TokenPool<P extends Identity, F extends Identity> implements Closea
 		if(logger.isDebugEnabled()) {
 			logger.debug("No free token found. Enqueuing... Pretender=" + pretender.toString());
 		}
-		WaitingPretender<P, F> waitingPretender = new WaitingPretender<P,F>(pretender, poolContainsMatchingToken);
+
+		return waitForMatch(pretender, matchExistsTimeout, noMatchExistsTimeout, poolContainsMatchingToken);
+	}
+
+	private F waitForMatch(P pretender, long matchExistsTimeout, long noMatchExistsTimeout, boolean poolContainsMatchingToken) throws InterruptedException, TimeoutException {
+		WaitingPretender<P, F> waitingPretender = new WaitingPretender<>(pretender, poolContainsMatchingToken);
 		try {
 			waitingPretenders.add(waitingPretender);
-			
+
+			long start = System.currentTimeMillis();
 			synchronized (waitingPretender) {
-				long waitTime = poolContainsMatchingToken?matchExistsTimeout:noMatchExistsTimeout;
-				waitingPretender.wait(waitTime);	
+				long waitTime = poolContainsMatchingToken ? matchExistsTimeout : noMatchExistsTimeout;
+				waitingPretender.wait(waitTime);
 			}
+			long end = System.currentTimeMillis();
 
 			if(waitingPretender.associatedToken!=null) {
 				if(logger.isDebugEnabled()) {
@@ -126,19 +133,29 @@ public class TokenPool<P extends Identity, F extends Identity> implements Closea
 				return waitingPretender.associatedToken.object;
 			} else {
 				if(poolContainsMatchingToken) {
-					logger.warn("Timeout occurred while selecting token (match existed at selection). Pretender=" + pretender.toString());
+					// The wait has been interrupted because a match existed at selection begin and has been removed
+					long remainingWaitTimeFromNoMatchExistsTimeout = noMatchExistsTimeout - (end - start);
+					if(noMatchExistsTimeout == 0 || remainingWaitTimeFromNoMatchExistsTimeout > 1) {
+						// The noMatchExistsTimeout is infinite (0) or higher than the actual wait time
+						// In this case we wait again for the remaining time
+						long remainingNoMatchExistsTimeout = noMatchExistsTimeout == 0 ? 0 : remainingWaitTimeFromNoMatchExistsTimeout;
+						return waitForMatch(pretender, matchExistsTimeout, remainingNoMatchExistsTimeout , false);
+					} else {
+						// We've already waited longer than the noMatchExistsTimeout
+						// In this case we throw the timeout exception directly
+						logger.warn("Timeout occurred while selecting token (no match existed at selection). Pretender=" + pretender.toString());
+						throw new TimeoutException("Timeout occurred while selecting token.");
+					}
 				} else {
 					logger.warn("Timeout occurred while selecting token (no match existed at selection). Pretender=" + pretender.toString());
-
+					throw new TimeoutException("Timeout occurred while selecting token.");
 				}
-				throw new TimeoutException("Timeout occurred while selecting token.");
 			}
 		} finally {
 			waitingPretenders.remove(waitingPretender);
 		}
-		
 	}
-	
+
 	private class MatchingResult {
 		
 		Token<F> bestMatch;
