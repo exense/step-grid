@@ -407,7 +407,6 @@ public abstract class AbstractGridClientImpl implements GridClient {
 		int retries = 0;
 		AgentConnectException lastException;
 		while (true) {
-			retries++;
 			try {
 				return performCall(f, mapper, readTimeout, builder);
 			} catch (AgentConnectException e) {
@@ -424,7 +423,8 @@ public abstract class AbstractGridClientImpl implements GridClient {
 					} catch (InterruptedException ex) {
 						logger.info("Sleep interrupted while waiting to retry to connect to " + requestPath);
 					}
-					logger.warn("Retrying connection to " + requestPath + " after " + retries + " connection error(s)");
+					retries++;
+					logger.warn("Retrying connection to " + requestPath + " after a connection error. Attempt " + retries + "/" + maxConnectionRetries);
 				}
 			}
 		}
