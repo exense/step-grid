@@ -17,24 +17,19 @@
  * along with STEP.  If not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************/
 package step.grid.tokenpool;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.Semaphore;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.regex.Pattern;
 
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import junit.framework.Assert;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.regex.Pattern;
+
+import static org.junit.Assert.*;
 
 
 @SuppressWarnings("resource")
@@ -55,7 +50,7 @@ public class TokenPoolTest {
 		pretender.addInterest("color",new Interest(Pattern.compile("red"), true));
 		
 		IdentityImpl selectedIdentityImpl = pool.selectToken(pretender, 10);
-		Assert.assertNotNull(selectedIdentityImpl);
+		assertNotNull(selectedIdentityImpl);
 		
 	}
 	
@@ -76,7 +71,7 @@ public class TokenPoolTest {
 		pretender.addInterest("color",new Interest( Pattern.compile("red"), true));
 		
 		IdentityImpl selectedIdentityImpl = pool.selectToken(pretender, 10);
-		Assert.assertNotNull(selectedIdentityImpl);
+		assertNotNull(selectedIdentityImpl);
 	}
 	
 	@Test
@@ -101,7 +96,7 @@ public class TokenPoolTest {
 		} catch (Exception e) {
 			e1 = e;
 		}
-		Assert.assertNotNull(e1);
+		assertNotNull(e1);
 		
 	}
 	
@@ -127,9 +122,9 @@ public class TokenPoolTest {
 		pretender.addInterest("shape",new Interest( Pattern.compile("circle"), false));
 		
 		IdentityImpl selectedIdentityImpl = pool.selectToken(pretender, 100);
-		Assert.assertNotNull(selectedIdentityImpl);
-		Assert.assertEquals("red", selectedIdentityImpl.getAttributes().get("color"));
-		Assert.assertEquals("circle", selectedIdentityImpl.getAttributes().get("shape"));
+		assertNotNull(selectedIdentityImpl);
+		assertEquals("red", selectedIdentityImpl.getAttributes().get("color"));
+		assertEquals("circle", selectedIdentityImpl.getAttributes().get("shape"));
 		
 	}
 	
@@ -166,10 +161,10 @@ public class TokenPoolTest {
 		pretender.addInterest("shape",new Interest( Pattern.compile("circle"), false));
 		
 		IdentityImpl selectedIdentityImpl = pool.selectToken(pretender, 100);
-		Assert.assertNotNull(selectedIdentityImpl);
-		Assert.assertEquals("red", selectedIdentityImpl.getAttributes().get("color"));
-		Assert.assertEquals("circle", selectedIdentityImpl.getAttributes().get("shape"));
-		Assert.assertEquals("2", selectedIdentityImpl.getAttributes().get("id"));
+		assertNotNull(selectedIdentityImpl);
+		assertEquals("red", selectedIdentityImpl.getAttributes().get("color"));
+		assertEquals("circle", selectedIdentityImpl.getAttributes().get("shape"));
+		assertEquals("2", selectedIdentityImpl.getAttributes().get("id"));
 		
 	}
 	
@@ -193,7 +188,7 @@ public class TokenPoolTest {
 		} catch (Exception e) {
 			e1 = e;
 		}
-		Assert.assertNotNull(e1);
+		assertNotNull(e1);
 		
 	}
 	
@@ -207,7 +202,7 @@ public class TokenPoolTest {
 		
 		pool.invalidateToken(token);
 		
-		Assert.assertEquals(0, pool.getSize());
+		assertEquals(0, pool.getSize());
 	}
 	
 	@Test
@@ -226,7 +221,7 @@ public class TokenPoolTest {
 		
 		pool.returnToken(token);
 		
-		Assert.assertEquals(0, pool.getSize());
+		assertEquals(0, pool.getSize());
 	}
 	
 	@Test
@@ -245,7 +240,7 @@ public class TokenPoolTest {
 		
 		pool.returnToken(token);
 		
-		Assert.assertEquals(0, pool.getSize());
+		assertEquals(0, pool.getSize());
 	}
 	
 	@Test
@@ -273,8 +268,8 @@ public class TokenPoolTest {
 		}
 		
 		// Asserts that the token could be selected
-		Assert.assertNotNull(selectedIdentityImpl);
-		Assert.assertNull(e1);
+		assertNotNull(selectedIdentityImpl);
+		assertNull(e1);
 		
 		final List<Exception> l = new ArrayList<>();
 		
@@ -322,8 +317,8 @@ public class TokenPoolTest {
 		t.join(10000);
 		
 		// Asserts that the TimeoutException has been thrown
-		Assert.assertEquals(1, l.size());
-		Assert.assertTrue(l.get(0) instanceof TimeoutException);
+		assertEquals(1, l.size());
+		assertTrue(l.get(0) instanceof TimeoutException);
 	}
 
 	/**
@@ -365,7 +360,44 @@ public class TokenPoolTest {
 		IdentityImpl token = pool.selectToken(tokenRedPretender, 5000, 5000);
 
 		// Ensure the red token could be selected
-		Assert.assertNotNull(token);
+		assertNotNull(token);
+	}
+
+	/**
+	 * This test covers the case where a token is invalidated while another thread is waiting for that token
+	 * In this case the token invalidation should trigger a switch to the noMatchExistTimeout
+	 *
+	 * @throws Exception
+	 */
+	@Test
+	public void test_Pool_NotifyAfterTokenRemove_MatchExistedAtSelection() throws Exception {
+		final TokenPool<IdentityImpl, IdentityImpl> pool = new TokenPool<>(new SimpleAffinityEvaluator<>());
+
+		final IdentityImpl tokenBlue = new IdentityImpl();
+		tokenBlue.addAttribute("color", "blue");
+
+		pool.offerToken(tokenBlue);
+
+		// Invalidate the blue token after 100ms
+		(new Thread(() -> {
+			try {
+				Thread.sleep(100);
+			} catch (InterruptedException e) {
+			}
+			pool.invalidateToken(tokenBlue);
+		})).start();
+
+		// Select the red token
+		IdentityImpl tokenBluePretender = new IdentityImpl();
+		tokenBluePretender.addInterest("color", new Interest(Pattern.compile("blue"), true));
+		IdentityImpl token = pool.selectToken(tokenBluePretender, 100, 1000);
+
+		// Ensure the red token could be selected
+		assertNotNull(token);
+
+		long t1 = System.currentTimeMillis();
+		assertThrows(TimeoutException.class, () -> pool.selectToken(tokenBluePretender, 100, 1000));
+		assertTrue(System.currentTimeMillis() - t1 >= 1000);
 	}
 	
 	@Test
@@ -391,7 +423,7 @@ public class TokenPoolTest {
 		pretender.addInterest("color",new Interest( Pattern.compile("red"), true));
 
 		IdentityImpl selectedIdentityImpl = pool.selectToken(pretender, 1000);
-		Assert.assertNotNull(selectedIdentityImpl);
+		assertNotNull(selectedIdentityImpl);
 		
 	}
 	
@@ -426,8 +458,8 @@ public class TokenPoolTest {
 					while(System.currentTimeMillis()-t1<testDurationMs) {
 						IdentityImpl selectedIdentityImpl = pool.selectToken(pretender, 100);
 						try {
-							Assert.assertNotNull(selectedIdentityImpl);
-							Assert.assertFalse(selectedIdentityImpl.used);
+							assertNotNull(selectedIdentityImpl);
+							assertFalse(selectedIdentityImpl.used);
 							selectedIdentityImpl.used = true;
 							
 							Thread.sleep(0, sleepTimeNs);
@@ -465,7 +497,7 @@ public class TokenPoolTest {
 		
 		e.shutdown();
 		
-		Assert.assertEquals(11, pool.getSize());
+		assertEquals(11, pool.getSize());
 	}
 
 	
@@ -511,8 +543,8 @@ public class TokenPoolTest {
 					while(System.currentTimeMillis()-t1<testDurationMs) {
 						IdentityImpl selectedIdentityImpl = pool.selectToken(pretender, testDurationMs);
 						try {
-							Assert.assertNotNull(selectedIdentityImpl);
-							Assert.assertFalse(selectedIdentityImpl.used);
+							assertNotNull(selectedIdentityImpl);
+							assertFalse(selectedIdentityImpl.used);
 							selectedIdentityImpl.used = true;
 							
 							Thread.sleep(0, sleepTimeNs);
@@ -548,7 +580,7 @@ public class TokenPoolTest {
 		
 		e.shutdown();
 		
-		Assert.assertEquals(1+otherTokenCount, pool.getSize());	
+		assertEquals(1+otherTokenCount, pool.getSize());	
 	}
 	
 	public void test_Pool_Perf_Poolsize() throws Exception {
@@ -577,8 +609,8 @@ public class TokenPoolTest {
 		for(int i=0;i<nIterations;i++) {
 			IdentityImpl selectedIdentityImpl = pool.selectToken(pretender, 1000);
 			try {
-				Assert.assertNotNull(selectedIdentityImpl);
-				Assert.assertFalse(selectedIdentityImpl.used);
+				assertNotNull(selectedIdentityImpl);
+				assertFalse(selectedIdentityImpl.used);
 				selectedIdentityImpl.used = true;
 			} catch (Throwable e) {
 				logger.error("Unexpected error", e);
@@ -593,6 +625,6 @@ public class TokenPoolTest {
 		System.out.println("Duration: " + duration);
 		System.out.println("Duration per iteration [ms]: " + durationPerSelection);
 
-		//Assert.assertTrue(duration<testDurationMs + 100);
+		//assertTrue(duration<testDurationMs + 100);
 	}
 }
