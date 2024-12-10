@@ -20,7 +20,9 @@ package step.grid.client;
 
 import java.io.File;
 import java.io.InputStream;
+import java.net.ConnectException;
 import java.net.SocketTimeoutException;
+import java.net.UnknownHostException;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.X509Certificate;
@@ -396,20 +398,68 @@ public abstract class AbstractGridClientImpl implements GridClient {
 		String agentUrl = agentRef.getAgentUrl();
 		int connectionTimeout = gridClientConfiguration.getReadTimeoutOffset();
 
-		Builder builder =  client.target(agentUrl + path).request()
+		String requestPath = agentUrl + path;
+		Builder builder =  client.target(requestPath).request()
 				.property(ClientProperties.READ_TIMEOUT, readTimeout)
 				.property(ClientProperties.CONNECT_TIMEOUT, connectionTimeout);
 
+		int maxConnectionRetries = gridClientConfiguration.getMaxConnectionRetries();
+		long connectionRetryGracePeriod = gridClientConfiguration.getConnectionRetryGracePeriod();
+		int retries = 0;
+		AgentConnectException lastException;
+		while (true) {
+			try {
+				return performCall(f, mapper, readTimeout, builder);
+			} catch (AgentConnectException e) {
+				lastException = e;
+				if (logger.isDebugEnabled()) {
+					logger.debug("An error occurred while trying to connect to " + requestPath, e);
+				}
+				// Retry in case of AgentConnectException
+				if (retries >= maxConnectionRetries) {
+					break;
+				} else {
+					try {
+						Thread.sleep(connectionRetryGracePeriod);
+					} catch (InterruptedException ex) {
+						logger.info("Sleep interrupted while waiting to retry to connect to " + requestPath);
+					}
+					retries++;
+					logger.warn("Retrying connection to " + requestPath + " after a connection error. Attempt " + retries + "/" + maxConnectionRetries);
+				}
+			}
+		}
+		throw new AgentCommunicationException("Failed to establish a connection to " + requestPath + " after " + retries + " retries: " + lastException.getMessage(), lastException);
+	}
+
+	private static Object performCall(Function<Builder, Response> f, Function<Response, Object> mapper, int readTimeout, Builder builder) throws AgentCommunicationException, AgentConnectException {
 		Response response = null;
 		try {
 			try {
 				response = f.apply(builder);
 			} catch(ProcessingException e) {
 				Throwable cause = e.getCause();
-				if(cause!=null && cause instanceof SocketTimeoutException) {
-					String causeMessage =  cause.getMessage();
-					if(causeMessage != null && causeMessage.contains("Read timed out")) {
-						throw new AgentCallTimeoutException(readTimeout, e);
+				if(cause!=null) {
+					if(cause instanceof SocketTimeoutException) {
+						String causeMessage = cause.getMessage();
+						if (causeMessage != null && causeMessage.contains("Read timed out")) {
+							throw new AgentCallTimeoutException(readTimeout, e);
+						}
+						if (causeMessage != null && causeMessage.contains("Connect timed out")) {
+							// Throw an AgentConnectTimeoutException to trigger a retry
+							throw new AgentConnectException(e);
+						} else {
+							throw new AgentCommunicationException(e);
+						}
+					} else if (cause instanceof ConnectException) {
+						// A ConnectException is thrown when the connection to the socket fails
+						// This covers the "Connection refused" case for instance
+						// Throw an AgentConnectTimeoutException to trigger a retry
+						throw new AgentConnectException(e);
+					} else if (cause instanceof UnknownHostException) {
+						// This covers the case where the hostname isn't "Connection refused",
+						// Throw an AgentConnectTimeoutException to trigger a retry
+						throw new AgentConnectException(e);
 					} else {
 						throw new AgentCommunicationException(e);
 					}

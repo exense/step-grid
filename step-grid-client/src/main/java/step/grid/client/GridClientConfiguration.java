@@ -27,6 +27,8 @@ public class GridClientConfiguration {
 	private int reserveSessionTimeout = 10000;
 	private int tokenExecutionInterruptionTimeout = 10000;
 
+	private int maxConnectionRetries = 3;
+	private long connectionRetryGracePeriod = 10_000;
 	private int readTimeoutOffset = 3000;
 	
 	private boolean allowInvalidSslCertificates = false;
@@ -71,6 +73,22 @@ public class GridClientConfiguration {
 
 	public void setTokenExecutionInterruptionTimeout(int tokenExecutionInterruptionTimeout) {
 		this.tokenExecutionInterruptionTimeout = tokenExecutionInterruptionTimeout;
+	}
+
+	public int getMaxConnectionRetries() {
+		return maxConnectionRetries;
+	}
+
+	public void setMaxConnectionRetries(int maxConnectionRetries) {
+		this.maxConnectionRetries = maxConnectionRetries;
+	}
+
+	public long getConnectionRetryGracePeriod() {
+		return connectionRetryGracePeriod;
+	}
+
+	public void setConnectionRetryGracePeriod(long connectionRetryGracePeriod) {
+		this.connectionRetryGracePeriod = connectionRetryGracePeriod;
 	}
 
 	public int getReadTimeoutOffset() {
