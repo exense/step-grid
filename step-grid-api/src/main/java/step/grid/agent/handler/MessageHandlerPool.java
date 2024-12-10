@@ -27,7 +27,7 @@ import org.slf4j.LoggerFactory;
 
 import step.grid.agent.AgentTokenServices;
 
-public class MessageHandlerPool {
+public class MessageHandlerPool implements AutoCloseable {
 
 	private static final Logger logger = LoggerFactory.getLogger(MessageHandlerPool.class);
 	
@@ -79,5 +79,16 @@ public class MessageHandlerPool {
 		} else {
 			throw new RuntimeException("The class '"+class_.getName()+"' doesn't extend "+MessageHandler.class);
 		}
+	}
+
+	@Override
+	public void close() throws Exception {
+		pool.forEach((k,v) -> {
+            try {
+                v.close();
+            } catch (Exception e) {
+                logger.error("Unable to close the message handler {}", k, e);
+            }
+        });
 	}
 }

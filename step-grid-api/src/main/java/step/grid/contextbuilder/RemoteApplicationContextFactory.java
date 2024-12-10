@@ -21,12 +21,16 @@ package step.grid.contextbuilder;
 import java.io.File;
 import java.io.IOException;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import step.grid.filemanager.FileManagerClient;
 import step.grid.filemanager.FileManagerException;
 import step.grid.filemanager.FileVersion;
 import step.grid.filemanager.FileVersionId;
 
 public class RemoteApplicationContextFactory extends ApplicationContextFactory {
+
+	private static final Logger logger = LoggerFactory.getLogger(RemoteApplicationContextFactory.class);
 
 	protected FileVersionId remoteClassLoaderFolder;
 	
@@ -49,6 +53,7 @@ public class RemoteApplicationContextFactory extends ApplicationContextFactory {
 	}
 
 	private FileVersion requestLatestClassPathFolder() throws FileManagerException {
+		//TODO David Should those file be cleanable
 		return fileManager.requestFileVersion(remoteClassLoaderFolder, false);
 	}
 
@@ -56,7 +61,9 @@ public class RemoteApplicationContextFactory extends ApplicationContextFactory {
 	public ClassLoader buildClassLoader(ClassLoader parentClassLoader) throws FileManagerException {
 		FileVersion fileVersion = requestLatestClassPathFolder();
 		File file = fileVersion.getFile();
-
+		if (logger.isDebugEnabled()) {
+			logger.debug("Creating JavaLibrariesClassLoader for file {}", file.getAbsolutePath());
+		}
 		try {
 			return new JavaLibrariesClassLoader(file, parentClassLoader);
 		} catch (IOException e) {

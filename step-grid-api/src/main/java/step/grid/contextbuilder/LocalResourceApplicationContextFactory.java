@@ -23,11 +23,15 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import step.grid.bootstrap.ResourceExtractor;
 import step.grid.filemanager.FileManagerClient;
 import step.grid.filemanager.FileVersion;
 
 public class LocalResourceApplicationContextFactory extends ApplicationContextFactory {
+
+	private static final Logger logger = LoggerFactory.getLogger(LocalResourceApplicationContextFactory.class);
 
 	String resourceName;
 	
@@ -56,6 +60,9 @@ public class LocalResourceApplicationContextFactory extends ApplicationContextFa
 	@Override
 	public ClassLoader buildClassLoader(ClassLoader parentClassLoader) {
 		File jar = ResourceExtractor.extractResource(resourceClassLoader, resourceName);
+		if (logger.isDebugEnabled()) {
+			logger.debug("Creating URLClassLoader from extracted local resource file {}", jar.getAbsolutePath());
+		}
 		jar.deleteOnExit();
 		List<URL> urls = ClassPathHelper.forSingleFile(jar);
 		URL[] urlArray = urls.toArray(new URL[urls.size()]);

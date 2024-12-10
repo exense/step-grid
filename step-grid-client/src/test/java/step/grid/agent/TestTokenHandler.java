@@ -66,4 +66,8 @@ public class TestTokenHandler implements MessageHandler {
 		}
 	}
 
+	@Override
+	public void close() throws Exception {
+
+	}
 }

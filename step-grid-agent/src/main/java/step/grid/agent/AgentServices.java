@@ -81,7 +81,7 @@ public class AgentServices extends AbstractGridServices {
 	@PostConstruct
 	public void init() {
 		tokenPool = agent.getTokenPool();
-		bootstrapManager = new BootstrapManager(agent.getAgentTokenServices(), true);
+		bootstrapManager = agent.getBootstrapManager();
 	}
 
 	class ExecutionContext {

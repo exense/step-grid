@@ -92,7 +92,8 @@ public class MockedGridClientImpl extends AbstractGridClientImpl {
 			boolean createSession) throws AgentCommunicationException {
 		throw new RuntimeException("Not supported");
 	}
-	
+
+	@Override
 	protected void initLocalAgentServices() {
 		FileManagerClient fileManagerClient = new FileManagerClient() {
 
@@ -118,11 +119,8 @@ public class MockedGridClientImpl extends AbstractGridClientImpl {
 		};
 		
 		localAgentTokenServices = new AgentTokenServices(fileManagerClient);
-		localAgentTokenServices.setApplicationContextBuilder(new ApplicationContextBuilder());
-	}
-
-	protected void initLocalMessageHandlerPool() {
-		localMessageHandlerPool = new MessageHandlerPool(localAgentTokenServices);
+		applicationContextBuilder = new ApplicationContextBuilder();
+		localAgentTokenServices.setApplicationContextBuilder(applicationContextBuilder);
 	}
 
 }

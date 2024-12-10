@@ -21,6 +21,8 @@ package step.grid.contextbuilder;
 import java.io.File;
 import java.io.IOException;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import step.grid.filemanager.FileManagerException;
 
 /**
@@ -30,6 +32,8 @@ import step.grid.filemanager.FileManagerException;
  *
  */
 public class LocalFolderApplicationContextFactory extends ApplicationContextFactory {
+
+	private static final Logger logger = LoggerFactory.getLogger(LocalFolderApplicationContextFactory.class);
 
 	protected File libFolder;
 
@@ -51,6 +55,9 @@ public class LocalFolderApplicationContextFactory extends ApplicationContextFact
 	@Override
 	public ClassLoader buildClassLoader(ClassLoader parentClassLoader) throws FileManagerException {
 		try {
+			if (logger.isDebugEnabled()) {
+				logger.debug("Creating JavaLibrariesClassLoader for folder {}", libFolder.getAbsolutePath());
+			}
 			return new JavaLibrariesClassLoader(libFolder, parentClassLoader);
 		} catch (IOException e) {
 			throw new FileManagerException(null, e);

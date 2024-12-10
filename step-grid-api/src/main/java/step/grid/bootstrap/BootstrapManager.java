@@ -33,13 +33,14 @@ import step.grid.filemanager.FileVersionId;
 import step.grid.io.InputMessage;
 import step.grid.io.OutputMessage;
 
-public class BootstrapManager {
+public class BootstrapManager implements AutoCloseable{
 	
 	ApplicationContextBuilder contextBuilder;
 	
 	FileManagerClient fileManager;
 	
 	AgentTokenServices agentTokenServices;
+	private MessageHandlerPool handlerPool;
 
 	public BootstrapManager(AgentTokenServices agentTokenServices, boolean isTechnicalBootstrap) {
 		super();
@@ -57,7 +58,8 @@ public class BootstrapManager {
 			@Override
 			public OutputMessage call() throws Exception {
 				ApplicationContext currentContext = contextBuilder.getCurrentContext();
-				MessageHandlerPool handlerPool = (MessageHandlerPool) currentContext.computeIfAbsent("handlerPool", 
+				//TODO David not sure how many different pools are created and what is the lifecycle
+				handlerPool = (MessageHandlerPool) currentContext.computeIfAbsent("handlerPool",
 						k->new MessageHandlerPool(agentTokenServices));
 				MessageHandler handler = handlerPool.get(handlerClass);
 				return handler.handle(token, message);
@@ -68,5 +70,12 @@ public class BootstrapManager {
 	public OutputMessage runBootstraped(AgentTokenWrapper token, InputMessage message) throws IOException, Exception {
 		return runBootstraped(token, message, message.getHandler(), message.getHandlerPackage());
 
+	}
+
+	@Override
+	public void close() throws Exception {
+		if (handlerPool != null) {
+			handlerPool.close();
+		}
 	}
 }
