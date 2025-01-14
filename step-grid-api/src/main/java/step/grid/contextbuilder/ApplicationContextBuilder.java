@@ -18,12 +18,7 @@
  ******************************************************************************/
 package step.grid.contextbuilder;
 
-import java.io.Closeable;
-import java.io.IOException;
-import java.util.Map;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Function;
+import java.util.concurrent.*;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -67,27 +62,30 @@ public class ApplicationContextBuilder implements AutoCloseable {
 	private static final Logger logger = LoggerFactory.getLogger(ApplicationContextBuilder.class);
 		
 	private ConcurrentHashMap<String, Branch> branches = new ConcurrentHashMap<>();
+	private ScheduledExecutorService scheduledPool;
+	private ScheduledFuture<?> future;
 
-	protected class Branch {
+	protected class Branch implements AutoCloseable{
 		
 		private ApplicationContext rootContext;
+		private final String branchName;
 		
 		private final ThreadLocal<ApplicationContext> currentContexts = new ThreadLocal<>();
 
-		protected Branch(ApplicationContext rootContext) {
+		protected Branch(ApplicationContext rootContext, String branchName) {
 			super();
 			this.rootContext = rootContext;
+			this.branchName = branchName;
 			reset();
 		}
 		
 		protected void reset() {
-			//TODO David should we do clean up already here
 			currentContexts.set(rootContext);
 		}
 		
 		public Branch fork(String newBranchName) {
 			ApplicationContext currentContext = currentContexts.get();
-			Branch newBranch = new Branch(currentContext);
+			Branch newBranch = new Branch(currentContext, newBranchName);
 			ApplicationContextBuilder.this.branches.put(newBranchName, newBranch);
 			return newBranch;
 		}
@@ -95,68 +93,26 @@ public class ApplicationContextBuilder implements AutoCloseable {
 		protected ThreadLocal<ApplicationContext> getCurrentContexts() {
 			return currentContexts;
 		}
-	}
-	
-	public static class ApplicationContext implements Closeable {
-		
-		private ClassLoader classLoader;
 
-		private Map<String, ApplicationContext> childContexts = new ConcurrentHashMap<>();
-		
-		private ConcurrentHashMap<String, Object> contextObjects = new ConcurrentHashMap<>();
-
-		protected ApplicationContext() {
-			super();
-		}
-		
-		protected ApplicationContext(ClassLoader classLoader) {
-			super();
-			this.classLoader = classLoader;
+		public void cleanup() {
+			if (logger.isDebugEnabled()) {
+				logger.debug("Cleaning up branch {}", branchName);
+			}
+			//Root context class loader itself should not be cleaned-up, only its children
+			if (rootContext != null) {
+				rootContext.cleanup();
+			}
 		}
 
-		public Object get(Object key) {
-			return contextObjects.get(key);
-		}
-
-		public Object computeIfAbsent(String key, Function<? super String, Object> mappingFunction) {
-			return contextObjects.computeIfAbsent(key, mappingFunction);
-		}
-
-		public Object put(String key, Object value) {
-			return contextObjects.put(key, value);
-		}
-
-		public ClassLoader getClassLoader() {
-			return classLoader;
-		}
-		
 		@Override
-		public void close() throws IOException {
-			if(logger.isDebugEnabled()) {
-				logger.debug("Closing application context, starting with all children");
+		public void close() throws Exception {
+			if (logger.isDebugEnabled()) {
+				logger.debug("Closing branch {}", branchName);
 			}
-			childContexts.forEach((k, a) -> {
-                try {
-					if(logger.isDebugEnabled()) {
-						logger.debug("Closing children {}", k);
-					}
-                    a.close();
-                } catch (IOException e) {
-					logger.error("Unable to close the child application context with key {}.", k, e);
-                }
-            });
-			if(logger.isDebugEnabled()) {
-				logger.debug("Closing application context associated classloader if applicable {}", classLoader);
-			}
-			if(classLoader!=null && classLoader instanceof Closeable) {
-				if(logger.isDebugEnabled()) {
-					logger.debug("Application context class loader found, closing it");
-				}
-				((Closeable)classLoader).close();
-			}
+			cleanup();
 		}
 	}
-	
+
 	/**
 	 * Creates a new instance of {@link ApplicationContextBuilder} using the {@link ClassLoader} 
 	 * of this class as root {@link ClassLoader}
@@ -171,9 +127,10 @@ public class ApplicationContextBuilder implements AutoCloseable {
 	 * @param rootClassLoader the {@link ClassLoader} to be used as root of this context
 	 */
 	public ApplicationContextBuilder(ClassLoader rootClassLoader) {
-		ApplicationContext rootContext = new ApplicationContext(rootClassLoader);
-		Branch branch = new Branch(rootContext);
+		ApplicationContext rootContext = new ApplicationContext(rootClassLoader, "rootContext");
+		Branch branch = new Branch(rootContext, MASTER);
 		branches.put(MASTER, branch);
+		scheduleCleanupJob();
 	}
 	
 	/**
@@ -230,8 +187,8 @@ public class ApplicationContextBuilder implements AutoCloseable {
 	 * @param descriptor the descriptor of the context to be pushed 
 	 * @throws ApplicationContextBuilderException
 	 */
-	public void pushContext(ApplicationContextFactory descriptor) throws ApplicationContextBuilderException {
-		pushContext(MASTER, descriptor);
+	public ApplicationContextControl pushContext(ApplicationContextFactory descriptor) throws ApplicationContextBuilderException {
+		return pushContext(MASTER, descriptor);
 	}
 	
 	/**
@@ -241,7 +198,7 @@ public class ApplicationContextBuilder implements AutoCloseable {
 	 * @param descriptor the descriptor of the context to be pushed 
 	 * @throws ApplicationContextBuilderException
 	 */
-	public void pushContext(String branchName, ApplicationContextFactory descriptor) throws ApplicationContextBuilderException {
+	public ApplicationContextControl pushContext(String branchName, ApplicationContextFactory descriptor) throws ApplicationContextBuilderException {
 		synchronized(this) {
 			String contextKey = descriptor.getId();
 			if(logger.isDebugEnabled()) {
@@ -254,57 +211,37 @@ public class ApplicationContextBuilder implements AutoCloseable {
 			}
 			
 			ApplicationContext context;
-			if(!parentContext.childContexts.containsKey(contextKey)) {
+			if(!parentContext.containsChildContextKey(contextKey)) {
 				if(logger.isDebugEnabled()) {
 					logger.debug("Context "+contextKey+" doesn't exist on branch "+branchName+". Creating new context");
 				}
-				context = new ApplicationContext();
+
 				try {
-					buildClassLoader(descriptor, context, parentContext);
+					context = new ApplicationContext(descriptor, parentContext, contextKey);
 				} catch (FileManagerException e) {
 					throw new ApplicationContextBuilderException(e);
 				}
-				parentContext.childContexts.put(contextKey, context);
+				parentContext.putChildContext(contextKey, context);
 			} else {
 				if(logger.isDebugEnabled()) {
 					logger.debug("Context "+contextKey+" existing on branch. Reusing it.");
 				}
-				context = parentContext.childContexts.get(contextKey);	
+				context = parentContext.getChildContext(contextKey);
 				try {
 					if(descriptor.requiresReload()) {
 						if(logger.isDebugEnabled()) {
 							logger.debug("Context "+contextKey+" requires reload. Reloading...");
 						}
-						buildClassLoader(descriptor, context, parentContext);
-						context.contextObjects.clear();
-					} else {
-						
+						context.reloadContext(descriptor, context);
 					}
 				} catch (FileManagerException e) {
 					throw new ApplicationContextBuilderException(e);
 				}
 			}
+			context.registerUsage();
 			branchCurrentContext.set(context);
+			return new ApplicationContextControl(context);
 		}
-	}
-
-	private void buildClassLoader(ApplicationContextFactory descriptor, ApplicationContext context,	ApplicationContext parentContext) throws FileManagerException {
-		ClassLoader classLoader = descriptor.buildClassLoader(parentContext.classLoader);
-		if(logger.isDebugEnabled()) {
-			logger.debug("Loading classloader for {} in application context builder {}", descriptor.getId(), this);
-		}
-		//If previous application context class loader isn't null we close it first before replacing it
-		if (context.classLoader instanceof Closeable) {
-			if(logger.isDebugEnabled()) {
-				logger.debug("Previous classloader found, closing it");
-			}
-			try {
-				((Closeable) context.classLoader).close();
-			} catch (IOException e) {
-				logger.error("Unable to close the application context classloader for {}", descriptor.getId(), e);
-			}
-		}
-		context.classLoader = classLoader;
 	}
 	
 	public ApplicationContext getCurrentContext() {
@@ -344,8 +281,49 @@ public class ApplicationContextBuilder implements AutoCloseable {
 		}
 	}
 
+	private void scheduleCleanupJob() {
+		scheduledPool = Executors.newScheduledThreadPool(1);
+		future = scheduledPool.scheduleAtFixedRate(() -> {
+			//We may have multiple instance of application context builder
+			// Thread.currentThread().setName("ApplicationContextCleanupThread");
+			try {
+				this.cleanupCache();
+			} catch (Throwable e) {
+				logger.error("Unhandled error while running the application context builder clean up task.", e);
+			}
+		}, 1, 1, TimeUnit.MINUTES);
+	}
+
+	private void cleanupCache() {
+		synchronized(this) {
+			if (logger.isDebugEnabled()) {
+				logger.debug("Cleanup all application contexts");
+			}
+			branches.forEach((k, b) -> {
+				if (logger.isDebugEnabled()) {
+					logger.debug("Cleanup application contexts for branch {}", k);
+				}
+				b.cleanup();
+			});
+		}
+	}
+
 	@Override
 	public void close() {
+		if(logger.isDebugEnabled()) {
+			logger.debug("Closing application context builder");
+		}
+		if (future != null) {
+			future.cancel(false);
+		}
+		if (scheduledPool != null) {
+			scheduledPool.shutdown();
+			try {
+				scheduledPool.awaitTermination(1, TimeUnit.MINUTES);
+			} catch (InterruptedException e) {
+				logger.error("Timeout occurred while stopping the file manager clean up task.");
+			}
+		}
 		if(logger.isDebugEnabled()) {
 			logger.debug("Closing all application contexts");
 		}
@@ -353,15 +331,10 @@ public class ApplicationContextBuilder implements AutoCloseable {
 			if(logger.isDebugEnabled()) {
 				logger.debug("Closing application contexts for branch {}", k);
 			}
-			if (b.rootContext != null) {
-				try {
-					if(logger.isDebugEnabled()) {
-						logger.debug("Closing root application context for branch {}", k);
-					}
-					b.rootContext.close();
-				} catch (IOException e) {
-					logger.error("Unable to close the root application context of branch {}.", k, e);
-				}
+			try {
+				b.close();
+			} catch (Exception e) {
+				logger.error("Unable to close the branch {}", k, e);
 			}
 		});
 	}

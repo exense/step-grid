@@ -25,22 +25,22 @@ import step.grid.agent.AgentTokenServices;
 import step.grid.agent.handler.MessageHandler;
 import step.grid.agent.handler.MessageHandlerPool;
 import step.grid.agent.tokenpool.AgentTokenWrapper;
+import step.grid.contextbuilder.ApplicationContext;
 import step.grid.contextbuilder.ApplicationContextBuilder;
-import step.grid.contextbuilder.ApplicationContextBuilder.ApplicationContext;
+import step.grid.contextbuilder.ApplicationContextControl;
 import step.grid.contextbuilder.RemoteApplicationContextFactory;
 import step.grid.filemanager.FileManagerClient;
 import step.grid.filemanager.FileVersionId;
 import step.grid.io.InputMessage;
 import step.grid.io.OutputMessage;
 
-public class BootstrapManager implements AutoCloseable{
+public class BootstrapManager {
 	
 	ApplicationContextBuilder contextBuilder;
 	
 	FileManagerClient fileManager;
 	
 	AgentTokenServices agentTokenServices;
-	private MessageHandlerPool handlerPool;
 
 	public BootstrapManager(AgentTokenServices agentTokenServices, boolean isTechnicalBootstrap) {
 		super();
@@ -51,20 +51,26 @@ public class BootstrapManager implements AutoCloseable{
 
 	public OutputMessage runBootstraped(AgentTokenWrapper token, InputMessage message, String handlerClass, FileVersionId handlerPackage) throws IOException, Exception {
 		contextBuilder.resetContext();
-		if(message.getHandlerPackage()!=null) {
-			contextBuilder.pushContext(new RemoteApplicationContextFactory(fileManager, message.getHandlerPackage()));			
-		}
-		return contextBuilder.runInContext(new Callable<OutputMessage>() {
-			@Override
-			public OutputMessage call() throws Exception {
-				ApplicationContext currentContext = contextBuilder.getCurrentContext();
-				//TODO David not sure how many different pools are created and what is the lifecycle
-				handlerPool = (MessageHandlerPool) currentContext.computeIfAbsent("handlerPool",
-						k->new MessageHandlerPool(agentTokenServices));
-				MessageHandler handler = handlerPool.get(handlerClass);
-				return handler.handle(token, message);
+		ApplicationContextControl applicationContextControl = null;
+		try {
+			if (message.getHandlerPackage() != null) {
+				applicationContextControl = contextBuilder.pushContext(new RemoteApplicationContextFactory(fileManager, message.getHandlerPackage(), true));
 			}
-		});
+			return contextBuilder.runInContext(new Callable<OutputMessage>() {
+				@Override
+				public OutputMessage call() throws Exception {
+					ApplicationContext currentContext = contextBuilder.getCurrentContext();
+					MessageHandlerPool handlerPool = (MessageHandlerPool) currentContext.computeIfAbsent("handlerPool",
+							k -> new MessageHandlerPool(agentTokenServices));
+					MessageHandler handler = handlerPool.get(handlerClass);
+					return handler.handle(token, message);
+				}
+			});
+		} finally {
+			if (applicationContextControl != null) {
+				applicationContextControl.close();
+			}
+		}
 	}
 	
 	public OutputMessage runBootstraped(AgentTokenWrapper token, InputMessage message) throws IOException, Exception {
@@ -72,10 +78,4 @@ public class BootstrapManager implements AutoCloseable{
 
 	}
 
-	@Override
-	public void close() throws Exception {
-		if (handlerPool != null) {
-			handlerPool.close();
-		}
-	}
 }

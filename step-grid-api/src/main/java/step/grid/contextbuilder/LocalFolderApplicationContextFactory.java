@@ -64,4 +64,9 @@ public class LocalFolderApplicationContextFactory extends ApplicationContextFact
 		}
 	}
 
+	@Override
+	public void onClassLoaderClosed() {
+		//This factory use a local folder without copy, it should not be cleaned up
+	}
+
 }

@@ -346,9 +346,6 @@ public class Agent extends BaseServer implements AutoCloseable {
 			applicationContextBuilder.close();
 			logger.info("Agent application context closed");
 
-			bootstrapManager.close();
-			logger.info("BootstrapManager closed");
-
 			stopped = true;
 		}
 	}

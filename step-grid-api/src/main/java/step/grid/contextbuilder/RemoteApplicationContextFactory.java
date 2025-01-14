@@ -35,11 +35,14 @@ public class RemoteApplicationContextFactory extends ApplicationContextFactory {
 	protected FileVersionId remoteClassLoaderFolder;
 	
 	protected FileManagerClient fileManager;
+	private FileVersion fileVersion;
+	private final boolean cleanable;
 
-	public RemoteApplicationContextFactory(FileManagerClient fileManager, FileVersionId remoteClassLoaderFolder) {
+	public RemoteApplicationContextFactory(FileManagerClient fileManager, FileVersionId remoteClassLoaderFolder, boolean cleanable) {
 		super();
 		this.fileManager = fileManager;
 		this.remoteClassLoaderFolder = remoteClassLoaderFolder;
+		this.cleanable = cleanable;
 	}
 
 	@Override
@@ -53,13 +56,12 @@ public class RemoteApplicationContextFactory extends ApplicationContextFactory {
 	}
 
 	private FileVersion requestLatestClassPathFolder() throws FileManagerException {
-		//TODO David Should those file be cleanable
-		return fileManager.requestFileVersion(remoteClassLoaderFolder, false);
+		return fileManager.requestFileVersion(remoteClassLoaderFolder, cleanable);
 	}
 
 	@Override
 	public ClassLoader buildClassLoader(ClassLoader parentClassLoader) throws FileManagerException {
-		FileVersion fileVersion = requestLatestClassPathFolder();
+		fileVersion = requestLatestClassPathFolder();
 		File file = fileVersion.getFile();
 		if (logger.isDebugEnabled()) {
 			logger.debug("Creating JavaLibrariesClassLoader for file {}", file.getAbsolutePath());
@@ -69,6 +71,11 @@ public class RemoteApplicationContextFactory extends ApplicationContextFactory {
 		} catch (IOException e) {
 			throw new FileManagerException(fileVersion.getVersionId(), e);
 		}
+	}
+
+	@Override
+	public void onClassLoaderClosed() {
+		fileManager.releaseFileVersion(fileVersion);
 	}
 
 }

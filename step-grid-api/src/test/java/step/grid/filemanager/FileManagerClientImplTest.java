@@ -35,11 +35,12 @@ import ch.exense.commons.io.FileHelper;
 public class FileManagerClientImplTest {
 
 	protected File fileManagerFolder;
-	protected FileManagerClientImpl f;
+	protected FileManagerClientImpl fileManagerClient;
 	protected AtomicInteger callCount;
 	protected FileVersionId fileVersionId1;
 	protected FileVersion fileVersion1;
-	
+	private FileVersionProvider fileProvider;
+
 	@Before
 	public void before() throws IOException {
 		File tempFile1 = FileHelper.createTempFile();
@@ -47,7 +48,7 @@ public class FileManagerClientImplTest {
 		fileVersion1 = new FileVersion(tempFile1, new FileVersionId("f1", "1"), false);
 		
 		callCount = new AtomicInteger();
-		FileVersionProvider fileProvider = new FileVersionProvider() {
+		fileProvider = new FileVersionProvider() {
 			
 			@Override
 			public FileVersion saveFileVersionTo(FileVersionId fileVersionId, File file) throws FileManagerException {
@@ -63,12 +64,15 @@ public class FileManagerClientImplTest {
 		};
 		
 		fileManagerFolder = FileHelper.createTempFolder();
+	}
+
+	private void initFileManagerClient(int ttlMs, int cleanupIntervalMs) {
 		FileManagerConfiguration fileManagerConfiguration = new FileManagerConfiguration();
 		//configure the cleanup schedule job for junit and start it
 		fileManagerConfiguration.setConfigurationTimeUnit(TimeUnit.MILLISECONDS);
-		fileManagerConfiguration.setCleanupLastAccessTimeThresholdMinutes(200);
-		fileManagerConfiguration.setCleanupIntervalMinutes(100);
-		f = new FileManagerClientImpl(fileManagerFolder, fileProvider, fileManagerConfiguration);
+		fileManagerConfiguration.setCleanupLastAccessTimeThresholdMinutes(ttlMs);
+		fileManagerConfiguration.setCleanupIntervalMinutes(cleanupIntervalMs);
+		fileManagerClient = new FileManagerClientImpl(fileManagerFolder, fileProvider, fileManagerConfiguration);
 	}
 	
 	@After
@@ -77,7 +81,7 @@ public class FileManagerClientImplTest {
 	}
 	
 	/**
-	 * Test the {@link FileManagerImpl} with a {@link FileVersionProvider} which 
+	 * Test the {@link FileManager} with a {@link FileVersionProvider} which
 	 * is responsible for the retrieval of the FileVersion if absent of the cache
 	 * 
 	 * @throws FileManagerException
@@ -85,25 +89,71 @@ public class FileManagerClientImplTest {
 	 */
 	@Test
 	public void testFileProvider() throws FileManagerException, IOException, InterruptedException {
+		initFileManagerClient(200, 100);
 		Assert.assertEquals(0, fileManagerFolder.list().length);
-		FileVersion fileVersionActual1 = f.requestFileVersion(fileVersionId1, true);
+		FileVersion fileVersionActual1 = fileManagerClient.requestFileVersion(fileVersionId1, true);
 		Assert.assertEquals(1, callCount.get());
 		Assert.assertEquals(1, fileManagerFolder.list().length);
 		Assert.assertNotNull(fileVersionActual1);
 		
-		fileVersionActual1 = f.requestFileVersion(fileVersionId1, true);
+		fileVersionActual1 = fileManagerClient.requestFileVersion(fileVersionId1, true);
 		Assert.assertNotNull(fileVersionActual1);
 		Assert.assertEquals(1, callCount.get());
 
-		Thread.sleep(300); //cleanup job would delete the file from client cache
+		Thread.sleep(300); //give time for cleanup job to run
+		//File is used twice (2 calls to requestFileVersion), so usage needs to be decremented to allow cleanup
+		Assert.assertEquals(1, fileManagerFolder.list().length);
+		//Decrement usage and wait rerun of the job
+		fileManagerClient.releaseFileVersion(fileVersionActual1);
+		fileManagerClient.releaseFileVersion(fileVersionActual1);
+		Thread.sleep(300);
 		Assert.assertEquals(0, fileManagerFolder.list().length);
 
-		fileVersionActual1 = f.requestFileVersion(fileVersionId1, true);
+		fileVersionActual1 = fileManagerClient.requestFileVersion(fileVersionId1, true);
 		Assert.assertNotNull(fileVersionActual1);
 		Assert.assertEquals(2, callCount.get());
 		Assert.assertEquals(1, fileManagerFolder.list().length);
 		
-		f.removeFileVersionFromCache(fileVersionId1);
+		fileManagerClient.removeFileVersionFromCache(fileVersionId1);
+		// assert that the file has been deleted
+		Assert.assertFalse(fileVersionActual1.getFile().exists());
+	}
+
+	/**
+	 * Test the {@link FileManager} with a {@link FileVersionProvider} which
+	 * is responsible for the retrieval of the FileVersion if absent of the cache
+	 *
+	 * @throws FileManagerException
+	 * @throws IOException
+	 */
+	@Test
+	public void testFileProviderNoCacheTTL() throws FileManagerException, IOException, InterruptedException {
+		initFileManagerClient(0, 3600000);
+		Assert.assertEquals(0, fileManagerFolder.list().length);
+		FileVersion fileVersionActual1 = fileManagerClient.requestFileVersion(fileVersionId1, true);
+		Assert.assertEquals(1, callCount.get());
+		Assert.assertEquals(1, fileManagerFolder.list().length);
+		Assert.assertNotNull(fileVersionActual1);
+
+		fileVersionActual1 = fileManagerClient.requestFileVersion(fileVersionId1, true);
+		Assert.assertNotNull(fileVersionActual1);
+		Assert.assertEquals(1, callCount.get());
+
+		Thread.sleep(300); //give time for cleanup job to run
+		//File is used twice (2 calls to requestFileVersion), so usage needs to be decremented to allow cleanup
+		Assert.assertEquals(1, fileManagerFolder.list().length);
+		//Decrement usage and wait rerun of the job
+		fileManagerClient.releaseFileVersion(fileVersionActual1);
+		fileManagerClient.releaseFileVersion(fileVersionActual1);
+		//No sleep required, with TTL = 0 the file is deleted as soon as the usage is decremented to 0
+		Assert.assertEquals(0, fileManagerFolder.list().length);
+
+		fileVersionActual1 = fileManagerClient.requestFileVersion(fileVersionId1, true);
+		Assert.assertNotNull(fileVersionActual1);
+		Assert.assertEquals(2, callCount.get());
+		Assert.assertEquals(1, fileManagerFolder.list().length);
+
+		fileManagerClient.removeFileVersionFromCache(fileVersionId1);
 		// assert that the file has been deleted
 		Assert.assertFalse(fileVersionActual1.getFile().exists());
 	}

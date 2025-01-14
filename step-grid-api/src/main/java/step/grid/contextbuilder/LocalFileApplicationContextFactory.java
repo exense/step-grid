@@ -63,4 +63,9 @@ public class LocalFileApplicationContextFactory extends ApplicationContextFactor
 		return cl;	
 	}
 
+	@Override
+	public void onClassLoaderClosed() {
+		//Provided jar file is managed externally, no copy is done, so it cannot be cleaned up
+	}
+
 }

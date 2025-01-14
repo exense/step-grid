@@ -19,8 +19,10 @@
 package step.grid.contextbuilder;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.nio.file.Files;
 import java.util.List;
 
 import org.slf4j.Logger;
@@ -40,7 +42,8 @@ public class LocalResourceApplicationContextFactory extends ApplicationContextFa
 	protected FileManagerClient fileManager;
 	
 	FileVersion localClassLoaderFolder;
-	
+	private File jar;
+
 	public LocalResourceApplicationContextFactory(ClassLoader resourceClassLoader, String resourceName) {
 		super();
 		this.resourceName = resourceName;
@@ -59,7 +62,7 @@ public class LocalResourceApplicationContextFactory extends ApplicationContextFa
 
 	@Override
 	public ClassLoader buildClassLoader(ClassLoader parentClassLoader) {
-		File jar = ResourceExtractor.extractResource(resourceClassLoader, resourceName);
+		jar = ResourceExtractor.extractResource(resourceClassLoader, resourceName);
 		if (logger.isDebugEnabled()) {
 			logger.debug("Creating URLClassLoader from extracted local resource file {}", jar.getAbsolutePath());
 		}
@@ -68,6 +71,17 @@ public class LocalResourceApplicationContextFactory extends ApplicationContextFa
 		URL[] urlArray = urls.toArray(new URL[urls.size()]);
 		URLClassLoader cl = new URLClassLoader(urlArray, parentClassLoader);
 		return cl;	
+	}
+
+	@Override
+	public void onClassLoaderClosed() {
+		if (jar != null) {
+            try {
+                Files.deleteIfExists(jar.toPath());
+            } catch (IOException e) {
+                logger.error("Unable to delete the extracted JAR file.", e);
+            }
+        }
 	}
 
 }

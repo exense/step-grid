@@ -57,6 +57,7 @@ public class GridImplTest {
 		FileVersion version = grid.registerFile(testFile, true);
 
 		Thread.sleep(1);
+		grid.releaseFile(version);
 
 		grid.cleanupFileManagerCache();
 
@@ -75,6 +76,7 @@ public class GridImplTest {
 		FileVersion version = grid.registerFile(testFile, false);
 
 		Thread.sleep(1);
+		grid.releaseFile(version);
 
 		grid.cleanupFileManagerCache();
 

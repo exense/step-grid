@@ -25,7 +25,6 @@ import java.net.URLClassLoader;
 import org.junit.Test;
 
 import junit.framework.Assert;
-import step.grid.contextbuilder.ApplicationContextBuilder.ApplicationContext;
 import step.grid.filemanager.FileManagerException;
 
 public class ApplicationContextBuilderTest {
@@ -100,6 +99,11 @@ public class ApplicationContextBuilderTest {
 				} catch (MalformedURLException e) {
 					throw new RuntimeException(e);
 				}
+			}
+
+			@Override
+			public void onClassLoaderClosed() {
+
 			}
 		};
 	}

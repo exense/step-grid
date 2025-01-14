@@ -149,6 +149,13 @@ public class GridServices {
 		return grid.registerFile(uploadedInputStream, fileDetail.getFileName(), contentType!=null && contentType.equals("dir"),
 				Boolean.parseBoolean(cleanable));
 	}
+
+	@POST
+	@Path("/file/release")
+	@Consumes(MediaType.MULTIPART_FORM_DATA)
+	public void releaseFile(FileVersion fileVersion) throws FileManagerException {
+		grid.releaseFile(fileVersion);
+	}
 	
 	@POST
 	@Path("/file/content")

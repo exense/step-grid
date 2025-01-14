@@ -183,6 +183,10 @@ public abstract class AbstractGridClientImpl implements GridClient {
 			}
 
 			@Override
+			public void releaseFileVersion(FileVersion fileVersion) {
+			}
+
+			@Override
 			public void close() throws Exception {
 
 			}
@@ -554,12 +558,12 @@ public abstract class AbstractGridClientImpl implements GridClient {
 	@Override
 	public void close() {
 		client.close();
-        try {
-            localMessageHandlerPool.close();
-        } catch (Exception e) {
-            logger.error("Unable to close the localMessageHandlerPool", e);
-        }
-        applicationContextBuilder.close();
+		try {
+			localMessageHandlerPool.close();
+		} catch (Exception e) {
+			logger.error("Unable to close the localMessageHandlerPool", e);
+		}
+		applicationContextBuilder.close();
 	}
 
 	@Override
@@ -575,6 +579,11 @@ public abstract class AbstractGridClientImpl implements GridClient {
 	@Override
 	public FileVersion getRegisteredFile(FileVersionId fileVersionId) throws FileManagerException {
 		return grid.getRegisteredFile(fileVersionId);
+	}
+
+	@Override
+	public void releaseFile(FileVersion fileVersion) {
+		grid.releaseFile(fileVersion);
 	}
 
 	@Override
