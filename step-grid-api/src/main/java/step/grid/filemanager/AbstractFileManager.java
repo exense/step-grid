@@ -197,9 +197,6 @@ public class AbstractFileManager {
 			CachedFileVersion cachedFileVersion = versionCache.get(fileVersion.getVersionId());
 			if (cachedFileVersion != null) {
 				int currentUsage = cachedFileVersion.releaseUsage();
-				if (logger.isDebugEnabled()) {
-					logger.debug("File version {} founds in cache, decrementing usage to {}", cachedFileVersion.getFileVersion(), currentUsage);
-				}
 				if (getCacheTTLms() == 0 && currentUsage == 0 && cachedFileVersion.isCleanable()) {
 					if (logger.isDebugEnabled()) {
 						logger.debug("Usage reached 0 after decremening and TTL is set to 0 directly removing {} from cache.", cachedFileVersion.getFileVersion());
@@ -259,14 +256,16 @@ public class AbstractFileManager {
 					while (iterator.hasNext()) {
 						Map.Entry<FileVersionId, CachedFileVersion> next = iterator.next();
 						CachedFileVersion cachedFileVersion = next.getValue();
+						if (logger.isDebugEnabled()) {
+							logger.debug("Cache version {} found with cleanable: {}, lastAccessTime: {}, usageCount: {}", cachedFileVersion.getFileVersion(), cachedFileVersion.isCleanable(), new Date(cachedFileVersion.getLastAccessTime()), cachedFileVersion.getCurrentUsageCount());
+						}
 						if (cachedFileVersion.isCleanable() && cachedFileVersion.getLastAccessTime() < fromLastAccessTime
 						 				&& cachedFileVersion.getCurrentUsageCount() == 0) {
 							if (deleteFileVersionContainer(next.getKey())) {
 								iterator.remove();
 								atomicInteger.incrementAndGet();
 							} else {
-								logger.error("Cannot delete the file manager folder " + getContainerFolder(next.getKey()) +
-										", skipping cleanup of this entry.");
+                                logger.error("Cannot delete the file manager folder {}, skipping cleanup of this entry.", getContainerFolder(next.getKey()));
 							}
 						}
 					}

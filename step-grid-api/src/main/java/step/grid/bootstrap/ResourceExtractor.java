@@ -20,7 +20,6 @@ package step.grid.bootstrap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import step.grid.contextbuilder.ApplicationContextBuilder;
 
 import java.io.File;
 import java.io.IOException;
@@ -53,6 +52,7 @@ public class ResourceExtractor {
 			}
 			return gridJar;
 		} catch (IOException e) {
+			logger.error("Exception while extracting resource");
 			throw new RuntimeException("Error while extracting plugin file", e);
 		}
 	}

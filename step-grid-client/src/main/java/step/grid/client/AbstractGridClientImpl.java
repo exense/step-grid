@@ -184,6 +184,7 @@ public abstract class AbstractGridClientImpl implements GridClient {
 
 			@Override
 			public void releaseFileVersion(FileVersion fileVersion) {
+				releaseFile(fileVersion);
 			}
 
 			@Override

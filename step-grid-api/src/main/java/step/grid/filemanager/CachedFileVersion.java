@@ -47,7 +47,7 @@ public class CachedFileVersion {
 		this.lastAccessTime = System.currentTimeMillis();
 		int currentCountInUse = this.inUse.incrementAndGet();
 		if (logger.isDebugEnabled()) {
-			logger.debug("File version {} for file {} updated, new usage count is {}", getFileVersion(), getFileVersion().getFile().getAbsolutePath(), currentCountInUse);
+			logger.debug("File version {} cache usage increased, new usage count is {}", getFileVersion(), currentCountInUse);
 		}
 		return currentCountInUse;
 	}
@@ -55,19 +55,12 @@ public class CachedFileVersion {
 	public int releaseUsage() {
 		int currentCountInUse = inUse.decrementAndGet();
 		if (logger.isDebugEnabled()) {
-			logger.debug("File version {} for file {} usage released, new usage count is {}", getFileVersion(), getFileVersion().getFile().getAbsolutePath(), currentCountInUse);
+			logger.debug("File version {} cache usage decreased, new usage count is {}", getFileVersion(), currentCountInUse);
 		}
 		return currentCountInUse;
 	}
 
 	public int getCurrentUsageCount() {
 		return inUse.get();
-	}
-
-	/**
-	 * Update only the last use timestamp
-	 */
-	public void updateLastUsage() {
-		this.lastAccessTime = System.currentTimeMillis();
 	}
 }

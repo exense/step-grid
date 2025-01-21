@@ -22,7 +22,7 @@ import java.io.File;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
-public class FileVersion implements AutoCloseable {
+public class FileVersion {
 	
 	protected File file;
 	
@@ -109,10 +109,5 @@ public class FileVersion implements AutoCloseable {
 		} else if (!versionId.equals(other.versionId))
 			return false;
 		return true;
-	}
-
-	@Override
-	public void close() throws Exception {
-
 	}
 }

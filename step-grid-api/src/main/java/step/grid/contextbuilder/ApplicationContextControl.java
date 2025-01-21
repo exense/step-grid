@@ -1,6 +1,8 @@
 package step.grid.contextbuilder;
 
-public class ApplicationContextControl implements AutoCloseable{
+import step.grid.agent.tokenpool.SessionAwareCloseable;
+
+public class ApplicationContextControl extends SessionAwareCloseable {
 
     private final ApplicationContext applicationContext;
 
@@ -9,7 +11,9 @@ public class ApplicationContextControl implements AutoCloseable{
     }
 
     @Override
-    public void close() throws Exception {
-        applicationContext.releaseUsage();
+    protected void _close() throws Exception {
+        if (applicationContext != null) {
+            applicationContext.releaseUsage();
+        }
     }
 }

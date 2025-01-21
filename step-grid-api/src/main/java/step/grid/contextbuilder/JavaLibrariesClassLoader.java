@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.List;
+import java.util.Objects;
 
 import ch.exense.commons.io.FileHelper;
 
@@ -43,10 +44,28 @@ public class JavaLibrariesClassLoader extends URLClassLoader {
 			} else {
 				urls = ClassPathHelper.forSingleFile(file);
 			}
-		}	
+		}
 		
 		URL[] urlArray = urls.toArray(new URL[urls.size()]);
 		return urlArray;
+	}
+
+	/** Override the default behaviour of parent first lookup of the classloader
+	 * When retrieving resources from the JavaLibrariesClassLoader we expect to get it from the provided *child* classloader
+	 * and only fall back to the parents if it is not found
+	 *
+	 * @param name The resource name
+	 * @return the URL of the found resource or null
+	 */
+	@Override
+	public URL getResource(String name) {
+		Objects.requireNonNull(name);
+		URL url = findResource(name);
+		if (url == null) {
+			return super.getResource(name);
+		} else {
+			return url;
+		}
 	}
 
 	protected static File unzip(File file) throws IOException {

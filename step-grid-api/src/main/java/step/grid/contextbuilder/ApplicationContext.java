@@ -4,14 +4,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import step.grid.filemanager.FileManagerException;
 
-import java.io.Closeable;
 import java.io.IOException;
+import java.net.URLClassLoader;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
-public class ApplicationContext implements Closeable {
+public class ApplicationContext implements AutoCloseable {
 
     private static final Logger logger = LoggerFactory.getLogger(ApplicationContext.class);
 
@@ -136,10 +137,6 @@ public class ApplicationContext implements Closeable {
         } else if (logger.isDebugEnabled()) {
             logger.debug("Cannot clean application context {}, children size {}, usage count {} and descriptor instance {}", applicationContextId, childContexts.size(), usage.get(), descriptor);
         }
-        if (logger.isDebugEnabled()) {
-            logger.debug("Closing application context object map");
-        }
-
         return cleanable;
     }
 
@@ -152,6 +149,11 @@ public class ApplicationContext implements Closeable {
         if (classLoader != null && classLoader instanceof AutoCloseable) {
             if (logger.isDebugEnabled()) {
                 logger.debug("Application context class loader found for {}, closing classLoader {}", this, classLoader);
+                logger.debug("Parent classloader is {}", classLoader.getParent());
+                if (classLoader instanceof URLClassLoader) {
+                    URLClassLoader classLoader1 = (URLClassLoader) classLoader;
+                    logger.debug("URLs: {}", Arrays.asList(classLoader1.getURLs()));
+                }
             }
             try {
                 ((AutoCloseable) classLoader).close();

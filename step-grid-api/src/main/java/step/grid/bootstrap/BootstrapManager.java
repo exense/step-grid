@@ -19,6 +19,7 @@
 package step.grid.bootstrap;
 
 import java.io.IOException;
+import java.util.Optional;
 import java.util.concurrent.Callable;
 
 import step.grid.agent.AgentTokenServices;
@@ -54,7 +55,7 @@ public class BootstrapManager {
 		ApplicationContextControl applicationContextControl = null;
 		try {
 			if (message.getHandlerPackage() != null) {
-				applicationContextControl = contextBuilder.pushContext(new RemoteApplicationContextFactory(fileManager, message.getHandlerPackage(), true));
+				applicationContextControl = token.getTokenReservationSession().putCloseableByHashIfSessionIsAvailable(contextBuilder.pushContext(new RemoteApplicationContextFactory(fileManager, message.getHandlerPackage(), true)));
 			}
 			return contextBuilder.runInContext(new Callable<OutputMessage>() {
 				@Override

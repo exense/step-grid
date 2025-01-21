@@ -21,6 +21,7 @@ package step.grid.filemanager;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -29,10 +30,12 @@ import org.junit.Test;
 
 import ch.exense.commons.io.FileHelper;
 
+import static org.junit.Assert.assertNull;
+
 public class FileManagerImplCachingTest {
 
 	protected File registryFolder;
-	protected FileManagerImpl f;
+	protected FileManagerImpl fileManager;
 	
 	@Before
 	public void before() throws IOException {
@@ -40,7 +43,9 @@ public class FileManagerImplCachingTest {
 		FileManagerImplConfig config = new FileManagerImplConfig();
 		// configure the expiration duration of the file modification cache of the FileManager to 10ms
 		config.setFileLastModificationCacheExpireAfter(10);
-		f = new FileManagerImpl(registryFolder, config);
+		config.setConfigurationTimeUnit(TimeUnit.MILLISECONDS);
+		config.setCleanupLastAccessTimeThresholdMinutes(10);
+		fileManager = new FileManagerImpl(registryFolder, config);
 	}
 	
 	@After
@@ -52,28 +57,43 @@ public class FileManagerImplCachingTest {
 	@Test
 	public void testFileManagerCaching() throws IOException, FileManagerException, InterruptedException {
 		File testFile = FileHelper.createTempFile();
+
+		FileVersion firstRegisteredVersion = fileManager.registerFileVersion(testFile, false, true);
+		FileVersionId handle = firstRegisteredVersion.getVersionId();
 		
-		FileVersionId handle = f.registerFileVersion(testFile, false, true).getVersionId();
-		
-		FileVersion registeredFile = f.getFileVersion(handle);
-		Assert.assertNotNull(registeredFile);
+		FileVersion registeredFileHandle = fileManager.getFileVersion(handle);
+		Assert.assertNotNull(registeredFileHandle);
 		
 		// wait 100ms for the file modification cache entries of the FileManager to expire
 		Thread.sleep(100);
 		writeFileContent(testFile, "V2");
 
-		FileVersionId handle2 = f.registerFileVersion(testFile, false, true).getVersionId();
-		// Registering twice (this shouldn't throw any error)
-		handle2 = f.registerFileVersion(testFile, false, true).getVersionId();
+		FileVersion secondFileVersion = fileManager.registerFileVersion(testFile, false, true);
+		// Registering twice (this shouldn't throw any error) --> but need to be released twice
+		secondFileVersion = fileManager.registerFileVersion(testFile, false, true);
+		FileVersionId handle2 = secondFileVersion.getVersionId();
 		
 		Assert.assertFalse(handle2.equals(handle));
 		
-		FileVersion registeredFileHandle1 = f.getFileVersion(handle);
-		FileVersion registeredFileHandle2 = f.getFileVersion(handle2);
+		FileVersion registeredFileHandle1 = fileManager.getFileVersion(handle);
+		FileVersion registeredFileHandle2 = fileManager.getFileVersion(handle2);
 		Assert.assertNotNull(registeredFileHandle2);
 		
-		Assert.assertEquals(registeredFileHandle1, registeredFile);
+		Assert.assertEquals(registeredFileHandle1, registeredFileHandle);
 		Assert.assertFalse(registeredFileHandle1.equals(registeredFileHandle2));
+
+		fileManager.releaseFileVersion(firstRegisteredVersion);
+		fileManager.releaseFileVersion(registeredFileHandle);
+		fileManager.releaseFileVersion(secondFileVersion);
+		fileManager.releaseFileVersion(secondFileVersion); // 2nd registration
+		fileManager.releaseFileVersion(registeredFileHandle1);
+		fileManager.releaseFileVersion(registeredFileHandle2);
+
+		// wait 100ms for the file last access time TTL to take effect
+		Thread.sleep(100);
+		fileManager.cleanupCache();
+		assertNull(fileManager.getFileVersion(handle));
+		assertNull(fileManager.getFileVersion(handle2));
 	}
 	
 	private void writeFileContent(File testFile, String content) throws IOException {

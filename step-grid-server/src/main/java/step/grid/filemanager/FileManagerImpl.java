@@ -233,7 +233,7 @@ public class FileManagerImpl extends AbstractFileManager implements FileManager 
 				if (cachedFileVersion == null) {
 					return null;
 				} else {
-					cachedFileVersion.updateLastUsage();
+					cachedFileVersion.updateUsage();
 					return cachedFileVersion.getFileVersion();
 				}
 			}

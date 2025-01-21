@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,8 +40,33 @@ public class AgentTokenPool {
 		}
 
 		@Override
+		public <T> T getOrDefault(String key, T def) {
+			throw unusableSessionException();
+		}
+
+		@Override
+		public <T, U> T getOrDefault(String key, Function<U, T> def, U param) {
+			throw unusableSessionException();
+		}
+
+		@Override
+		public <T> T get(Class<T> objectClass) {
+			throw unusableSessionException();
+		}
+
+		@Override
 		public Object put(String arg0, Object arg1) {
 			throw unusableSessionException();
+		}
+
+		@Override
+		public void put(Object object) {
+			throw unusableSessionException();
+		}
+
+		@Override
+		public boolean isUsable() {
+			return false;
 		}
 
 		private RuntimeException unusableSessionException() {
