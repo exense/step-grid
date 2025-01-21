@@ -197,9 +197,9 @@ public class AbstractFileManager {
 			CachedFileVersion cachedFileVersion = versionCache.get(fileVersion.getVersionId());
 			if (cachedFileVersion != null) {
 				int currentUsage = cachedFileVersion.releaseUsage();
-				if (getCacheTTLms() == 0 && currentUsage == 0 && cachedFileVersion.isCleanable()) {
+				if (fileManagerConfiguration.isCleanupJobEnabled() && getCacheTTLms() == 0 && currentUsage == 0 && cachedFileVersion.isCleanable()) {
 					if (logger.isDebugEnabled()) {
-						logger.debug("Usage reached 0 after decremening and TTL is set to 0 directly removing {} from cache.", cachedFileVersion.getFileVersion());
+						logger.debug("Usage reached 0 after decrementing and TTL is set to 0 directly removing {} from cache.", cachedFileVersion.getFileVersion());
 					}
 					removeFileVersion(fileVersion.getVersionId());
 				}
@@ -219,8 +219,11 @@ public class AbstractFileManager {
 					logger.debug("Removing File version {} from cache", fileVersion);
 				}
 				if (fileVersion != null) {
-					deleteFileVersionContainer(fileVersionId);
-					versionCache.remove(fileVersionId);
+					if (deleteFileVersionContainer(fileVersionId)) {
+						versionCache.remove(fileVersionId);
+					} else {
+						logger.error("Cannot delete the file manager folder {}, skipping cleanup of this entry.", getContainerFolder(fileVersionId));
+					}
 				}
 				if (versionCache.isEmpty()) {
 					File fileCacheFolder = getFileCacheFolder(fileVersionId.getFileId());

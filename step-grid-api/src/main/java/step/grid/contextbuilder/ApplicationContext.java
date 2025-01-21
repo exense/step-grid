@@ -64,6 +64,7 @@ public class ApplicationContext implements AutoCloseable {
 
     public void releaseUsage() {
         usage.decrementAndGet();
+        //TOTO if current usage is 0 should we trigger clean up here. Cleanup would have to notify parent +
     }
 
     public ApplicationContext getChildContext(String applicationContextId) {
@@ -89,17 +90,24 @@ public class ApplicationContext implements AutoCloseable {
         }
     }
 
+    /**
+     * Method used by descriptor with descriptor.requiresReload() returning true, no implementation exists as of now
+     * Legacy implementation was building a new class loader, replacing the current one and clearing the contextObject map
+     * With new implementation, it now close first the current classloader and close the contextObject
+     * the method aims to recreate the class loader which now required to clean up the previous
+     * @param descriptor
+     * @param parentContext
+     * @throws FileManagerException
+     */
     public void reloadContext(ApplicationContextFactory descriptor, ApplicationContext parentContext) throws FileManagerException {
         //Start by cleaning previous context
-        closeClassLoader();
-        //TODO keeping previous logic, but we may have to do more cleanup before updating the descriptor and reloading the classloader
+        cleanup();
         this.descriptor = descriptor;
         ClassLoader classLoader = descriptor.buildClassLoader(parentContext.classLoader);
         if (logger.isDebugEnabled()) {
             logger.debug("Loading classloader for {} in application context builder {}", descriptor.getId(), this);
         }
         this.classLoader = classLoader;
-        //TODO is clean up contextObjects required (i..e close any autoCloseable
         contextObjects.clear();
     }
 
@@ -125,19 +133,23 @@ public class ApplicationContext implements AutoCloseable {
             if (logger.isDebugEnabled()) {
                 logger.debug("Closing application context object map");
             }
-            contextObjects.forEach((k, v) -> {
-                if (v instanceof AutoCloseable) {
-                    try {
-                        ((AutoCloseable) v).close();
-                    } catch (Exception e) {
-                        logger.warn("Unable to close the object with key {}", k);
-                    }
-                }
-            });
+            closeContextObjects();
         } else if (logger.isDebugEnabled()) {
             logger.debug("Cannot clean application context {}, children size {}, usage count {} and descriptor instance {}", applicationContextId, childContexts.size(), usage.get(), descriptor);
         }
         return cleanable;
+    }
+
+    private void closeContextObjects() {
+        contextObjects.forEach((k, v) -> {
+            if (v instanceof AutoCloseable) {
+                try {
+                    ((AutoCloseable) v).close();
+                } catch (Exception e) {
+                    logger.warn("Unable to close the object with key {}", k);
+                }
+            }
+        });
     }
 
     @Override
