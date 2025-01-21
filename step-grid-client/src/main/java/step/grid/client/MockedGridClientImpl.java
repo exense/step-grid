@@ -108,10 +108,10 @@ public class MockedGridClientImpl extends AbstractGridClientImpl {
 		public final AtomicInteger usageCount = new AtomicInteger(0);
 		public final boolean cleanable;
 
-        public TestCacheVersion(boolean cleanable) {
-            this.cleanable = cleanable;
-        }
-    }
+		public TestCacheVersion(boolean cleanable) {
+			this.cleanable = cleanable;
+		}
+	}
 
 	public class MockedFileManagerClient implements FileManagerClient {
 		public Map<String, TestCacheVersion> clientCacheUsage = new ConcurrentHashMap<>();

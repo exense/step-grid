@@ -67,8 +67,6 @@ public class ApplicationContextBuilder implements AutoCloseable {
 	private static final Logger logger = LoggerFactory.getLogger(ApplicationContextBuilder.class);
 		
 	private ConcurrentHashMap<String, Branch> branches = new ConcurrentHashMap<>();
-	private ScheduledExecutorService scheduledPool;
-	private ScheduledFuture<?> future;
 
 	protected class Branch {
 		

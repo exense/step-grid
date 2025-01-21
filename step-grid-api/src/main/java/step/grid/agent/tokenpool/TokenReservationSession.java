@@ -48,7 +48,7 @@ public class TokenReservationSession extends AbstractSession {
      * @param closeable to be stored
      * @return empty optional if the closeable object could be stored, the closeable object otherwise
      */
-    public <T extends SessionAwareCloseable> T putCloseableByHashIfSessionIsAvailable(T closeable) {
+    public <T extends SessionAwareCloseable> T putSessionAwareCloseable(T closeable) {
         if (isUsable()) {
             super.put(String.valueOf(closeable.hashCode()), closeable);
             closeable.setInSession(true);
@@ -62,7 +62,6 @@ public class TokenReservationSession extends AbstractSession {
         return true;
     }
 
-    //TODO move the refactoring to step-api
     @Override
     public void close() {
         sessionObjects.values().forEach(v -> {

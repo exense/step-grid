@@ -53,7 +53,7 @@ public class BootstrapManager {
 		ApplicationContextControl applicationContextControl = null;
 		try {
 			if (message.getHandlerPackage() != null) {
-				applicationContextControl = token.getTokenReservationSession().putCloseableByHashIfSessionIsAvailable(contextBuilder.pushContext(new RemoteApplicationContextFactory(fileManager, message.getHandlerPackage(), true)));
+				applicationContextControl = token.getTokenReservationSession().putSessionAwareCloseable(contextBuilder.pushContext(new RemoteApplicationContextFactory(fileManager, message.getHandlerPackage(), true)));
 			}
 			return contextBuilder.runInContext(new Callable<OutputMessage>() {
 				@Override
