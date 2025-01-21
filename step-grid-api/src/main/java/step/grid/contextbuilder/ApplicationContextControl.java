@@ -4,9 +4,9 @@ import step.grid.agent.tokenpool.SessionAwareCloseable;
 
 public class ApplicationContextControl extends SessionAwareCloseable {
 
-    private final ApplicationContext applicationContext;
+    private final ApplicationContextBuilder.ApplicationContext applicationContext;
 
-    public ApplicationContextControl(ApplicationContext applicationContext) {
+    public ApplicationContextControl(ApplicationContextBuilder.ApplicationContext applicationContext) {
         this.applicationContext = applicationContext;
     }
 

@@ -84,11 +84,11 @@ public class MessageHandlerPool implements AutoCloseable {
 	@Override
 	public void close() throws Exception {
 		pool.forEach((k,v) -> {
-            try {
-                v.close();
-            } catch (Exception e) {
-                logger.error("Unable to close the message handler {}", k, e);
-            }
-        });
+			try {
+				v.close();
+			} catch (Exception e) {
+				logger.error("Unable to close the message handler {}", k, e);
+			}
+		});
 	}
 }

@@ -26,6 +26,7 @@ import org.junit.Test;
 
 import junit.framework.Assert;
 import step.grid.filemanager.FileManagerException;
+import step.grid.contextbuilder.ApplicationContextBuilder.ApplicationContext;
 
 public class ApplicationContextBuilderTest {
 

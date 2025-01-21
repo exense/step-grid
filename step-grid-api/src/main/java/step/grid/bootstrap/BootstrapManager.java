@@ -19,14 +19,12 @@
 package step.grid.bootstrap;
 
 import java.io.IOException;
-import java.util.Optional;
 import java.util.concurrent.Callable;
 
 import step.grid.agent.AgentTokenServices;
 import step.grid.agent.handler.MessageHandler;
 import step.grid.agent.handler.MessageHandlerPool;
 import step.grid.agent.tokenpool.AgentTokenWrapper;
-import step.grid.contextbuilder.ApplicationContext;
 import step.grid.contextbuilder.ApplicationContextBuilder;
 import step.grid.contextbuilder.ApplicationContextControl;
 import step.grid.contextbuilder.RemoteApplicationContextFactory;
@@ -60,7 +58,7 @@ public class BootstrapManager {
 			return contextBuilder.runInContext(new Callable<OutputMessage>() {
 				@Override
 				public OutputMessage call() throws Exception {
-					ApplicationContext currentContext = contextBuilder.getCurrentContext();
+					ApplicationContextBuilder.ApplicationContext currentContext = contextBuilder.getCurrentContext();
 					MessageHandlerPool handlerPool = (MessageHandlerPool) currentContext.computeIfAbsent("handlerPool",
 							k -> new MessageHandlerPool(agentTokenServices));
 					MessageHandler handler = handlerPool.get(handlerClass);
