@@ -40,7 +40,7 @@ public interface FileManagerClient extends AutoCloseable {
 	FileVersion requestFileVersion(FileVersionId fileVersionId, boolean cleanableFromClientCache) throws FileManagerException;
 
 	/**
-	 * This method should be invoked once the registered file version is not required anymore by the caller
+	 * This method should be invoked once a requested file version is not required anymore by the caller
 	 * @param fileVersion the {@link FileVersion} of the previously registered file.
 	 */
 	void releaseFileVersion(FileVersion fileVersion);

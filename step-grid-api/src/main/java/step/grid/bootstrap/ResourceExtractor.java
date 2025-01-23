@@ -52,7 +52,7 @@ public class ResourceExtractor {
 			}
 			return gridJar;
 		} catch (IOException e) {
-			logger.error("Exception while extracting resource");
+			logger.error("Exception while extracting resource", e);
 			throw new RuntimeException("Error while extracting plugin file", e);
 		}
 	}

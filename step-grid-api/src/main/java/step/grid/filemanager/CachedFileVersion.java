@@ -9,9 +9,9 @@ public class CachedFileVersion {
 
 	private static final Logger logger = LoggerFactory.getLogger(CachedFileVersion.class);
 
-	private FileVersion fileVersion;
+	private final FileVersion fileVersion;
 
-	private boolean cleanable;
+	private final boolean cleanable;
 
 	private long lastAccessTime;
 
@@ -27,16 +27,8 @@ public class CachedFileVersion {
 		return fileVersion;
 	}
 
-	public void setFileVersion(FileVersion fileVersion) {
-		this.fileVersion = fileVersion;
-	}
-
 	public boolean isCleanable() {
 		return cleanable;
-	}
-
-	public void setCleanable(boolean cleanable) {
-		this.cleanable = cleanable;
 	}
 
 	public long getLastAccessTime() {

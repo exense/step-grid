@@ -33,48 +33,6 @@ public class AgentTokenPool {
 	
 	private final Map<String, AgentTokenWrapper> pool = new ConcurrentHashMap<>();
 	
-	protected static final TokenReservationSession UNUSABLE_SESSION = new TokenReservationSession() {
-		@Override
-		public Object get(String arg0) {
-			throw unusableSessionException();
-		}
-
-		@Override
-		public <T> T getOrDefault(String key, T def) {
-			throw unusableSessionException();
-		}
-
-		@Override
-		public <T, U> T getOrDefault(String key, Function<U, T> def, U param) {
-			throw unusableSessionException();
-		}
-
-		@Override
-		public <T> T get(Class<T> objectClass) {
-			throw unusableSessionException();
-		}
-
-		@Override
-		public Object put(String arg0, Object arg1) {
-			throw unusableSessionException();
-		}
-
-		@Override
-		public void put(Object object) {
-			throw unusableSessionException();
-		}
-
-		@Override
-		public boolean isUsable() {
-			return false;
-		}
-
-		private RuntimeException unusableSessionException() {
-			// TODO use error codes instead of error messages
-			return new RuntimeException("Session object unreachable. Wrap your keywords with a Session node in your test plan in order to make the session object available.");
-		}
-	};
-	
 	public AgentTokenPool() {
 		super();
 	}
@@ -95,7 +53,7 @@ public class AgentTokenPool {
 		AgentTokenWrapper token = pool.get(tokenId);
 		if(token!=null) {
 			if(token.getTokenReservationSession()==null) {
-				token.setTokenReservationSession(UNUSABLE_SESSION);
+				token.setTokenReservationSession(new UnusableTokenReservationSession());
 			}
 		} else {
 			throw new InvalidTokenIdException();
@@ -134,7 +92,8 @@ public class AgentTokenPool {
 		if(token!=null) {
 			TokenReservationSession tokenReservationSession = token.getTokenReservationSession();
 			// Remove the unusable session (if any) after execution
-			if(tokenReservationSession == UNUSABLE_SESSION) {
+			if(tokenReservationSession instanceof UnusableTokenReservationSession) {
+				tokenReservationSession.close();
 				token.setTokenReservationSession(null);
 			}
 		}

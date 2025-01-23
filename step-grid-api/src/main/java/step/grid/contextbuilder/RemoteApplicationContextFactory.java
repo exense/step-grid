@@ -32,9 +32,9 @@ public class RemoteApplicationContextFactory extends ApplicationContextFactory {
 
 	private static final Logger logger = LoggerFactory.getLogger(RemoteApplicationContextFactory.class);
 
-	protected FileVersionId remoteClassLoaderFolder;
+	protected final FileVersionId remoteClassLoaderFolder;
 	
-	protected FileManagerClient fileManager;
+	protected final FileManagerClient fileManager;
 	private FileVersion fileVersion;
 	private final boolean cleanable;
 
@@ -56,6 +56,9 @@ public class RemoteApplicationContextFactory extends ApplicationContextFactory {
 	}
 
 	private FileVersion requestLatestClassPathFolder() throws FileManagerException {
+		if (logger.isDebugEnabled()) {
+			logger.debug("Requesting latest class path folder {}.", remoteClassLoaderFolder);
+		}
 		return fileManager.requestFileVersion(remoteClassLoaderFolder, cleanable);
 	}
 
@@ -75,6 +78,9 @@ public class RemoteApplicationContextFactory extends ApplicationContextFactory {
 
 	@Override
 	public void onClassLoaderClosed() {
+		if (logger.isDebugEnabled()) {
+			logger.debug("Releasing file version {}.", fileVersion);
+		}
 		fileManager.releaseFileVersion(fileVersion);
 	}
 

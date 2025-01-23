@@ -18,14 +18,19 @@
  ******************************************************************************/
 package step.grid.agent.tokenpool;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import step.functions.io.AbstractSession;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 public class TokenReservationSession extends AbstractSession {
 
+    private static final Logger logger = LoggerFactory.getLogger(TokenReservationSession.class);
+
     private List<TokenEventListener> eventListeners = new ArrayList<>();
+
+    private final LinkedList<AutoCloseable> closeWithSessionSet = new LinkedList<>();
 
     public boolean registerEventListener(TokenEventListener tokenEventListener) {
         return eventListeners.add(tokenEventListener);
@@ -44,29 +49,22 @@ public class TokenReservationSession extends AbstractSession {
     }
 
     /**
-     * If the token session is usable, put the provided closeable object to the map by hash code and return an empty optional otherwise return the closeable object
+     * This method is allowed also for fake sessions using the UnusableTokenReservationSession class.
+     * It is meant to store technical objects (application context, file version) following the lifecycle of sessions.
+     * When keywords are executed outside a session context, the UnusableTokenReservationSession is used and is closed from the AgentTokenPool.afterTokenExecution hook
      * @param closeable to be stored
-     * @return empty optional if the closeable object could be stored, the closeable object otherwise
      */
-    public <T extends SessionAwareCloseable> T putSessionAwareCloseable(T closeable) {
-        if (isUsable()) {
-            super.put(String.valueOf(closeable.hashCode()), closeable);
-            closeable.setInSession(true);
-        } else {
-            closeable.setInSession(false);
-        }
-        return closeable;
-    }
-
-    public boolean isUsable() {
-        return true;
+    public <T extends AutoCloseable> void closeWithSession(T closeable) {
+        closeWithSessionSet.add(closeable);
     }
 
     @Override
     public void close() {
-        sessionObjects.values().forEach(v -> {
-            if (v instanceof SessionAwareCloseable) {
-                ((SessionAwareCloseable) v).setInSession(false); //since we are now closing the session we set the flag to false allowing the close logic to be invoked
+        closeWithSessionSet.descendingIterator().forEachRemaining(autoCloseable -> {
+            try {
+                autoCloseable.close();
+            } catch (Exception e) {
+                logger.error("Unable to close {} while closing the session.", autoCloseable, e);
             }
         });
         super.close();

@@ -197,7 +197,7 @@ public class AbstractFileManager {
 			CachedFileVersion cachedFileVersion = versionCache.get(fileVersion.getVersionId());
 			if (cachedFileVersion != null) {
 				int currentUsage = cachedFileVersion.releaseUsage();
-				if (fileManagerConfiguration.isCleanupJobEnabled() && getCacheTTLms() == 0 && currentUsage == 0 && cachedFileVersion.isCleanable()) {
+				if (fileManagerConfiguration.isCleanupEnabled() && getCacheTTLms() == 0 && currentUsage == 0 && cachedFileVersion.isCleanable()) {
 					if (logger.isDebugEnabled()) {
 						logger.debug("Usage reached 0 after decrementing and TTL is set to 0 directly removing {} from cache.", cachedFileVersion.getFileVersion());
 					}
@@ -289,12 +289,12 @@ public class AbstractFileManager {
 
 	/**
 	 * Schedule the cache cleanup job with the frequency defined with {@link FileManagerConfiguration#getCleanupIntervalMinutes()}.
-	 * <p>It can be disabled using the {@link FileManagerConfiguration#isCleanupJobEnabled()} flag.</p>
+	 * <p>It can be disabled using the {@link FileManagerConfiguration#isCleanupEnabled()} flag.</p>
 	 * <p>The cleanup job browses all entries from the cache and remove the one marked as cleanable and not accessed for the period of time defined with {@link FileManagerConfiguration#getCleanupLastAccessTimeThresholdMinutes()}</p>
 	 *
 	 */
 	protected void scheduleCleanupJob() {
-		if (fileManagerConfiguration.isCleanupJobEnabled()) {
+		if (fileManagerConfiguration.isCleanupEnabled()) {
 			long cleanupIntervalMinutes = fileManagerConfiguration.getCleanupIntervalMinutes();
 			scheduledPool = Executors.newScheduledThreadPool(1);
 			future = scheduledPool.scheduleAtFixedRate(() -> {

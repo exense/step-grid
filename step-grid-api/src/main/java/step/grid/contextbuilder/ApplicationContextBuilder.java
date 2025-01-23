@@ -97,13 +97,12 @@ public class ApplicationContextBuilder implements AutoCloseable {
 			return currentContexts;
 		}
 
-		public void cleanup() {
+		public void close() {
 			if (logger.isDebugEnabled()) {
 				logger.debug("Cleaning up branch {}", branchName);
 			}
-			//Root context class loader itself should not be cleaned-up, only its children
 			if (rootContext != null) {
-				rootContext.cleanup();
+				rootContext.close();
 			}
 		}
 	}
@@ -213,7 +212,7 @@ public class ApplicationContextBuilder implements AutoCloseable {
 		 */
 		public void reloadContext(ApplicationContextFactory descriptor, ApplicationContext parentContext) throws FileManagerException {
 			//Start by cleaning previous context
-			cleanup();
+			close();
 			this.descriptor = descriptor;
 			ClassLoader classLoader = descriptor.buildClassLoader(parentContext.classLoader);
 			if (logger.isDebugEnabled()) {
@@ -224,31 +223,43 @@ public class ApplicationContextBuilder implements AutoCloseable {
 		}
 
 		public boolean cleanup() {
-			//Clean up recursively all children, remove the cleaned up ones from the map
-			childContexts.entrySet().removeIf(childAppContextEntry -> {
+			if (logger.isDebugEnabled()) {
+				logger.debug("Starting cleanup of application context {}", applicationContextId);
+			}
+			int currentUsage = usage.get();
+			if (currentUsage != 0) {
+				logger.error("Cleanup requested while the application context {} is still in use, usage count: {}", applicationContextId, currentUsage);
+				return false;
+			} else if (!childContexts.isEmpty()) {
+				logger.error("Cleanup requested while the application context still has child context still in use, usage count: {}, child contexts: {}", currentUsage, childContexts);
+				return false;
+			} else if (descriptor != null) {
 				if (logger.isDebugEnabled()) {
-					logger.debug("Cleaning application child context {}", childAppContextEntry.getKey());
-				}
-				return childAppContextEntry.getValue().cleanup();
-			});
-			// if all children were cleaned up and usage of current is 0, clean it up too
-			boolean cleanable = usage.get() == 0 && childContexts.isEmpty() && descriptor != null;
-			if (cleanable) {
-				if (logger.isDebugEnabled()) {
-					logger.debug("Cleaning up classloader {} for app context {}", classLoader, applicationContextId);
+					logger.debug("closing classloader {} for app context {}", classLoader, applicationContextId);
 				}
 				closeClassLoader();
 				if (logger.isDebugEnabled()) {
 					logger.debug("Notifying application context factory");
 				}
 				descriptor.onClassLoaderClosed();
+				return true;
+			} else {
 				if (logger.isDebugEnabled()) {
-					logger.debug("Closing application context object map");
+					logger.debug("Cleanup requested for the application context {}. Classloader was provided to the context by its creator, nothing to do.", applicationContextId);
 				}
-			} else if (logger.isDebugEnabled()) {
-				logger.debug("Cannot clean application context {}, children size {}, usage count {} and descriptor instance {}", applicationContextId, childContexts.size(), usage.get(), descriptor);
+				return true;
 			}
-			return cleanable;
+		}
+
+		public boolean close() {
+			//Close recursively all children, before closing itself
+			childContexts.entrySet().removeIf(childAppContextEntry -> {
+				if (logger.isDebugEnabled()) {
+					logger.debug("Cleaning application child context {}", childAppContextEntry.getKey());
+				}
+				return childAppContextEntry.getValue().close();
+			});
+			return cleanup();
 		}
 
 		private void closeClassLoader() {
@@ -438,22 +449,18 @@ public class ApplicationContextBuilder implements AutoCloseable {
 		}
 	}
 
-	public void cleanupUnused() {
+	@Override
+	public void close() {
 		synchronized(this) {
 			if (logger.isDebugEnabled()) {
-				logger.debug("Cleanup all application contexts");
+				logger.debug("Cleaning up all application contexts");
 			}
 			branches.forEach((k, b) -> {
 				if (logger.isDebugEnabled()) {
-					logger.debug("Cleanup application contexts for branch {}", k);
+					logger.debug("Cleaning up application contexts for branch {}", k);
 				}
-				b.cleanup();
+				b.close();
 			});
 		}
-	}
-
-	@Override
-	public void close() {
-		cleanupUnused();
 	}
 }

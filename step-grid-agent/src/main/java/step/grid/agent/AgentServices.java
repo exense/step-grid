@@ -18,8 +18,6 @@
  ******************************************************************************/
 package step.grid.agent;
 
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;

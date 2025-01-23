@@ -77,6 +77,9 @@ public class LocalResourceApplicationContextFactory extends ApplicationContextFa
 	public void onClassLoaderClosed() {
 		if (jar != null) {
 			try {
+				if (logger.isDebugEnabled()) {
+					logger.debug("Deleting extracted jar file {}.", jar);
+				}
 				Files.deleteIfExists(jar.toPath());
 			} catch (IOException e) {
 				logger.error("Unable to delete the extracted JAR file.", e);

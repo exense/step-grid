@@ -26,7 +26,6 @@ import step.grid.agent.handler.MessageHandler;
 import step.grid.agent.handler.MessageHandlerPool;
 import step.grid.agent.tokenpool.AgentTokenWrapper;
 import step.grid.contextbuilder.ApplicationContextBuilder;
-import step.grid.contextbuilder.ApplicationContextControl;
 import step.grid.contextbuilder.RemoteApplicationContextFactory;
 import step.grid.filemanager.FileManagerClient;
 import step.grid.filemanager.FileVersionId;
@@ -50,26 +49,20 @@ public class BootstrapManager {
 
 	public OutputMessage runBootstraped(AgentTokenWrapper token, InputMessage message, String handlerClass, FileVersionId handlerPackage) throws IOException, Exception {
 		contextBuilder.resetContext();
-		ApplicationContextControl applicationContextControl = null;
-		try {
-			if (message.getHandlerPackage() != null) {
-				applicationContextControl = token.getTokenReservationSession().putSessionAwareCloseable(contextBuilder.pushContext(new RemoteApplicationContextFactory(fileManager, message.getHandlerPackage(), true)));
-			}
-			return contextBuilder.runInContext(new Callable<OutputMessage>() {
-				@Override
-				public OutputMessage call() throws Exception {
-					ApplicationContextBuilder.ApplicationContext currentContext = contextBuilder.getCurrentContext();
-					MessageHandlerPool handlerPool = (MessageHandlerPool) currentContext.computeIfAbsent("handlerPool",
-							k -> new MessageHandlerPool(agentTokenServices));
-					MessageHandler handler = handlerPool.get(handlerClass);
-					return handler.handle(token, message);
-				}
-			});
-		} finally {
-			if (applicationContextControl != null) {
-				applicationContextControl.close();
-			}
+
+		if (message.getHandlerPackage() != null) {
+			token.getTokenReservationSession().closeWithSession(contextBuilder.pushContext(new RemoteApplicationContextFactory(fileManager, message.getHandlerPackage(), true)));
 		}
+		return contextBuilder.runInContext(new Callable<OutputMessage>() {
+			@Override
+			public OutputMessage call() throws Exception {
+				ApplicationContextBuilder.ApplicationContext currentContext = contextBuilder.getCurrentContext();
+				MessageHandlerPool handlerPool = (MessageHandlerPool) currentContext.computeIfAbsent("handlerPool",
+						k -> new MessageHandlerPool(agentTokenServices));
+				MessageHandler handler = handlerPool.get(handlerClass);
+				return handler.handle(token, message);
+			}
+		});
 	}
 	
 	public OutputMessage runBootstraped(AgentTokenWrapper token, InputMessage message) throws IOException, Exception {
