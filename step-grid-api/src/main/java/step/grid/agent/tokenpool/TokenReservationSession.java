@@ -49,12 +49,17 @@ public class TokenReservationSession extends AbstractSession {
     }
 
     /**
-     * This method is allowed also for fake sessions using the UnusableTokenReservationSession class.
-     * It is meant to store technical objects (application context, file version) following the lifecycle of sessions.
-     * When keywords are executed outside a session context, the UnusableTokenReservationSession is used and is closed from the AgentTokenPool.afterTokenExecution hook
-     * @param closeable to be stored
+     * Registers the provided AutoCloseable object to be closed at the end of the session's lifecycle.
+     * This method also supports fake sessions using the UnusableTokenReservationSession class.
+     * It is intended for storing technical objects (such as application context or file versions)
+     * that follow the session lifecycle.
+     *
+     * When keywords are executed outside a session context, the UnusableTokenReservationSession is used
+     * and closed from the AgentTokenPool.afterTokenExecution hook.
+     *
+     * @param closeable the AutoCloseable object to be registered for closure with the session
      */
-    public <T extends AutoCloseable> void closeWithSession(T closeable) {
+    public <T extends AutoCloseable> void registerObjectToBeClosedWithSession(T closeable) {
         closeWithSessionSet.add(closeable);
     }
 

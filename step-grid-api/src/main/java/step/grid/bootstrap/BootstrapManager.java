@@ -51,7 +51,7 @@ public class BootstrapManager {
 		contextBuilder.resetContext();
 
 		if (message.getHandlerPackage() != null) {
-			token.getTokenReservationSession().closeWithSession(contextBuilder.pushContext(new RemoteApplicationContextFactory(fileManager, message.getHandlerPackage(), true)));
+			token.getTokenReservationSession().registerObjectToBeClosedWithSession(contextBuilder.pushContext(new RemoteApplicationContextFactory(fileManager, message.getHandlerPackage(), true)));
 		}
 		return contextBuilder.runInContext(new Callable<OutputMessage>() {
 			@Override

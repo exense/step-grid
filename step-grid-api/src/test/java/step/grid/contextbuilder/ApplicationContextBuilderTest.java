@@ -55,15 +55,15 @@ public class ApplicationContextBuilderTest {
 
 		builder.resetContext();
 
-		tokenReservationSession.closeWithSession(builder.pushContext(newApplicationContextFactory("file://context1")));
+		tokenReservationSession.registerObjectToBeClosedWithSession(builder.pushContext(newApplicationContextFactory("file://context1")));
 
 		builder.forkCurrentContext("branch3");
 
-		tokenReservationSession.closeWithSession(builder.pushContext("branch2", newApplicationContextFactory("file://context3")));
+		tokenReservationSession.registerObjectToBeClosedWithSession(builder.pushContext("branch2", newApplicationContextFactory("file://context3")));
 
-		tokenReservationSession.closeWithSession(builder.pushContext("branch3", newApplicationContextFactory("file://context4")));
+		tokenReservationSession.registerObjectToBeClosedWithSession(builder.pushContext("branch3", newApplicationContextFactory("file://context4")));
 
-		tokenReservationSession.closeWithSession(builder.pushContext(newApplicationContextFactory("file://context2")));
+		tokenReservationSession.registerObjectToBeClosedWithSession(builder.pushContext(newApplicationContextFactory("file://context2")));
 		builder.getCurrentContext().put("myKey", "myValue");
 
 		ApplicationContext context = builder.getCurrentContext();
@@ -87,11 +87,11 @@ public class ApplicationContextBuilderTest {
 		Assert.assertEquals(rootClassloader, builder.getCurrentContext("branch2").getClassLoader());
 		Assert.assertEquals(new URL("file://context1"), ((URLClassLoader)builder.getCurrentContext("branch3").getClassLoader()).getURLs()[0]);
 
-		tokenReservationSession.closeWithSession(builder.pushContext(newApplicationContextFactory("file://context1")));
+		tokenReservationSession.registerObjectToBeClosedWithSession(builder.pushContext(newApplicationContextFactory("file://context1")));
 		// Assert that the classloader hasn't been created again i.e. that the classloader created during the first
 		// push of the context1 has been reused
 		Assert.assertTrue(classloaderContext1 == builder.getCurrentContext().getClassLoader());
-		tokenReservationSession.closeWithSession(builder.pushContext(newApplicationContextFactory("file://context2")));
+		tokenReservationSession.registerObjectToBeClosedWithSession(builder.pushContext(newApplicationContextFactory("file://context2")));
 		// Assert the same for the context2
 		Assert.assertTrue(classloaderContext2 == builder.getCurrentContext().getClassLoader());
 
