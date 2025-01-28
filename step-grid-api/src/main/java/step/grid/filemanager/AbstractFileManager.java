@@ -192,20 +192,25 @@ public class AbstractFileManager {
 	}
 
 	protected void releaseFileVersionFromCache(FileVersion fileVersion){
-		Map<FileVersionId, CachedFileVersion> versionCache = getVersionMap(fileVersion.getFileId());
-		synchronized (versionCache) {
-			CachedFileVersion cachedFileVersion = versionCache.get(fileVersion.getVersionId());
-			if (cachedFileVersion != null) {
-				int currentUsage = cachedFileVersion.releaseUsage();
-				if (fileManagerConfiguration.isCleanupEnabled() && getCacheTTLms() == 0 && currentUsage == 0 && cachedFileVersion.isCleanable()) {
-					if (logger.isDebugEnabled()) {
-						logger.debug("Usage reached 0 after decrementing and TTL is set to 0 directly removing {} from cache.", cachedFileVersion.getFileVersion());
+		try {
+			fileHandleCacheLock.readLock().lock();
+			Map<FileVersionId, CachedFileVersion> versionCache = getVersionMap(fileVersion.getFileId());
+			synchronized (versionCache) {
+				CachedFileVersion cachedFileVersion = versionCache.get(fileVersion.getVersionId());
+				if (cachedFileVersion != null) {
+					int currentUsage = cachedFileVersion.releaseUsage();
+					if (fileManagerConfiguration.isCleanupEnabled() && getCacheTTLms() == 0 && currentUsage == 0 && cachedFileVersion.isCleanable()) {
+						if (logger.isDebugEnabled()) {
+							logger.debug("Usage reached 0 after decrementing and TTL is set to 0 directly removing {} from cache.", cachedFileVersion.getFileVersion());
+						}
+						removeFileVersion(fileVersion.getVersionId());
 					}
-					removeFileVersion(fileVersion.getVersionId());
+				} else {
+					logger.warn("Release file version was called for {} which was not found in cache", fileVersion);
 				}
-			} else {
-				logger.warn("Release file version was called for {} which was not found in cache", fileVersion);
 			}
+		} finally {
+			fileHandleCacheLock.readLock().unlock();
 		}
 	}
 
