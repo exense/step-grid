@@ -41,6 +41,7 @@ public class ApplicationContextBuilderTest {
 	public void test() throws ApplicationContextBuilderException, MalformedURLException {
 		testWithSession(new TokenReservationSession());
 	}
+
 	@Test
 	public void testWithUnusableSession() throws ApplicationContextBuilderException, MalformedURLException {
 		testWithSession(new UnusableTokenReservationSession());
@@ -55,15 +56,15 @@ public class ApplicationContextBuilderTest {
 
 		builder.resetContext();
 
-		tokenReservationSession.registerObjectToBeClosedWithSession(builder.pushContext(newApplicationContextFactory("file://context1")));
+		tokenReservationSession.registerObjectToBeClosedWithSession(builder.pushContext(newApplicationContextFactory("file://context1"), true));
 
 		builder.forkCurrentContext("branch3");
 
-		tokenReservationSession.registerObjectToBeClosedWithSession(builder.pushContext("branch2", newApplicationContextFactory("file://context3")));
+		tokenReservationSession.registerObjectToBeClosedWithSession(builder.pushContext("branch2", newApplicationContextFactory("file://context3"), true));
 
-		tokenReservationSession.registerObjectToBeClosedWithSession(builder.pushContext("branch3", newApplicationContextFactory("file://context4")));
+		tokenReservationSession.registerObjectToBeClosedWithSession(builder.pushContext("branch3", newApplicationContextFactory("file://context4"), true));
 
-		tokenReservationSession.registerObjectToBeClosedWithSession(builder.pushContext(newApplicationContextFactory("file://context2")));
+		tokenReservationSession.registerObjectToBeClosedWithSession(builder.pushContext(newApplicationContextFactory("file://context2"), true));
 		builder.getCurrentContext().put("myKey", "myValue");
 
 		ApplicationContext context = builder.getCurrentContext();
@@ -87,11 +88,11 @@ public class ApplicationContextBuilderTest {
 		Assert.assertEquals(rootClassloader, builder.getCurrentContext("branch2").getClassLoader());
 		Assert.assertEquals(new URL("file://context1"), ((URLClassLoader)builder.getCurrentContext("branch3").getClassLoader()).getURLs()[0]);
 
-		tokenReservationSession.registerObjectToBeClosedWithSession(builder.pushContext(newApplicationContextFactory("file://context1")));
+		tokenReservationSession.registerObjectToBeClosedWithSession(builder.pushContext(newApplicationContextFactory("file://context1"), true));
 		// Assert that the classloader hasn't been created again i.e. that the classloader created during the first
 		// push of the context1 has been reused
 		Assert.assertTrue(classloaderContext1 == builder.getCurrentContext().getClassLoader());
-		tokenReservationSession.registerObjectToBeClosedWithSession(builder.pushContext(newApplicationContextFactory("file://context2")));
+		tokenReservationSession.registerObjectToBeClosedWithSession(builder.pushContext(newApplicationContextFactory("file://context2"), true));
 		// Assert the same for the context2
 		Assert.assertTrue(classloaderContext2 == builder.getCurrentContext().getClassLoader());
 
@@ -105,6 +106,33 @@ public class ApplicationContextBuilderTest {
 
 		//4 context are created, (2 are reused once)
 		Assert.assertEquals(4, onCloseCalls.get());
+	}
+
+	@Test
+	public void testNotCleanable() throws ApplicationContextBuilderException, MalformedURLException {
+		TokenReservationSession tokenReservationSession = new TokenReservationSession();
+		ClassLoader rootClassloader = Thread.currentThread().getContextClassLoader();
+
+		TestApplicationContextBuilder builder = new TestApplicationContextBuilder();
+		builder.forkCurrentContext("branch2");
+
+		builder.resetContext();
+
+		tokenReservationSession.registerObjectToBeClosedWithSession(builder.pushContext(newApplicationContextFactory("file://context1"), false));
+
+		builder.forkCurrentContext("branch3");
+
+		tokenReservationSession.registerObjectToBeClosedWithSession(builder.pushContext("branch2", newApplicationContextFactory("file://context3"), false));
+
+		Assert.assertEquals(2, builder.appCtrl.size());
+		tokenReservationSession.close();
+
+		builder.appCtrl.forEach(a -> {
+			Assert.assertFalse(a.isClosed);
+		});
+
+		//Class loader should not have been closed
+		Assert.assertEquals(0, onCloseCalls.get());
 	}
 
 	private ApplicationContextFactory newApplicationContextFactory(String id) {
@@ -141,8 +169,8 @@ public class ApplicationContextBuilderTest {
 		public final List<TestApplicationContextControl> appCtrl = new LinkedList<>();
 
 		@Override
-		public ApplicationContextControl pushContext(String branchName, ApplicationContextFactory descriptor) throws ApplicationContextBuilderException {
-			TestApplicationContextControl applicationContextControl = new TestApplicationContextControl(super.pushContext(branchName, descriptor));
+		public ApplicationContextControl pushContext(String branchName, ApplicationContextFactory descriptor, boolean cleanable) throws ApplicationContextBuilderException {
+			TestApplicationContextControl applicationContextControl = new TestApplicationContextControl(super.pushContext(branchName, descriptor, cleanable));
 			appCtrl.add(applicationContextControl);
 			return (ApplicationContextControl) applicationContextControl;
 		}
@@ -159,10 +187,11 @@ public class ApplicationContextBuilderTest {
 				super(applicationContextControl.applicationContext);
 			}
 
+
 			@Override
 			public void close() throws Exception {
 				super.close();
-				isClosed = true;
+				isClosed = applicationContext.cleanable;
 			}
 		}
 	}

@@ -51,7 +51,8 @@ public class BootstrapManager {
 		contextBuilder.resetContext();
 
 		if (message.getHandlerPackage() != null) {
-			token.getTokenReservationSession().registerObjectToBeClosedWithSession(contextBuilder.pushContext(new RemoteApplicationContextFactory(fileManager, message.getHandlerPackage(), true)));
+			//The message handler package is not cleanable
+			token.getTokenReservationSession().registerObjectToBeClosedWithSession(contextBuilder.pushContext(new RemoteApplicationContextFactory(fileManager, message.getHandlerPackage(), false), false));
 		}
 		return contextBuilder.runInContext(new Callable<OutputMessage>() {
 			@Override

@@ -122,12 +122,14 @@ public class ApplicationContextBuilder implements AutoCloseable {
 		private Map<String, ApplicationContext> childContexts = new ConcurrentHashMap<>();
 
 		private ConcurrentHashMap<String, Object> contextObjects = new ConcurrentHashMap<>();
+		protected final boolean cleanable;
 
-		protected ApplicationContext(ApplicationContextFactory descriptor, ApplicationContext parentContext, String applicationContextId) throws FileManagerException {
+		protected ApplicationContext(ApplicationContextFactory descriptor, ApplicationContext parentContext, String applicationContextId, boolean cleanable) throws FileManagerException {
 			super();
 			this.descriptor = descriptor;
 			this.applicationContextId = applicationContextId;
 			this.parentContext = parentContext;
+			this. cleanable = cleanable;
 			buildClassLoader(parentContext);
 		}
 
@@ -137,6 +139,7 @@ public class ApplicationContextBuilder implements AutoCloseable {
 			this.applicationContextId = applicationContextId;
 			this.descriptor = null;
 			this.parentContext = null;
+			this.cleanable = false;
 		}
 
 		public Object get(Object key) {
@@ -169,7 +172,7 @@ public class ApplicationContextBuilder implements AutoCloseable {
 		private void cleanupFromParent() {
 			synchronized (ApplicationContextBuilder.this) {
 				//once synchronized with the builder recheck the current usage
-				if (usage.get() == 0) {
+				if (usage.get() == 0 && cleanable) {
 					boolean cleanup = cleanup();
 					if (cleanup && parentContext != null) {
 						parentContext.childContexts.remove(this.applicationContextId);
@@ -355,18 +358,19 @@ public class ApplicationContextBuilder implements AutoCloseable {
 	 * @param descriptor the descriptor of the context to be pushed 
 	 * @throws ApplicationContextBuilderException
 	 */
-	public ApplicationContextControl pushContext(ApplicationContextFactory descriptor) throws ApplicationContextBuilderException {
-		return pushContext(MASTER, descriptor);
+	public ApplicationContextControl pushContext(ApplicationContextFactory descriptor, boolean cleanable) throws ApplicationContextBuilderException {
+		return pushContext(MASTER, descriptor, cleanable);
 	}
-	
+
 	/**
 	 * Push a new context (resulting in a {@link ClassLoader}) to the stack of the branch specified as input for the current thread
 	 * 
 	 * @param branchName the name of the branch to push the new context onto
-	 * @param descriptor the descriptor of the context to be pushed 
+	 * @param descriptor the descriptor of the context to be pushed
+	 * @param cleanable whether this app context and underlying class loader are cleanble
 	 * @throws ApplicationContextBuilderException
 	 */
-	public ApplicationContextControl pushContext(String branchName, ApplicationContextFactory descriptor) throws ApplicationContextBuilderException {
+	public ApplicationContextControl pushContext(String branchName, ApplicationContextFactory descriptor, boolean cleanable) throws ApplicationContextBuilderException {
 		synchronized(this) {
 			String contextKey = descriptor.getId();
 			if(logger.isDebugEnabled()) {
@@ -385,7 +389,7 @@ public class ApplicationContextBuilder implements AutoCloseable {
 				}
 
 				try {
-					context = new ApplicationContext(descriptor, parentContext, contextKey);
+					context = new ApplicationContext(descriptor, parentContext, contextKey, cleanable);
 				} catch (FileManagerException e) {
 					throw new ApplicationContextBuilderException(e);
 				}
