@@ -65,6 +65,7 @@ public class TokenReservationSession extends AbstractSession {
 
     @Override
     public void close() {
+        super.close();
         closeWithSessionSet.descendingIterator().forEachRemaining(autoCloseable -> {
             try {
                 autoCloseable.close();
@@ -72,6 +73,5 @@ public class TokenReservationSession extends AbstractSession {
                 logger.error("Unable to close {} while closing the session.", autoCloseable, e);
             }
         });
-        super.close();
     }
 }
