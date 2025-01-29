@@ -51,7 +51,8 @@ public class BootstrapManager {
 		contextBuilder.resetContext();
 
 		if (message.getHandlerPackage() != null) {
-			//The message handler package is not cleanable
+			//The message handler package is not cleanable (i.e.step-functions-handler.jar) because some jackson databind keep a handle on them
+			//causing leak in the agent meta space.
 			token.getTokenReservationSession().registerObjectToBeClosedWithSession(contextBuilder.pushContext(new RemoteApplicationContextFactory(fileManager, message.getHandlerPackage(), false), false));
 		}
 		return contextBuilder.runInContext(new Callable<OutputMessage>() {
