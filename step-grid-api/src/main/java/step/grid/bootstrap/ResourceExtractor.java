@@ -18,6 +18,9 @@
  ******************************************************************************/
 package step.grid.bootstrap;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -26,18 +29,32 @@ import java.nio.file.StandardCopyOption;
 import java.util.UUID;
 
 public class ResourceExtractor {
-	
-	public static File extractResource(ClassLoader cl, String resourceName) {
+
+	private static final Logger logger = LoggerFactory.getLogger(ResourceExtractor.class);
+	/**
+	 * Extract a JAR from classloader to a temporary folder with delete on exit. This method is synchronized:
+	 * When called from multiple threads with a shared classloader, the input stream can be closed by another thread and cause "Stream closed" exceptions
+	 * @param cl the classsloader to extract the resource from
+	 * @param resourceName the name of the resource to be extracted
+	 * @return the extracted file
+	 */
+	public static synchronized File extractResource(ClassLoader cl, String resourceName) {
+		if (logger.isDebugEnabled()) {
+			logger.debug("Extracting resource {} from classloader {}", resourceName, cl);
+		}
 		File gridJar;
-		
 		try (InputStream is = cl.getResourceAsStream(resourceName)) {
 			gridJar = File.createTempFile(resourceName + "-" + UUID.randomUUID(), resourceName.substring(resourceName.lastIndexOf(".")));
 			Files.copy(is, gridJar.toPath(), StandardCopyOption.REPLACE_EXISTING);
 			gridJar.deleteOnExit();
-			return gridJar; 
+			if (logger.isDebugEnabled()) {
+				logger.debug("Extracted resource {} from classloader {} to file {}", resourceName, cl, gridJar.getAbsolutePath());
+			}
+			return gridJar;
 		} catch (IOException e) {
+			logger.error("Exception while extracting resource", e);
 			throw new RuntimeException("Error while extracting plugin file", e);
-		} 
+		}
 	}
 
 }

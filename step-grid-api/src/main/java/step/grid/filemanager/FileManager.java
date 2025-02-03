@@ -44,7 +44,13 @@ public interface FileManager extends AutoCloseable {
 	 * @throws FileManagerException
 	 */
 	public FileVersion registerFileVersion(InputStream inputStream, String fileName, boolean isDirectory, boolean deletePreviousVersions, boolean cleanable) throws FileManagerException;
-	
+
+	/**
+	 * This method should be invoked once the registered file version is not required anymore by the caller
+	 * @param fileVersion the {@link FileVersion} of the previously registered file.
+	 */
+	public void releaseFileVersion(FileVersion fileVersion);
+
 	/**
 	 * Cache the content of the file provided as argument under a specific version for later retrieval
 	 * The content of the file is persisted under the version returned. Multiple versions of the same file 

@@ -59,27 +59,34 @@ public class GridServices {
     @Path("/file/{id}/{version}")
 	public Response getFile(@PathParam("id") String id, @PathParam("version") String version) throws IOException, FileManagerException {
 		FileVersionId versionId = new FileVersionId(id, version);
-		FileVersion fileVersion = fileManager.getFileVersion(versionId);
+		FileVersion fileVersion = null;
+		try {
+			fileVersion = fileManager.getFileVersion(versionId);
 
-		File file = fileVersion.getFile();
-		FileInputStream inputStream = new FileInputStream(file);
-		
-		StreamingOutput fileStream = new StreamingOutput() {
-			
-			@Override
-			public void write(OutputStream output) throws IOException, WebApplicationException {
-				try {
-					// This buffer size doesn't seem to have a significant effect on the performance
-					FileHelper.copy(inputStream, output, 2048);
-					output.flush();
-				} finally {
-					inputStream.close();
+			File file = fileVersion.getFile();
+			FileInputStream inputStream = new FileInputStream(file);
+
+			StreamingOutput fileStream = new StreamingOutput() {
+
+				@Override
+				public void write(OutputStream output) throws IOException, WebApplicationException {
+					try {
+						// This buffer size doesn't seem to have a significant effect on the performance
+						FileHelper.copy(inputStream, output, 2048);
+						output.flush();
+					} finally {
+						inputStream.close();
+					}
 				}
+			};
+
+			return Response.ok(fileStream, MediaType.APPLICATION_OCTET_STREAM)
+					.header("content-disposition", "attachment; filename = " + file.getName() + "; type = " + (fileVersion.isDirectory() ? "dir" : "file")).build();
+		} finally {
+			if (fileVersion != null) {
+				fileManager.releaseFileVersion(fileVersion);
 			}
-		};
-		
-		return Response.ok(fileStream, MediaType.APPLICATION_OCTET_STREAM)
-				.header("content-disposition", "attachment; filename = "+file.getName()+"; type = "+(fileVersion.isDirectory()?"dir":"file")).build();
+		}
 	}
 
 	@GET
@@ -148,6 +155,13 @@ public class GridServices {
 		
 		return grid.registerFile(uploadedInputStream, fileDetail.getFileName(), contentType!=null && contentType.equals("dir"),
 				Boolean.parseBoolean(cleanable));
+	}
+
+	@POST
+	@Path("/file/release")
+	@Consumes(MediaType.MULTIPART_FORM_DATA)
+	public void releaseFile(FileVersion fileVersion) throws FileManagerException {
+		grid.releaseFile(fileVersion);
 	}
 	
 	@POST

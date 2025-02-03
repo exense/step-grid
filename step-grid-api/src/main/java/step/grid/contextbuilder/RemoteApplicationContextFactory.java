@@ -21,6 +21,8 @@ package step.grid.contextbuilder;
 import java.io.File;
 import java.io.IOException;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import step.grid.filemanager.FileManagerClient;
 import step.grid.filemanager.FileManagerException;
 import step.grid.filemanager.FileVersion;
@@ -28,14 +30,19 @@ import step.grid.filemanager.FileVersionId;
 
 public class RemoteApplicationContextFactory extends ApplicationContextFactory {
 
-	protected FileVersionId remoteClassLoaderFolder;
-	
-	protected FileManagerClient fileManager;
+	private static final Logger logger = LoggerFactory.getLogger(RemoteApplicationContextFactory.class);
 
-	public RemoteApplicationContextFactory(FileManagerClient fileManager, FileVersionId remoteClassLoaderFolder) {
+	protected final FileVersionId remoteClassLoaderFolder;
+	
+	protected final FileManagerClient fileManager;
+	private FileVersion fileVersion;
+	private final boolean cleanable;
+
+	public RemoteApplicationContextFactory(FileManagerClient fileManager, FileVersionId remoteClassLoaderFolder, boolean cleanable) {
 		super();
 		this.fileManager = fileManager;
 		this.remoteClassLoaderFolder = remoteClassLoaderFolder;
+		this.cleanable = cleanable;
 	}
 
 	@Override
@@ -49,19 +56,32 @@ public class RemoteApplicationContextFactory extends ApplicationContextFactory {
 	}
 
 	private FileVersion requestLatestClassPathFolder() throws FileManagerException {
-		return fileManager.requestFileVersion(remoteClassLoaderFolder, false);
+		if (logger.isDebugEnabled()) {
+			logger.debug("Requesting latest class path folder {}.", remoteClassLoaderFolder);
+		}
+		return fileManager.requestFileVersion(remoteClassLoaderFolder, cleanable);
 	}
 
 	@Override
 	public ClassLoader buildClassLoader(ClassLoader parentClassLoader) throws FileManagerException {
-		FileVersion fileVersion = requestLatestClassPathFolder();
+		fileVersion = requestLatestClassPathFolder();
 		File file = fileVersion.getFile();
-
+		if (logger.isDebugEnabled()) {
+			logger.debug("Creating JavaLibrariesClassLoader for file {}", file.getAbsolutePath());
+		}
 		try {
 			return new JavaLibrariesClassLoader(file, parentClassLoader);
 		} catch (IOException e) {
 			throw new FileManagerException(fileVersion.getVersionId(), e);
 		}
+	}
+
+	@Override
+	public void onClassLoaderClosed() {
+		if (logger.isDebugEnabled()) {
+			logger.debug("Releasing file version {}.", fileVersion);
+		}
+		fileManager.releaseFileVersion(fileVersion);
 	}
 
 }

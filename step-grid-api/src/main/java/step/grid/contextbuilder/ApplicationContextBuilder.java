@@ -18,11 +18,11 @@
  ******************************************************************************/
 package step.grid.contextbuilder;
 
-import java.io.Closeable;
-import java.io.IOException;
+import java.net.URLClassLoader;
+import java.util.Arrays;
 import java.util.Map;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
 import org.slf4j.Logger;
@@ -60,23 +60,25 @@ import step.grid.filemanager.FileManagerException;
  * @author Jerome Comte
  *
  */
-public class ApplicationContextBuilder {
+public class ApplicationContextBuilder implements AutoCloseable {
 	
 	public static final String MASTER = "master";
 
 	private static final Logger logger = LoggerFactory.getLogger(ApplicationContextBuilder.class);
 		
 	private ConcurrentHashMap<String, Branch> branches = new ConcurrentHashMap<>();
-	
+
 	protected class Branch {
 		
 		private ApplicationContext rootContext;
+		private final String branchName;
 		
 		private final ThreadLocal<ApplicationContext> currentContexts = new ThreadLocal<>();
 
-		protected Branch(ApplicationContext rootContext) {
+		protected Branch(ApplicationContext rootContext, String branchName) {
 			super();
 			this.rootContext = rootContext;
+			this.branchName = branchName;
 			reset();
 		}
 		
@@ -86,7 +88,7 @@ public class ApplicationContextBuilder {
 		
 		public Branch fork(String newBranchName) {
 			ApplicationContext currentContext = currentContexts.get();
-			Branch newBranch = new Branch(currentContext);
+			Branch newBranch = new Branch(currentContext, newBranchName);
 			ApplicationContextBuilder.this.branches.put(newBranchName, newBranch);
 			return newBranch;
 		}
@@ -94,23 +96,50 @@ public class ApplicationContextBuilder {
 		protected ThreadLocal<ApplicationContext> getCurrentContexts() {
 			return currentContexts;
 		}
+
+		public void close() {
+			if (logger.isDebugEnabled()) {
+				logger.debug("Cleaning up branch {}", branchName);
+			}
+			if (rootContext != null) {
+				rootContext.close();
+			}
+		}
 	}
-	
-	public static class ApplicationContext implements Closeable {
-		
+
+	public class ApplicationContext {
+
+		private final AtomicInteger usage = new AtomicInteger(0);
+
+		private final String applicationContextId;
+
+		private final ApplicationContext parentContext;
+
 		private ClassLoader classLoader;
 
-		private Map<String, ApplicationContext> childContexts = new ConcurrentHashMap<>();
-		
-		private ConcurrentHashMap<String, Object> contextObjects = new ConcurrentHashMap<>();
+		private ApplicationContextFactory descriptor;
 
-		protected ApplicationContext() {
+		private Map<String, ApplicationContext> childContexts = new ConcurrentHashMap<>();
+
+		private ConcurrentHashMap<String, Object> contextObjects = new ConcurrentHashMap<>();
+		protected final boolean cleanable;
+
+		protected ApplicationContext(ApplicationContextFactory descriptor, ApplicationContext parentContext, String applicationContextId, boolean cleanable) throws FileManagerException {
 			super();
+			this.descriptor = descriptor;
+			this.applicationContextId = applicationContextId;
+			this.parentContext = parentContext;
+			this. cleanable = cleanable;
+			buildClassLoader(parentContext);
 		}
-		
-		protected ApplicationContext(ClassLoader classLoader) {
+
+		protected ApplicationContext(ClassLoader classLoader, String applicationContextId) {
 			super();
 			this.classLoader = classLoader;
+			this.applicationContextId = applicationContextId;
+			this.descriptor = null;
+			this.parentContext = null;
+			this.cleanable = false;
 		}
 
 		public Object get(Object key) {
@@ -128,15 +157,134 @@ public class ApplicationContextBuilder {
 		public ClassLoader getClassLoader() {
 			return classLoader;
 		}
-		
-		@Override
-		public void close() throws IOException {
-			if(classLoader!=null && classLoader instanceof Closeable) {
-				((Closeable)classLoader).close();
+
+		public void registerUsage() {
+			usage.incrementAndGet();
+		}
+
+		public void releaseUsage() {
+			int currentUsage = usage.decrementAndGet();
+			if (currentUsage == 0){
+				cleanupFromParent();
+			}
+		}
+
+		private void cleanupFromParent() {
+			synchronized (ApplicationContextBuilder.this) {
+				//once synchronized with the builder recheck the current usage
+				if (usage.get() == 0 && cleanable) {
+					boolean cleanup = cleanup();
+					if (cleanup && parentContext != null) {
+						parentContext.childContexts.remove(this.applicationContextId);
+					}
+				}
+			}
+		}
+
+		public ApplicationContext getChildContext(String applicationContextId) {
+			return childContexts.get(applicationContextId);
+		}
+
+		public boolean containsChildContextKey(String applicationContextId) {
+			return childContexts.containsKey(applicationContextId);
+		}
+
+		public void putChildContext(String applicationContextId, ApplicationContext applicationContext) {
+			childContexts.put(applicationContextId, applicationContext);
+		}
+
+		private void buildClassLoader(ApplicationContext parentContext) throws FileManagerException {
+			ClassLoader classLoader = descriptor.buildClassLoader(parentContext.classLoader);
+			if (logger.isDebugEnabled()) {
+				logger.debug("Loading classloader for {} in application context builder {}", descriptor.getId(), this);
+			}
+			this.classLoader = classLoader;
+			if (logger.isDebugEnabled()) {
+				logger.debug("Loaded classloader {}", classLoader);
+			}
+		}
+
+		/**
+		 * Method used by descriptor with descriptor.requiresReload() returning true, no implementation exists as of now
+		 * Legacy implementation was building a new class loader, replacing the current one and clearing the contextObject map
+		 * With new implementation, it now close first the current classloader and close the contextObject
+		 * the method aims to recreate the class loader which now required to clean up the previous
+		 * @param descriptor
+		 * @param parentContext
+		 * @throws FileManagerException
+		 */
+		public void reloadContext(ApplicationContextFactory descriptor, ApplicationContext parentContext) throws FileManagerException {
+			//Start by cleaning previous context
+			close();
+			this.descriptor = descriptor;
+			ClassLoader classLoader = descriptor.buildClassLoader(parentContext.classLoader);
+			if (logger.isDebugEnabled()) {
+				logger.debug("Loading classloader for {} in application context builder {}", descriptor.getId(), this);
+			}
+			this.classLoader = classLoader;
+			contextObjects.clear();
+		}
+
+		public boolean cleanup() {
+			if (logger.isDebugEnabled()) {
+				logger.debug("Starting cleanup of application context {}", applicationContextId);
+			}
+			int currentUsage = usage.get();
+			if (currentUsage != 0) {
+				logger.error("Cleanup requested while the application context {} is still in use, usage count: {}", applicationContextId, currentUsage);
+				return false;
+			} else if (!childContexts.isEmpty()) {
+				logger.error("Cleanup requested while the application context still has child context still in use, usage count: {}, child contexts: {}", currentUsage, childContexts);
+				return false;
+			} else if (descriptor != null) {
+				if (logger.isDebugEnabled()) {
+					logger.debug("closing classloader {} for app context {}", classLoader, applicationContextId);
+				}
+				closeClassLoader();
+				if (logger.isDebugEnabled()) {
+					logger.debug("Notifying application context factory");
+				}
+				descriptor.onClassLoaderClosed();
+				return true;
+			} else {
+				if (logger.isDebugEnabled()) {
+					logger.debug("Cleanup requested for the application context {}. Classloader was provided to the context by its creator, nothing to do.", applicationContextId);
+				}
+				return true;
+			}
+		}
+
+		public boolean close() {
+			//Close recursively all children, before closing itself
+			childContexts.entrySet().removeIf(childAppContextEntry -> {
+				if (logger.isDebugEnabled()) {
+					logger.debug("Cleaning application child context {}", childAppContextEntry.getKey());
+				}
+				return childAppContextEntry.getValue().close();
+			});
+			return cleanup();
+		}
+
+		private void closeClassLoader() {
+			if (classLoader != null && classLoader instanceof AutoCloseable) {
+				if (logger.isDebugEnabled()) {
+					logger.debug("Application context class loader found for {}, closing classLoader {}", this, classLoader);
+					logger.debug("Parent classloader is {}", classLoader.getParent());
+					if (classLoader instanceof URLClassLoader) {
+						URLClassLoader classLoader1 = (URLClassLoader) classLoader;
+						logger.debug("URLs: {}", Arrays.asList(classLoader1.getURLs()));
+					}
+				}
+				try {
+					((AutoCloseable) classLoader).close();
+				} catch (Exception e) {
+					logger.error("Application context class loader found could not be closed for context {}", this, e);
+				}
 			}
 		}
 	}
-	
+
+
 	/**
 	 * Creates a new instance of {@link ApplicationContextBuilder} using the {@link ClassLoader} 
 	 * of this class as root {@link ClassLoader}
@@ -151,8 +299,8 @@ public class ApplicationContextBuilder {
 	 * @param rootClassLoader the {@link ClassLoader} to be used as root of this context
 	 */
 	public ApplicationContextBuilder(ClassLoader rootClassLoader) {
-		ApplicationContext rootContext = new ApplicationContext(rootClassLoader);
-		Branch branch = new Branch(rootContext);
+		ApplicationContext rootContext = new ApplicationContext(rootClassLoader, "rootContext");
+		Branch branch = new Branch(rootContext, MASTER);
 		branches.put(MASTER, branch);
 	}
 	
@@ -210,70 +358,62 @@ public class ApplicationContextBuilder {
 	 * @param descriptor the descriptor of the context to be pushed 
 	 * @throws ApplicationContextBuilderException
 	 */
-	public void pushContext(ApplicationContextFactory descriptor) throws ApplicationContextBuilderException {
-		pushContext(MASTER, descriptor);
+	public ApplicationContextControl pushContext(ApplicationContextFactory descriptor, boolean cleanable) throws ApplicationContextBuilderException {
+		return pushContext(MASTER, descriptor, cleanable);
 	}
-	
+
 	/**
 	 * Push a new context (resulting in a {@link ClassLoader}) to the stack of the branch specified as input for the current thread
 	 * 
 	 * @param branchName the name of the branch to push the new context onto
-	 * @param descriptor the descriptor of the context to be pushed 
+	 * @param descriptor the descriptor of the context to be pushed
+	 * @param cleanable whether this app context and underlying class loader are cleanble
 	 * @throws ApplicationContextBuilderException
 	 */
-	public void pushContext(String branchName, ApplicationContextFactory descriptor) throws ApplicationContextBuilderException {
+	public ApplicationContextControl pushContext(String branchName, ApplicationContextFactory descriptor, boolean cleanable) throws ApplicationContextBuilderException {
 		synchronized(this) {
 			String contextKey = descriptor.getId();
 			if(logger.isDebugEnabled()) {
 				logger.debug("Pushing context "+contextKey+" to branch "+branchName);
 			}
- 			ThreadLocal<ApplicationContext> branch = getBranch(branchName).getCurrentContexts();
-			ApplicationContext parentContext = branch.get();
+ 			ThreadLocal<ApplicationContext> branchCurrentContext = getBranch(branchName).getCurrentContexts();
+			ApplicationContext parentContext = branchCurrentContext.get();
 			if(parentContext==null) {
 				throw new RuntimeException("The current context is null. This should never occur");
 			}
 			
 			ApplicationContext context;
-			if(!parentContext.childContexts.containsKey(contextKey)) {
+			if(!parentContext.containsChildContextKey(contextKey)) {
 				if(logger.isDebugEnabled()) {
 					logger.debug("Context "+contextKey+" doesn't exist on branch "+branchName+". Creating new context");
 				}
-				context = new ApplicationContext();
+
 				try {
-					buildClassLoader(descriptor, context, parentContext);
+					context = new ApplicationContext(descriptor, parentContext, contextKey, cleanable);
 				} catch (FileManagerException e) {
 					throw new ApplicationContextBuilderException(e);
 				}
-				parentContext.childContexts.put(contextKey, context);
+				parentContext.putChildContext(contextKey, context);
 			} else {
 				if(logger.isDebugEnabled()) {
 					logger.debug("Context "+contextKey+" existing on branch. Reusing it.");
 				}
-				context = parentContext.childContexts.get(contextKey);	
+				context = parentContext.getChildContext(contextKey);
 				try {
 					if(descriptor.requiresReload()) {
 						if(logger.isDebugEnabled()) {
 							logger.debug("Context "+contextKey+" requires reload. Reloading...");
 						}
-						buildClassLoader(descriptor, context, parentContext);
-						context.contextObjects.clear();
-					} else {
-						
+						context.reloadContext(descriptor, context);
 					}
 				} catch (FileManagerException e) {
 					throw new ApplicationContextBuilderException(e);
 				}
 			}
-			branch.set(context);
+			context.registerUsage();
+			branchCurrentContext.set(context);
+			return new ApplicationContextControl(context);
 		}
-	}
-
-	private void buildClassLoader(ApplicationContextFactory descriptor, ApplicationContext context,	ApplicationContext parentContext) throws FileManagerException {
-		ClassLoader classLoader = descriptor.buildClassLoader(parentContext.classLoader);
-		if(logger.isDebugEnabled()) {
-			logger.debug("Loading classloader for "+descriptor.getId());
-		}
-		context.classLoader = classLoader;
 	}
 	
 	public ApplicationContext getCurrentContext() {
@@ -310,6 +450,21 @@ public class ApplicationContextBuilder {
 			return runnable.call();
 		} finally {
 			Thread.currentThread().setContextClassLoader(previousCl);
+		}
+	}
+
+	@Override
+	public void close() {
+		synchronized(this) {
+			if (logger.isDebugEnabled()) {
+				logger.debug("Cleaning up all application contexts");
+			}
+			branches.forEach((k, b) -> {
+				if (logger.isDebugEnabled()) {
+					logger.debug("Cleaning up application contexts for branch {}", k);
+				}
+				b.close();
+			});
 		}
 	}
 }

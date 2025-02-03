@@ -26,7 +26,6 @@ import step.grid.agent.handler.MessageHandler;
 import step.grid.agent.handler.MessageHandlerPool;
 import step.grid.agent.tokenpool.AgentTokenWrapper;
 import step.grid.contextbuilder.ApplicationContextBuilder;
-import step.grid.contextbuilder.ApplicationContextBuilder.ApplicationContext;
 import step.grid.contextbuilder.RemoteApplicationContextFactory;
 import step.grid.filemanager.FileManagerClient;
 import step.grid.filemanager.FileVersionId;
@@ -50,15 +49,18 @@ public class BootstrapManager {
 
 	public OutputMessage runBootstraped(AgentTokenWrapper token, InputMessage message, String handlerClass, FileVersionId handlerPackage) throws IOException, Exception {
 		contextBuilder.resetContext();
-		if(message.getHandlerPackage()!=null) {
-			contextBuilder.pushContext(new RemoteApplicationContextFactory(fileManager, message.getHandlerPackage()));			
+
+		if (message.getHandlerPackage() != null) {
+			//The message handler package is not cleanable (i.e.step-functions-handler.jar) because some jackson databind keep a handle on them
+			//causing leak in the agent meta space.
+			token.getTokenReservationSession().registerObjectToBeClosedWithSession(contextBuilder.pushContext(new RemoteApplicationContextFactory(fileManager, message.getHandlerPackage(), false), false));
 		}
 		return contextBuilder.runInContext(new Callable<OutputMessage>() {
 			@Override
 			public OutputMessage call() throws Exception {
-				ApplicationContext currentContext = contextBuilder.getCurrentContext();
-				MessageHandlerPool handlerPool = (MessageHandlerPool) currentContext.computeIfAbsent("handlerPool", 
-						k->new MessageHandlerPool(agentTokenServices));
+				ApplicationContextBuilder.ApplicationContext currentContext = contextBuilder.getCurrentContext();
+				MessageHandlerPool handlerPool = (MessageHandlerPool) currentContext.computeIfAbsent("handlerPool",
+						k -> new MessageHandlerPool(agentTokenServices));
 				MessageHandler handler = handlerPool.get(handlerClass);
 				return handler.handle(token, message);
 			}
@@ -69,4 +71,5 @@ public class BootstrapManager {
 		return runBootstraped(token, message, message.getHandler(), message.getHandlerPackage());
 
 	}
+
 }

@@ -37,7 +37,13 @@ public interface GridFileService {
 	 * @throws FileManagerException 
 	 */
 	FileVersion registerFile(File file, boolean cleanable) throws FileManagerException;
-	
+
+	/**
+	 * This method should be invoked once the registered file version is not required anymore by the caller
+	 * @param fileVersion the {@link FileVersion} of the previously registered file.
+	 */
+	public void releaseFile(FileVersion fileVersion);
+
 	/**
 	 * Get a file that has been previously registered to the GRID
 	 * 

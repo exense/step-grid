@@ -87,6 +87,7 @@ public abstract class AbstractGridClientImpl implements GridClient {
 	private final TokenLifecycleStrategy tokenLifecycleStrategy;
 	
 	private final Grid grid;
+	protected ApplicationContextBuilder applicationContextBuilder;
 
 	public AbstractGridClientImpl(GridClientConfiguration gridClientConfiguration,
 			TokenLifecycleStrategy tokenLifecycleStrategy, Grid grid) {
@@ -182,13 +183,19 @@ public abstract class AbstractGridClientImpl implements GridClient {
 			}
 
 			@Override
+			public void releaseFileVersion(FileVersion fileVersion) {
+				releaseFile(fileVersion);
+			}
+
+			@Override
 			public void close() throws Exception {
 
 			}
 		};
 		
 		localAgentTokenServices = new AgentTokenServices(fileManagerClient);
-		localAgentTokenServices.setApplicationContextBuilder(new ApplicationContextBuilder());
+		applicationContextBuilder = new ApplicationContextBuilder();
+		localAgentTokenServices.setApplicationContextBuilder(applicationContextBuilder);
 	}
 
 	protected void initLocalMessageHandlerPool() {
@@ -552,6 +559,12 @@ public abstract class AbstractGridClientImpl implements GridClient {
 	@Override
 	public void close() {
 		client.close();
+		try {
+			localMessageHandlerPool.close();
+		} catch (Exception e) {
+			logger.error("Unable to close the localMessageHandlerPool", e);
+		}
+		applicationContextBuilder.close();
 	}
 
 	@Override
@@ -567,6 +580,11 @@ public abstract class AbstractGridClientImpl implements GridClient {
 	@Override
 	public FileVersion getRegisteredFile(FileVersionId fileVersionId) throws FileManagerException {
 		return grid.getRegisteredFile(fileVersionId);
+	}
+
+	@Override
+	public void releaseFile(FileVersion fileVersion) {
+		grid.releaseFile(fileVersion);
 	}
 
 	@Override

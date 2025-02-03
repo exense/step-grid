@@ -43,5 +43,6 @@ public abstract class ApplicationContextFactory {
 	 * @throws FileManagerException
 	 */
 	public abstract ClassLoader buildClassLoader(ClassLoader parentClassLoader) throws FileManagerException;
-	
+
+	public abstract void onClassLoaderClosed() ;
 }

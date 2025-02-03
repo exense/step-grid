@@ -61,6 +61,11 @@ public class AbstractGridClientImplTest {
             }
 
             @Override
+            public void releaseFile(FileVersion fileVersion) {
+
+            }
+
+            @Override
             public FileVersion getRegisteredFile(FileVersionId fileVersionId) throws FileManagerException {
                 return null;
             }

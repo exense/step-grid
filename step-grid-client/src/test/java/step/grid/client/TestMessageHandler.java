@@ -105,4 +105,8 @@ public class TestMessageHandler extends AbstractMessageHandler {
 		return builder.build();
 	}
 
+	@Override
+	public void close() throws Exception {
+
+	}
 }

@@ -23,9 +23,13 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import step.grid.filemanager.FileManagerException;
 
 public class LocalFileApplicationContextFactory extends ApplicationContextFactory {
+
+	private static final Logger logger = LoggerFactory.getLogger(LocalFileApplicationContextFactory.class);
 
 	private File jarFile;
 	
@@ -46,6 +50,9 @@ public class LocalFileApplicationContextFactory extends ApplicationContextFactor
 
 	@Override
 	public ClassLoader buildClassLoader(ClassLoader parentClassLoader) throws FileManagerException {
+		if (logger.isDebugEnabled()) {
+			logger.debug("Creating URLClassLoader from local jar file {}", jarFile.getAbsolutePath());
+		}
 		URL[] urlArray;
 		try {
 			urlArray = new URL[] {jarFile.toURI().toURL()};
@@ -54,6 +61,11 @@ public class LocalFileApplicationContextFactory extends ApplicationContextFactor
 		}
 		URLClassLoader cl = new URLClassLoader(urlArray, parentClassLoader);
 		return cl;	
+	}
+
+	@Override
+	public void onClassLoaderClosed() {
+		//Provided jar file is managed externally, no copy is done, so it cannot be cleaned up
 	}
 
 }

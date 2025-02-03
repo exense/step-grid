@@ -18,8 +18,6 @@
  ******************************************************************************/
 package step.grid.agent;
 
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -81,7 +79,7 @@ public class AgentServices extends AbstractGridServices {
 	@PostConstruct
 	public void init() {
 		tokenPool = agent.getTokenPool();
-		bootstrapManager = new BootstrapManager(agent.getAgentTokenServices(), true);
+		bootstrapManager = agent.getBootstrapManager();
 	}
 
 	class ExecutionContext {

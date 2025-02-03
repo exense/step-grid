@@ -197,6 +197,12 @@ public class RemoteGridImpl implements Grid {
 		return registerFile(fileDataBodyPart, isDirectory, cleanable);
 	}
 
+	@Override
+	public void releaseFile(FileVersion fileVersion) {
+		Builder r = requestBuilder("/grid/file/release");
+		executeRequest(()->r.post(Entity.entity(fileVersion, MediaType.APPLICATION_JSON)));
+	}
+
 	protected FileVersion registerFile(FormDataBodyPart formDataBodyPart, boolean isDirectory, boolean cleanable) {
 		MultiPart multiPart = new MultiPart();
         multiPart.setMediaType(MediaType.MULTIPART_FORM_DATA_TYPE);

@@ -26,10 +26,10 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import step.grid.TokenWrapper;
 import step.grid.agent.AgentTokenServices;
-import step.grid.agent.handler.MessageHandlerPool;
 import step.grid.contextbuilder.ApplicationContextBuilder;
 import step.grid.filemanager.FileManagerClient;
 import step.grid.filemanager.FileManagerException;
@@ -38,6 +38,9 @@ import step.grid.filemanager.FileVersionId;
 import step.grid.tokenpool.Interest;
 
 public class MockedGridClientImpl extends AbstractGridClientImpl {
+
+	public Map<String, TestCacheVersion> cacheUsage = new ConcurrentHashMap<>();
+	public FileManagerClient fileManagerClient;
 
 	public MockedGridClientImpl() {
 		super(new GridClientConfiguration(), new DefaultTokenLifecycleStrategy(), null);
@@ -52,6 +55,7 @@ public class MockedGridClientImpl extends AbstractGridClientImpl {
 		FileVersionId id = new FileVersionId(UUID.randomUUID().toString(), "");
 		FileVersion fileVersion = new FileVersion(file, id, false);
 		fileVersionCache.put(id, fileVersion);
+		cacheUsage.computeIfAbsent(fileVersion.getFile().getAbsolutePath(), (i) -> new TestCacheVersion(cleanable)).usageCount.incrementAndGet();
 		return fileVersion;
 	}
 	
@@ -75,8 +79,15 @@ public class MockedGridClientImpl extends AbstractGridClientImpl {
 	}
 
 	@Override
+	public void releaseFile(FileVersion fileVersion) {
+		cacheUsage.get(fileVersion.getFile().getAbsolutePath()).usageCount.decrementAndGet();
+	}
+
+	@Override
 	public FileVersion getRegisteredFile(FileVersionId fileVersionId) throws FileManagerException {
-		return fileVersionCache.get(fileVersionId);
+		FileVersion fileVersion = fileVersionCache.get(fileVersionId);
+		cacheUsage.computeIfAbsent(fileVersion.getFile().getAbsolutePath(), (i) -> new TestCacheVersion(true)).usageCount.incrementAndGet();
+		return fileVersion;
 	}
 
 	@Override
@@ -92,37 +103,54 @@ public class MockedGridClientImpl extends AbstractGridClientImpl {
 			boolean createSession) throws AgentCommunicationException {
 		throw new RuntimeException("Not supported");
 	}
-	
-	protected void initLocalAgentServices() {
-		FileManagerClient fileManagerClient = new FileManagerClient() {
 
-			@Override
-			public FileVersion requestFileVersion(FileVersionId fileVersionId, boolean cleanableFromClientCache) throws FileManagerException {
-				return getRegisteredFile(fileVersionId);
-			}
+	public static class TestCacheVersion {
+		public final AtomicInteger usageCount = new AtomicInteger(0);
+		public final boolean cleanable;
 
-			@Override
-			public void removeFileVersionFromCache(FileVersionId fileVersionId) {
-				unregisterFile(fileVersionId);
-			}
-
-			@Override
-			public void cleanupCache() {
-
-			}
-
-			@Override
-			public void close() throws Exception {
-
-			}
-		};
-		
-		localAgentTokenServices = new AgentTokenServices(fileManagerClient);
-		localAgentTokenServices.setApplicationContextBuilder(new ApplicationContextBuilder());
+		public TestCacheVersion(boolean cleanable) {
+			this.cleanable = cleanable;
+		}
 	}
 
-	protected void initLocalMessageHandlerPool() {
-		localMessageHandlerPool = new MessageHandlerPool(localAgentTokenServices);
+	public class MockedFileManagerClient implements FileManagerClient {
+		public Map<String, TestCacheVersion> clientCacheUsage = new ConcurrentHashMap<>();
+		@Override
+		public FileVersion requestFileVersion(FileVersionId fileVersionId, boolean cleanableFromClientCache) throws FileManagerException {
+			FileVersion registeredFile = getRegisteredFile(fileVersionId);
+			clientCacheUsage.computeIfAbsent(registeredFile.getFile().getAbsolutePath(), (c) -> new TestCacheVersion(cleanableFromClientCache)).usageCount.incrementAndGet();
+			return registeredFile;
+		}
+
+		@Override
+		public void removeFileVersionFromCache(FileVersionId fileVersionId) {
+			unregisterFile(fileVersionId);
+		}
+
+		@Override
+		public void cleanupCache() {
+
+		}
+
+		@Override
+		public void releaseFileVersion(FileVersion fileVersion) {
+			releaseFile(fileVersion);
+			clientCacheUsage.get(fileVersion.getFile().getAbsolutePath()).usageCount.decrementAndGet();
+		}
+
+		@Override
+		public void close() throws Exception {
+
+		}
+	}
+
+	@Override
+	protected void initLocalAgentServices() {
+		fileManagerClient = new MockedFileManagerClient();
+		
+		localAgentTokenServices = new AgentTokenServices(fileManagerClient);
+		applicationContextBuilder = new ApplicationContextBuilder();
+		localAgentTokenServices.setApplicationContextBuilder(applicationContextBuilder);
 	}
 
 }

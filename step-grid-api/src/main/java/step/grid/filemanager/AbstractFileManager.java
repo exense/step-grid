@@ -191,15 +191,22 @@ public class AbstractFileManager {
 		return FileHelper.safeDeleteFolder(getContainerFolder(fileVersionId));
 	}
 
-	protected void removeFileVersion(FileVersionId fileVersionId) {
+	protected void releaseFileVersionFromCache(FileVersion fileVersion){
 		try {
 			fileHandleCacheLock.readLock().lock();
-			Map<FileVersionId, CachedFileVersion> versionCache = getVersionMap(fileVersionId.getFileId());
+			Map<FileVersionId, CachedFileVersion> versionCache = getVersionMap(fileVersion.getFileId());
 			synchronized (versionCache) {
-				FileVersion fileVersion = versionCache.get(fileVersionId).getFileVersion();
-				if (fileVersion != null) {
-					deleteFileVersionContainer(fileVersionId);
-					versionCache.remove(fileVersionId);
+				CachedFileVersion cachedFileVersion = versionCache.get(fileVersion.getVersionId());
+				if (cachedFileVersion != null) {
+					int currentUsage = cachedFileVersion.releaseUsage();
+					if (fileManagerConfiguration.isCleanupEnabled() && getCacheTTLms() == 0 && currentUsage == 0 && cachedFileVersion.isCleanable()) {
+						if (logger.isDebugEnabled()) {
+							logger.debug("Usage reached 0 after decrementing and TTL is set to 0 directly removing {} from cache.", cachedFileVersion.getFileVersion());
+						}
+						removeFileVersion(fileVersion.getVersionId());
+					}
+				} else {
+					logger.warn("Release file version was called for {} which was not found in cache", fileVersion);
 				}
 			}
 		} finally {
@@ -207,11 +214,44 @@ public class AbstractFileManager {
 		}
 	}
 
+	protected void removeFileVersion(FileVersionId fileVersionId) {
+		try {
+			fileHandleCacheLock.readLock().lock();
+			Map<FileVersionId, CachedFileVersion> versionCache = getVersionMap(fileVersionId.getFileId());
+			synchronized (versionCache) {
+				FileVersion fileVersion = versionCache.get(fileVersionId).getFileVersion();
+				if (logger.isDebugEnabled()) {
+					logger.debug("Removing File version {} from cache", fileVersion);
+				}
+				if (fileVersion != null) {
+					if (deleteFileVersionContainer(fileVersionId)) {
+						versionCache.remove(fileVersionId);
+					} else {
+						logger.error("Cannot delete the file manager folder {}, skipping cleanup of this entry.", getContainerFolder(fileVersionId));
+					}
+				}
+				if (versionCache.isEmpty()) {
+					File fileCacheFolder = getFileCacheFolder(fileVersionId.getFileId());
+					if (fileCacheFolder.exists()) {
+						FileHelper.deleteFolder(fileCacheFolder);
+					}
+					fileHandleCache.remove(fileVersionId.getFileId());
+				}
+			}
+		} finally {
+			fileHandleCacheLock.readLock().unlock();
+		}
+	}
+
+	public long getCacheTTLms() {
+		return fileManagerConfiguration.getConfigurationTimeUnit().toMillis(fileManagerConfiguration.getCleanupLastAccessTimeThresholdMinutes());
+	}
+
 	public void cleanupCache() {
 		try {
 			fileHandleCacheLock.writeLock().lock();
-			long millis = fileManagerConfiguration.getConfigurationTimeUnit().toMillis(fileManagerConfiguration.getCleanupLastAccessTimeThresholdMinutes());
-			final long fromLastAccessTime = System.currentTimeMillis() - (millis);
+			long cacheTTLms = getCacheTTLms();
+			final long fromLastAccessTime = System.currentTimeMillis() - (cacheTTLms);
 			logger.info("Starting cleanup of file manager. Removing cleanable files older than " + new Date(fromLastAccessTime));
 			AtomicInteger atomicInteger = new AtomicInteger();
 			Iterator<Map.Entry<String, Map<FileVersionId, CachedFileVersion>>> fileHandleCacheIterator = fileHandleCache.entrySet().iterator();
@@ -223,13 +263,17 @@ public class AbstractFileManager {
 					Iterator<Map.Entry<FileVersionId, CachedFileVersion>> iterator = versionCache.entrySet().iterator();
 					while (iterator.hasNext()) {
 						Map.Entry<FileVersionId, CachedFileVersion> next = iterator.next();
-						if (next.getValue().isCleanable() && next.getValue().getLastAccessTime() < fromLastAccessTime) {
+						CachedFileVersion cachedFileVersion = next.getValue();
+						if (logger.isDebugEnabled()) {
+							logger.debug("Cache version {} found with cleanable: {}, lastAccessTime: {}, usageCount: {}", cachedFileVersion.getFileVersion(), cachedFileVersion.isCleanable(), new Date(cachedFileVersion.getLastAccessTime()), cachedFileVersion.getCurrentUsageCount());
+						}
+						if (cachedFileVersion.isCleanable() && cachedFileVersion.getLastAccessTime() < fromLastAccessTime
+						 				&& cachedFileVersion.getCurrentUsageCount() == 0) {
 							if (deleteFileVersionContainer(next.getKey())) {
 								iterator.remove();
 								atomicInteger.incrementAndGet();
 							} else {
-								logger.debug("Cannot delete the file manager folder " + getContainerFolder(next.getKey()) +
-										", skipping cleanup of this entry.");
+                                logger.error("Cannot delete the file manager folder {}, skipping cleanup of this entry.", getContainerFolder(next.getKey()));
 							}
 						}
 					}
@@ -250,12 +294,12 @@ public class AbstractFileManager {
 
 	/**
 	 * Schedule the cache cleanup job with the frequency defined with {@link FileManagerConfiguration#getCleanupIntervalMinutes()}.
-	 * <p>It can be disabled using the {@link FileManagerConfiguration#isCleanupJobEnabled()} flag.</p>
+	 * <p>It can be disabled using the {@link FileManagerConfiguration#isCleanupEnabled()} flag.</p>
 	 * <p>The cleanup job browses all entries from the cache and remove the one marked as cleanable and not accessed for the period of time defined with {@link FileManagerConfiguration#getCleanupLastAccessTimeThresholdMinutes()}</p>
 	 *
 	 */
 	protected void scheduleCleanupJob() {
-		if (fileManagerConfiguration.isCleanupJobEnabled()) {
+		if (fileManagerConfiguration.isCleanupEnabled()) {
 			long cleanupIntervalMinutes = fileManagerConfiguration.getCleanupIntervalMinutes();
 			scheduledPool = Executors.newScheduledThreadPool(1);
 			future = scheduledPool.scheduleAtFixedRate(() -> {

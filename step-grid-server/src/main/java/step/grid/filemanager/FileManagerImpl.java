@@ -136,7 +136,7 @@ public class FileManagerImpl extends AbstractFileManager implements FileManager 
 	private FileVersion registerFileVersion(boolean deletePreviousVersions, String filePath, String fileId,
 			FileVersionId fileVersionId, Supplier<CachedFileVersion> storeFunction) throws FileManagerException {
 		if(logger.isDebugEnabled()) {
-			logger.debug("Registering file '" + filePath + "' with version "+fileVersionId);
+			logger.debug("Registering file '{}' with version {}", filePath, fileVersionId);
 		}
 		try {
 			fileHandleCacheLock.readLock().lock();
@@ -144,7 +144,7 @@ public class FileManagerImpl extends AbstractFileManager implements FileManager 
 			synchronized (versionCache) {
 				if (deletePreviousVersions) {
 					if (logger.isDebugEnabled()) {
-						logger.debug("Removing previous versions for file '" + filePath + "'");
+						logger.debug("Removing previous versions for file '{}'", filePath);
 					}
 					versionCache.clear();
 					FileHelper.deleteFolder(getFileCacheFolder(fileId));
@@ -159,14 +159,14 @@ public class FileManagerImpl extends AbstractFileManager implements FileManager 
 					}
 					versionCache.put(fileVersionId, cachedFileVersion);
 					if (logger.isDebugEnabled()) {
-						logger.debug("Registered file version '" + cachedFileVersion.getFileVersion() + "'");
+						logger.debug("Registered file version '{}'", cachedFileVersion.getFileVersion());
 					}
 				} else {
-					cachedFileVersion.updateLastAccessTime();
 					if (logger.isDebugEnabled()) {
-						logger.debug("File '" + filePath + "' with version " + fileVersionId + " already registered.");
+						logger.debug("File '{}' with version {} already registered.", filePath, fileVersionId);
 					}
 				}
+				cachedFileVersion.updateUsage();
 				return cachedFileVersion.getFileVersion();
 			}
 		} finally {
@@ -233,7 +233,7 @@ public class FileManagerImpl extends AbstractFileManager implements FileManager 
 				if (cachedFileVersion == null) {
 					return null;
 				} else {
-					cachedFileVersion.updateLastAccessTime();
+					cachedFileVersion.updateUsage();
 					return cachedFileVersion.getFileVersion();
 				}
 			}
@@ -247,7 +247,10 @@ public class FileManagerImpl extends AbstractFileManager implements FileManager 
 		removeFileVersion(fileVersionId);
 	}
 
-
+	@Override
+	public void releaseFileVersion(FileVersion fileVersion) {
+		releaseFileVersionFromCache(fileVersion);
+	}
 
 	private String getMD5Checksum(InputStream is) throws IOException {
 		return DigestUtils.md5Hex(is);

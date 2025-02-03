@@ -40,4 +40,8 @@ public class TestSessionMessageHandler extends AbstractMessageHandler {
 		return builder.build();
 	}
 
+	@Override
+	public void close() throws Exception {
+
+	}
 }

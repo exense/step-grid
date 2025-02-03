@@ -1,12 +1,21 @@
 package step.grid.filemanager;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.concurrent.atomic.AtomicInteger;
+
 public class CachedFileVersion {
 
-	private FileVersion fileVersion;
+	private static final Logger logger = LoggerFactory.getLogger(CachedFileVersion.class);
 
-	private boolean cleanable;
+	private final FileVersion fileVersion;
+
+	private final boolean cleanable;
 
 	private long lastAccessTime;
+
+	private final AtomicInteger inUse = new AtomicInteger(0);
 
 	public CachedFileVersion(FileVersion fileVersion, boolean cleanable) {
 		this.fileVersion = fileVersion;
@@ -18,27 +27,32 @@ public class CachedFileVersion {
 		return fileVersion;
 	}
 
-	public void setFileVersion(FileVersion fileVersion) {
-		this.fileVersion = fileVersion;
-	}
-
 	public boolean isCleanable() {
 		return cleanable;
-	}
-
-	public void setCleanable(boolean cleanable) {
-		this.cleanable = cleanable;
 	}
 
 	public long getLastAccessTime() {
 		return lastAccessTime;
 	}
 
-	public void setLastAccessTime(long lastAccessTime) {
-		this.lastAccessTime = lastAccessTime;
+	public int updateUsage() {
+		this.lastAccessTime = System.currentTimeMillis();
+		int currentCountInUse = this.inUse.incrementAndGet();
+		if (logger.isDebugEnabled()) {
+			logger.debug("File version {} cache usage increased, new usage count is {}", getFileVersion(), currentCountInUse);
+		}
+		return currentCountInUse;
 	}
 
-	public void updateLastAccessTime() {
-		this.lastAccessTime = System.currentTimeMillis();
+	public int releaseUsage() {
+		int currentCountInUse = inUse.decrementAndGet();
+		if (logger.isDebugEnabled()) {
+			logger.debug("File version {} cache usage decreased, new usage count is {}", getFileVersion(), currentCountInUse);
+		}
+		return currentCountInUse;
+	}
+
+	public int getCurrentUsageCount() {
+		return inUse.get();
 	}
 }

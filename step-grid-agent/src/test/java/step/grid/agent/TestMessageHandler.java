@@ -33,4 +33,8 @@ public class TestMessageHandler implements MessageHandler {
 		throw new ApplicationContextBuilderException(new FileManagerException(new FileVersionId("fileId", "1"), null));
 	}
 
+	@Override
+	public void close() throws Exception {
+
+	}
 }

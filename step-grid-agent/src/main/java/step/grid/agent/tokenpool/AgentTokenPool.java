@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,23 +32,6 @@ public class AgentTokenPool {
 	private static final Logger logger = LoggerFactory.getLogger(AgentTokenPool.class);
 	
 	private final Map<String, AgentTokenWrapper> pool = new ConcurrentHashMap<>();
-	
-	protected static final TokenReservationSession UNUSABLE_SESSION = new TokenReservationSession() {
-		@Override
-		public Object get(String arg0) {
-			throw unusableSessionException();
-		}
-
-		@Override
-		public Object put(String arg0, Object arg1) {
-			throw unusableSessionException();
-		}
-
-		private RuntimeException unusableSessionException() {
-			// TODO use error codes instead of error messages
-			return new RuntimeException("Session object unreachable. Wrap your keywords with a Session node in your test plan in order to make the session object available.");
-		}
-	};
 	
 	public AgentTokenPool() {
 		super();
@@ -69,7 +53,7 @@ public class AgentTokenPool {
 		AgentTokenWrapper token = pool.get(tokenId);
 		if(token!=null) {
 			if(token.getTokenReservationSession()==null) {
-				token.setTokenReservationSession(UNUSABLE_SESSION);
+				token.setTokenReservationSession(new UnusableTokenReservationSession());
 			}
 		} else {
 			throw new InvalidTokenIdException();
@@ -108,7 +92,8 @@ public class AgentTokenPool {
 		if(token!=null) {
 			TokenReservationSession tokenReservationSession = token.getTokenReservationSession();
 			// Remove the unusable session (if any) after execution
-			if(tokenReservationSession == UNUSABLE_SESSION) {
+			if(tokenReservationSession instanceof UnusableTokenReservationSession) {
+				tokenReservationSession.close();
 				token.setTokenReservationSession(null);
 			}
 		}

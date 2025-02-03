@@ -33,6 +33,7 @@ import step.grid.agent.tokenpool.AgentTokenPool;
 import step.grid.agent.tokenpool.AgentTokenWrapper;
 import step.grid.app.configuration.ConfigurationParser;
 import step.grid.app.server.BaseServer;
+import step.grid.bootstrap.BootstrapManager;
 import step.grid.contextbuilder.ApplicationContextBuilder;
 import step.grid.filemanager.FileManagerClient;
 import step.grid.filemanager.FileManagerClientImpl;
@@ -66,6 +67,8 @@ public class Agent extends BaseServer implements AutoCloseable {
 	private final long gracefulShutdownTimeout;
 	private final RegistrationClient registrationClient;
 	private final FileManagerClient fileManagerClient;
+	private final ApplicationContextBuilder applicationContextBuilder;
+	private final BootstrapManager bootstrapManager;
 	private volatile boolean stopped = false;
 	private volatile boolean registered = false;
 
@@ -130,7 +133,10 @@ public class Agent extends BaseServer implements AutoCloseable {
 
 		agentTokenServices = new AgentTokenServices(fileManagerClient);
 		agentTokenServices.setAgentProperties(agentConf.getProperties());
-		agentTokenServices.setApplicationContextBuilder(new ApplicationContextBuilder());
+		applicationContextBuilder = new ApplicationContextBuilder();
+		agentTokenServices.setApplicationContextBuilder(applicationContextBuilder);
+
+		bootstrapManager = new BootstrapManager(agentTokenServices, true);
 
 		buildTokenList(agentConf);
 
@@ -337,6 +343,9 @@ public class Agent extends BaseServer implements AutoCloseable {
 			server.stop();
 			logger.info("Web server stopped");
 
+			applicationContextBuilder.close();
+			logger.info("Agent application context closed");
+
 			stopped = true;
 		}
 	}
@@ -358,5 +367,9 @@ public class Agent extends BaseServer implements AutoCloseable {
 			Thread.sleep(100);
 		}
 		return false;
+	}
+
+	public BootstrapManager getBootstrapManager() {
+		return bootstrapManager;
 	}
 }

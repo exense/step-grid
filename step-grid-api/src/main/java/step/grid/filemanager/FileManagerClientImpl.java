@@ -59,24 +59,23 @@ public class FileManagerClientImpl extends AbstractFileManager implements FileMa
 						long t1 = System.currentTimeMillis();
 						FileVersion fileVersion = fileProvider.saveFileVersionTo(fileVersionId, container);
 						cachedFileVersion = new CachedFileVersion(fileVersion, cleanableFromClientCache);
-						if (logger.isDebugEnabled()) {
-							logger.debug("Retrieved file version " + fileVersion + " in " + Long.toString(System.currentTimeMillis() - t1) + "ms");
-						}
-
 						createMetaFile(null, cachedFileVersion);
 						versionCache.put(fileVersionId, cachedFileVersion);
-						return fileVersion;
 					} else {
 						return null;
 					}
-				} else {
-					cachedFileVersion.updateLastAccessTime();
-					return cachedFileVersion.getFileVersion();
 				}
+				cachedFileVersion.updateUsage();
+				return cachedFileVersion.getFileVersion();
 			}
 		} finally {
 			fileHandleCacheLock.readLock().unlock();
 		}
+	}
+
+	@Override
+	public void releaseFileVersion(FileVersion fileVersion) {
+		releaseFileVersionFromCache(fileVersion);
 	}
 	
 	@Override

@@ -18,14 +18,19 @@
  ******************************************************************************/
 package step.grid.agent.tokenpool;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import step.functions.io.AbstractSession;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 public class TokenReservationSession extends AbstractSession {
 
+    private static final Logger logger = LoggerFactory.getLogger(TokenReservationSession.class);
+
     private List<TokenEventListener> eventListeners = new ArrayList<>();
+
+    private final LinkedList<AutoCloseable> closeWithSessionSet = new LinkedList<>();
 
     public boolean registerEventListener(TokenEventListener tokenEventListener) {
         return eventListeners.add(tokenEventListener);
@@ -41,5 +46,32 @@ public class TokenReservationSession extends AbstractSession {
 
     public void clearEventListeners() {
         eventListeners.clear();
+    }
+
+    /**
+     * Registers the provided AutoCloseable object to be closed at the end of the session's lifecycle.
+     * This method also supports fake sessions using the UnusableTokenReservationSession class.
+     * It is intended for storing technical objects (such as application context or file versions)
+     * that follow the session lifecycle.
+     *
+     * When keywords are executed outside a session context, the UnusableTokenReservationSession is used
+     * and closed from the AgentTokenPool.afterTokenExecution hook.
+     *
+     * @param closeable the AutoCloseable object to be registered for closure with the session
+     */
+    public <T extends AutoCloseable> void registerObjectToBeClosedWithSession(T closeable) {
+        closeWithSessionSet.add(closeable);
+    }
+
+    @Override
+    public void close() {
+        super.close();
+        closeWithSessionSet.descendingIterator().forEachRemaining(autoCloseable -> {
+            try {
+                autoCloseable.close();
+            } catch (Exception e) {
+                logger.error("Unable to close {} while closing the session.", autoCloseable, e);
+            }
+        });
     }
 }

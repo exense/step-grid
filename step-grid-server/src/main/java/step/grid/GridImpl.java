@@ -267,11 +267,11 @@ public class GridImpl implements Grid {
 
 		AgentRef agentRef = message.getAgentRef();
 		boolean allowed = agentRegistrationCallbacks.stream().allMatch(cb -> cb.beforeRegistering(agentRef));
-		if (logger.isDebugEnabled()) {
+		if (logger.isTraceEnabled()) {
 			if (!allowed) {
-				logger.debug("One or more callbacks vetoed agent registration, ignoring agent: {}", agentRef);
+				logger.trace("One or more callbacks vetoed agent registration, ignoring agent: {}", agentRef);
 			} else {
-				logger.debug("Allowing agent: {}", agentRef);
+				logger.trace("Allowing agent: {}", agentRef);
 			}
 		}
 		if (allowed) {
@@ -385,6 +385,12 @@ public class GridImpl implements Grid {
 	public FileVersion registerFile(File file, boolean cleanable) throws FileManagerException {
 		return fileManager.registerFileVersion(file, false, cleanable);
 	}
+
+	@Override
+	public void releaseFile(FileVersion fileVersion) {
+		fileManager.releaseFileVersion(fileVersion);
+	}
+
 
 	@Override
 	public FileVersion getRegisteredFile(FileVersionId fileVersionId) throws FileManagerException {

@@ -26,7 +26,7 @@ public class FileManagerConfiguration {
 
 	private long cleanupLastAccessTimeThresholdMinutes = 120;
 
-	private boolean cleanupJobEnabled = true;
+	private boolean cleanupEnabled = true;
 
 	private long cleanupIntervalMinutes = 60;
 
@@ -47,12 +47,12 @@ public class FileManagerConfiguration {
 	/**
 	 * @return whether the {@link AbstractFileManager#scheduleCleanupJob() cleanup job} should be enabled
 	 */
-	public boolean isCleanupJobEnabled() {
-		return cleanupJobEnabled;
+	public boolean isCleanupEnabled() {
+		return cleanupEnabled;
 	}
 
-	public void setCleanupJobEnabled(boolean cleanupJobEnabled) {
-		this.cleanupJobEnabled = cleanupJobEnabled;
+	public void setCleanupEnabled(boolean cleanupEnabled) {
+		this.cleanupEnabled = cleanupEnabled;
 	}
 
 	/**
