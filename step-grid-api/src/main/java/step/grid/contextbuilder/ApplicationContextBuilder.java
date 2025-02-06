@@ -168,7 +168,7 @@ public class ApplicationContextBuilder implements AutoCloseable {
 				if (logger.isDebugEnabled()) {
 					logger.debug("Release usage of application context {}. new usage {}", applicationContextId, currentUsage);
 				}
-				if (currentUsage == 0) {
+				if (currentUsage == 0 && cleanable) {
 					cleanupFromParent();
 				}
 			}
