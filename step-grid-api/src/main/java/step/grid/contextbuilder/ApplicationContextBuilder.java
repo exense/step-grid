@@ -175,21 +175,13 @@ public class ApplicationContextBuilder implements AutoCloseable {
 		}
 
 		private void cleanupFromParent() {
-			synchronized (ApplicationContextBuilder.this) {
-				//once synchronized with the builder recheck the current usage
-				int currentUsage = usage.get();
-				if (currentUsage == 0 && cleanable) {
-					if (logger.isDebugEnabled()) {
-						logger.debug("Cleaning up of application context {} and removing it from parent {} started", applicationContextId,
-								(parentContext != null) ? parentContext.applicationContextId : "no parent");
-					}
-					boolean cleanup = cleanup();
-					if (cleanup && parentContext != null) {
-						parentContext.childContexts.remove(this.applicationContextId);
-					}
-				} else if (logger.isDebugEnabled()) {
-					logger.debug("cleanupFromParent invoked for application context {} but currentUsage is {}", applicationContextId, currentUsage);
-				}
+			if (logger.isDebugEnabled()) {
+				logger.debug("Cleaning up of application context {} and removing it from parent {} started", applicationContextId,
+						(parentContext != null) ? parentContext.applicationContextId : "no parent");
+			}
+			boolean cleanup = cleanup();
+			if (cleanup && parentContext != null) {
+				parentContext.childContexts.remove(this.applicationContextId);
 			}
 		}
 
