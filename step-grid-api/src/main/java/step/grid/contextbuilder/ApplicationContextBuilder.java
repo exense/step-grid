@@ -163,12 +163,14 @@ public class ApplicationContextBuilder implements AutoCloseable {
 		}
 
 		public void releaseUsage() {
-			int currentUsage = usage.decrementAndGet();
-			if (logger.isDebugEnabled()) {
-				logger.debug("Release usage of application context {}. new usage {}", applicationContextId, currentUsage);
-			}
-			if (currentUsage == 0){
-				cleanupFromParent();
+			synchronized (ApplicationContextBuilder.this) {
+				int currentUsage = usage.decrementAndGet();
+				if (logger.isDebugEnabled()) {
+					logger.debug("Release usage of application context {}. new usage {}", applicationContextId, currentUsage);
+				}
+				if (currentUsage == 0) {
+					cleanupFromParent();
+				}
 			}
 		}
 
