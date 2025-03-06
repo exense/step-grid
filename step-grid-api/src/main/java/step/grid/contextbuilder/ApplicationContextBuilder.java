@@ -68,6 +68,11 @@ public class ApplicationContextBuilder implements AutoCloseable {
 		
 	private ConcurrentHashMap<String, Branch> branches = new ConcurrentHashMap<>();
 
+	private final long cleanupTTLMilliseconds;
+	private ScheduledExecutorService scheduledPool;
+	private ScheduledFuture<?> future;
+	private final ApplicationContextConfiguration applicationContextConfiguration;
+
 	protected class Branch {
 		
 		private ApplicationContext rootContext;
@@ -99,10 +104,19 @@ public class ApplicationContextBuilder implements AutoCloseable {
 
 		public void close() {
 			if (logger.isDebugEnabled()) {
-				logger.debug("Cleaning up branch {}", branchName);
+				logger.debug("Closing branch {}", branchName);
 			}
 			if (rootContext != null) {
 				rootContext.close();
+			}
+		}
+
+		public void cleanup(long cleanupTime) {
+			if (logger.isDebugEnabled()) {
+				logger.debug("Cleaning up branch {}", branchName);
+			}
+			if (rootContext != null) {
+				rootContext.cleanup(cleanupTime);
 			}
 		}
 	}
@@ -110,6 +124,8 @@ public class ApplicationContextBuilder implements AutoCloseable {
 	public class ApplicationContext {
 
 		private final AtomicInteger usage = new AtomicInteger(0);
+
+		private long lastUsage = System.currentTimeMillis();
 
 		private final String applicationContextId;
 
@@ -160,27 +176,29 @@ public class ApplicationContextBuilder implements AutoCloseable {
 
 		public void registerUsage() {
 			usage.incrementAndGet();
+			lastUsage = System.currentTimeMillis();
 		}
 
 		public void releaseUsage() {
 			synchronized (ApplicationContextBuilder.this) {
 				int currentUsage = usage.decrementAndGet();
+				lastUsage = System.currentTimeMillis();
 				if (logger.isDebugEnabled()) {
 					logger.debug("Release usage of application context {}. new usage {}", applicationContextId, currentUsage);
 				}
-				if (currentUsage == 0 && cleanable) {
-					cleanupFromParent();
+				if (currentUsage == 0 && cleanable && cleanupTTLMilliseconds == 0) {
+					closeAndCleanupFromParent();
 				}
 			}
 		}
 
-		private void cleanupFromParent() {
+		private void closeAndCleanupFromParent() {
 			if (logger.isDebugEnabled()) {
-				logger.debug("Cleaning up of application context {} and removing it from parent {} started", applicationContextId,
+				logger.debug("Closing of application context {} and removing it from parent {} started", applicationContextId,
 						(parentContext != null) ? parentContext.applicationContextId : "no parent");
 			}
-			boolean cleanup = cleanup();
-			if (cleanup && parentContext != null) {
+			boolean closed = _close();
+			if (closed && parentContext != null) {
 				parentContext.childContexts.remove(this.applicationContextId);
 			}
 		}
@@ -229,7 +247,7 @@ public class ApplicationContextBuilder implements AutoCloseable {
 			contextObjects.clear();
 		}
 
-		public boolean cleanup() {
+		public boolean _close() {
 			if (logger.isDebugEnabled()) {
 				logger.debug("Starting cleanup of application context {}", applicationContextId);
 			}
@@ -262,11 +280,26 @@ public class ApplicationContextBuilder implements AutoCloseable {
 			//Close recursively all children, before closing itself
 			childContexts.entrySet().removeIf(childAppContextEntry -> {
 				if (logger.isDebugEnabled()) {
-					logger.debug("Cleaning application child context {}", childAppContextEntry.getKey());
+					logger.debug("Closing application child context {}", childAppContextEntry.getKey());
 				}
 				return childAppContextEntry.getValue().close();
 			});
-			return cleanup();
+			return _close();
+		}
+
+		public boolean cleanup(long cleanupTime) {
+			//Clean up recursively all children, before closing itself if eligible for cleanup
+			childContexts.entrySet().removeIf(childAppContextEntry -> {
+				if (logger.isDebugEnabled()) {
+					logger.debug("Cleaning application child context {}", childAppContextEntry.getKey());
+				}
+				return childAppContextEntry.getValue().cleanup(cleanupTime);
+			});
+			if (childContexts.isEmpty() && usage.get() == 0 && (cleanupTTLMilliseconds == 0 || (cleanupTime - lastUsage) > cleanupTTLMilliseconds)) {
+				return _close();
+			} else {
+				return false;
+			}
 		}
 
 		private void closeClassLoader() {
@@ -293,8 +326,8 @@ public class ApplicationContextBuilder implements AutoCloseable {
 	 * Creates a new instance of {@link ApplicationContextBuilder} using the {@link ClassLoader} 
 	 * of this class as root {@link ClassLoader}
 	 */
-	public ApplicationContextBuilder() {
-		this(ApplicationContextBuilder.class.getClassLoader());
+	public ApplicationContextBuilder(ApplicationContextConfiguration applicationContextConfiguration) {
+		this(ApplicationContextBuilder.class.getClassLoader(), applicationContextConfiguration);
 	}
 	
 	/**
@@ -302,12 +335,20 @@ public class ApplicationContextBuilder implements AutoCloseable {
 	 * 
 	 * @param rootClassLoader the {@link ClassLoader} to be used as root of this context
 	 */
-	public ApplicationContextBuilder(ClassLoader rootClassLoader) {
+	public ApplicationContextBuilder(ClassLoader rootClassLoader, ApplicationContextConfiguration applicationContextConfiguration) {
 		ApplicationContext rootContext = new ApplicationContext(rootClassLoader, "rootContext");
 		Branch branch = new Branch(rootContext, MASTER);
 		branches.put(MASTER, branch);
+		this.applicationContextConfiguration = applicationContextConfiguration;
+		//We're using here the time unit from configuration which is Minutes by default but can be overridden for junit test
+		this.cleanupTTLMilliseconds = applicationContextConfiguration.getConfigurationTimeUnit().toMillis(applicationContextConfiguration.getCleanupLastAccessTimeThresholdMinutes());
+		scheduleCleanupJob();
 	}
-	
+
+	public ApplicationContextConfiguration getApplicationContextConfiguration() {
+		return applicationContextConfiguration;
+	}
+
 	/**
 	 * Reset the context of all branches for this thread.
 	 * After calling this method the current context will point to
@@ -459,16 +500,54 @@ public class ApplicationContextBuilder implements AutoCloseable {
 
 	@Override
 	public void close() {
+		if (logger.isDebugEnabled()) {
+			logger.debug("Closing application context builder");
+		}
+		if (future != null) {
+			future.cancel(false);
+		}
+		if (scheduledPool != null) {
+			scheduledPool.shutdown();
+			try {
+				scheduledPool.awaitTermination(1, TimeUnit.MINUTES);
+			} catch (InterruptedException e) {
+				logger.error("Timeout occurred while stopping the file manager clean up task.");
+			}
+		}
+		getBranch(MASTER).close();
+	}
+
+	protected void cleanup(long cleanupTime) {
 		synchronized(this) {
 			if (logger.isDebugEnabled()) {
 				logger.debug("Cleaning up all application contexts");
 			}
-			branches.forEach((k, b) -> {
-				if (logger.isDebugEnabled()) {
-					logger.debug("Cleaning up application contexts for branch {}", k);
-				}
-				b.close();
-			});
+			//The full tree of application context can be browsed from the master branch root context
+			getBranch(MASTER).cleanup(cleanupTime);
 		}
+	}
+
+	/**
+	 * Schedule the cleanup job of application context with the frequency defined with {@link ApplicationContextConfiguration#getCleanupIntervalMinutes()}.
+	 * <p>It can be disabled using the {@link ApplicationContextConfiguration#isCleanupEnabled()} flag.</p>
+	 * <p>The cleanup job browses all entries from the cache and remove the one marked as cleanable and not accessed for the period of time defined with {@link ApplicationContextConfiguration#getCleanupLastAccessTimeThresholdMinutes()}</p>
+	 *
+	 */
+	protected void scheduleCleanupJob() {
+		if (applicationContextConfiguration.isCleanupEnabled()) {
+			long cleanupIntervalMinutes = applicationContextConfiguration.getCleanupIntervalMinutes();
+			scheduledPool = Executors.newScheduledThreadPool(1);
+			future = scheduledPool.scheduleAtFixedRate(() -> {
+				try {
+					if (logger.isDebugEnabled()) {
+						logger.debug("Executing application context cleanup job for builder {}", this);
+					}
+					cleanup(System.currentTimeMillis());
+				} catch (Throwable e) {
+					logger.error("Unhandled error while running the application context builder clean up task.", e);
+				}
+			}, cleanupIntervalMinutes, cleanupIntervalMinutes, applicationContextConfiguration.getConfigurationTimeUnit());
+		}
+
 	}
 }
