@@ -18,6 +18,8 @@
  ******************************************************************************/
 package step.grid.client;
 
+import step.grid.contextbuilder.ApplicationContextConfiguration;
+
 public class GridClientConfiguration {
 
 	private long noMatchExistsTimeout = 10000;
@@ -34,6 +36,8 @@ public class GridClientConfiguration {
 	private boolean allowInvalidSslCertificates = false;
 
 	private int maxStringLength = 50000000;
+
+	private ApplicationContextConfiguration localTokenApplicationContextConfiguration = new ApplicationContextConfiguration();
 	
 	public long getNoMatchExistsTimeout() {
 		return noMatchExistsTimeout;
@@ -113,5 +117,13 @@ public class GridClientConfiguration {
 
 	public void setMaxStringLength(int maxStringLength) {
 		this.maxStringLength = maxStringLength;
+	}
+
+	public ApplicationContextConfiguration getLocalTokenApplicationContextConfiguration() {
+		return localTokenApplicationContextConfiguration;
+	}
+
+	public void setLocalTokenApplicationContextConfiguration(ApplicationContextConfiguration localTokenApplicationContextConfiguration) {
+		this.localTokenApplicationContextConfiguration = localTokenApplicationContextConfiguration;
 	}
 }

@@ -23,11 +23,12 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.junit.Assert;
 import org.junit.Test;
 
-import junit.framework.Assert;
 import step.grid.agent.tokenpool.TokenReservationSession;
 import step.grid.agent.tokenpool.UnusableTokenReservationSession;
 import step.grid.filemanager.FileManagerException;
@@ -38,20 +39,38 @@ public class ApplicationContextBuilderTest {
 	protected AtomicInteger onCloseCalls = new AtomicInteger(0);
 
 	@Test
-	public void test() throws ApplicationContextBuilderException, MalformedURLException {
-		testWithSession(new TokenReservationSession());
+	public void testWithSession_immediateCleanup() throws ApplicationContextBuilderException, MalformedURLException, InterruptedException {
+		testWithSession(new TokenReservationSession(), true);
 	}
 
 	@Test
-	public void testWithUnusableSession() throws ApplicationContextBuilderException, MalformedURLException {
-		testWithSession(new UnusableTokenReservationSession());
+	public void testWithUnusableSession_immediateCleanup() throws ApplicationContextBuilderException, MalformedURLException, InterruptedException {
+		testWithSession(new UnusableTokenReservationSession(), true);
+	}
+
+	@Test
+	public void testWithSession_delayedCleanup() throws ApplicationContextBuilderException, MalformedURLException, InterruptedException {
+		testWithSession(new TokenReservationSession(), false);
+	}
+
+	@Test
+	public void testWithUnusableSession_delayedCleanup() throws ApplicationContextBuilderException, MalformedURLException, InterruptedException {
+		testWithSession(new UnusableTokenReservationSession(), false);
 	}
 
 
-	private void testWithSession(TokenReservationSession tokenReservationSession) throws ApplicationContextBuilderException, MalformedURLException {
+	private void testWithSession(TokenReservationSession tokenReservationSession, boolean immediateCleanup) throws ApplicationContextBuilderException, MalformedURLException, InterruptedException {
 		ClassLoader rootClassloader = Thread.currentThread().getContextClassLoader();
 
-		TestApplicationContextBuilder builder = new TestApplicationContextBuilder();
+		ApplicationContextConfiguration applicationContextConfiguration = new ApplicationContextConfiguration();
+		if (immediateCleanup) {
+			applicationContextConfiguration.setCleanupLastAccessTimeThresholdMinutes(0L);
+		} else {
+			applicationContextConfiguration.setConfigurationTimeUnit(TimeUnit.MILLISECONDS);
+			applicationContextConfiguration.setCleanupLastAccessTimeThresholdMinutes(1L);
+		}
+		TestApplicationContextBuilder builder = new TestApplicationContextBuilder(applicationContextConfiguration);
+
 		builder.forkCurrentContext("branch2");
 
 		builder.resetContext();
@@ -91,10 +110,10 @@ public class ApplicationContextBuilderTest {
 		tokenReservationSession.registerObjectToBeClosedWithSession(builder.pushContext(newApplicationContextFactory("file://context1"), true));
 		// Assert that the classloader hasn't been created again i.e. that the classloader created during the first
 		// push of the context1 has been reused
-		Assert.assertTrue(classloaderContext1 == builder.getCurrentContext().getClassLoader());
+        Assert.assertSame(classloaderContext1, builder.getCurrentContext().getClassLoader());
 		tokenReservationSession.registerObjectToBeClosedWithSession(builder.pushContext(newApplicationContextFactory("file://context2"), true));
 		// Assert the same for the context2
-		Assert.assertTrue(classloaderContext2 == builder.getCurrentContext().getClassLoader());
+        Assert.assertSame(classloaderContext2, builder.getCurrentContext().getClassLoader());
 
 		//4 context are created, (2 are reused once), so 6 app context controls have to be closed
 		Assert.assertEquals(6, builder.appCtrl.size());
@@ -105,7 +124,13 @@ public class ApplicationContextBuilderTest {
 		});
 
 		//4 context are created, (2 are reused once)
-		Assert.assertEquals(4, onCloseCalls.get());
+		if (immediateCleanup) {
+			Assert.assertEquals(4, onCloseCalls.get());
+		} else {
+			Assert.assertEquals(0, onCloseCalls.get());
+			Thread.sleep(200); //schedule job runs every 60 ms by default in Junit (time unit switch from minutes to ms)
+			Assert.assertEquals(4, onCloseCalls.get());
+		}
 	}
 
 	@Test
@@ -113,7 +138,9 @@ public class ApplicationContextBuilderTest {
 		TokenReservationSession tokenReservationSession = new TokenReservationSession();
 		ClassLoader rootClassloader = Thread.currentThread().getContextClassLoader();
 
-		TestApplicationContextBuilder builder = new TestApplicationContextBuilder();
+		ApplicationContextConfiguration applicationContextConfiguration = new ApplicationContextConfiguration();
+		applicationContextConfiguration.setCleanupLastAccessTimeThresholdMinutes(0L);
+		TestApplicationContextBuilder builder = new TestApplicationContextBuilder(applicationContextConfiguration);
 		builder.forkCurrentContext("branch2");
 
 		builder.resetContext();
@@ -168,11 +195,15 @@ public class ApplicationContextBuilderTest {
 
 		public final List<TestApplicationContextControl> appCtrl = new LinkedList<>();
 
-		@Override
+        public TestApplicationContextBuilder(ApplicationContextConfiguration applicationContextConfiguration) {
+			super(applicationContextConfiguration);
+        }
+
+        @Override
 		public ApplicationContextControl pushContext(String branchName, ApplicationContextFactory descriptor, boolean cleanable) throws ApplicationContextBuilderException {
 			TestApplicationContextControl applicationContextControl = new TestApplicationContextControl(super.pushContext(branchName, descriptor, cleanable));
 			appCtrl.add(applicationContextControl);
-			return (ApplicationContextControl) applicationContextControl;
+			return applicationContextControl;
 		}
 
 		public static class TestApplicationContextControl extends ApplicationContextControl {

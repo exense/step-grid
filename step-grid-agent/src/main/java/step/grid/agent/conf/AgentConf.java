@@ -19,6 +19,7 @@
 package step.grid.agent.conf;
 
 import step.grid.app.configuration.AppConfiguration;
+import step.grid.contextbuilder.ApplicationContextConfiguration;
 import step.grid.filemanager.FileManagerConfiguration;
 
 import java.util.List;
@@ -48,6 +49,8 @@ public class AgentConf extends AppConfiguration {
 	Long gracefulShutdownTimeout;
 
 	FileManagerConfiguration fileManagerConfiguration = new FileManagerConfiguration();
+
+	ApplicationContextConfiguration applicationContextConfiguration;
 
 	public AgentConf() {
 		super();
@@ -170,5 +173,13 @@ public class AgentConf extends AppConfiguration {
 
 	public void setFileManagerConfiguration(FileManagerConfiguration fileManagerConfiguration) {
 		this.fileManagerConfiguration = fileManagerConfiguration;
+	}
+
+	public ApplicationContextConfiguration getApplicationContextConfiguration() {
+		return applicationContextConfiguration;
+	}
+
+	public void setApplicationContextConfiguration(ApplicationContextConfiguration applicationContextConfiguration) {
+		this.applicationContextConfiguration = applicationContextConfiguration;
 	}
 }
