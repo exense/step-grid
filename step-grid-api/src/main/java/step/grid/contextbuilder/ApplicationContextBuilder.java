@@ -125,7 +125,7 @@ public class ApplicationContextBuilder implements AutoCloseable {
 
 		private final AtomicInteger usage = new AtomicInteger(0);
 
-		private long lastUsage = System.currentTimeMillis();
+		private volatile long lastUsage = System.currentTimeMillis();
 
 		private final String applicationContextId;
 
@@ -183,8 +183,8 @@ public class ApplicationContextBuilder implements AutoCloseable {
 			synchronized (ApplicationContextBuilder.this) {
 				int currentUsage = usage.decrementAndGet();
 				lastUsage = System.currentTimeMillis();
-				if (logger.isDebugEnabled()) {
-					logger.debug("Release usage of application context {}. new usage {}", applicationContextId, currentUsage);
+				if (logger.isTraceEnabled()) {
+					logger.trace("Release usage of application context {}. new usage {}", applicationContextId, currentUsage);
 				}
 				if (currentUsage == 0 && cleanable && cleanupTTLMilliseconds == 0) {
 					closeAndCleanupFromParent();
@@ -193,8 +193,8 @@ public class ApplicationContextBuilder implements AutoCloseable {
 		}
 
 		private void closeAndCleanupFromParent() {
-			if (logger.isDebugEnabled()) {
-				logger.debug("Closing of application context {} and removing it from parent {} started", applicationContextId,
+			if (logger.isTraceEnabled()) {
+				logger.trace("Closing of application context {} and removing it from parent {} started", applicationContextId,
 						(parentContext != null) ? parentContext.applicationContextId : "no parent");
 			}
 			boolean closed = _close();
@@ -217,12 +217,12 @@ public class ApplicationContextBuilder implements AutoCloseable {
 
 		private void buildClassLoader(ApplicationContext parentContext) throws FileManagerException {
 			ClassLoader classLoader = descriptor.buildClassLoader(parentContext.classLoader);
-			if (logger.isDebugEnabled()) {
-				logger.debug("Loading classloader for {} in application context builder {}", descriptor.getId(), this);
+			if (logger.isTraceEnabled()) {
+				logger.trace("Loading classloader for {} in application context builder {}", descriptor.getId(), this);
 			}
 			this.classLoader = classLoader;
-			if (logger.isDebugEnabled()) {
-				logger.debug("Loaded classloader {}", classLoader);
+			if (logger.isTraceEnabled()) {
+				logger.trace("Loaded classloader {}", classLoader);
 			}
 		}
 
@@ -291,7 +291,7 @@ public class ApplicationContextBuilder implements AutoCloseable {
 			//Clean up recursively all children, before closing itself if eligible for cleanup
 			childContexts.entrySet().removeIf(childAppContextEntry -> {
 				if (logger.isDebugEnabled()) {
-					logger.debug("Cleaning application child context {}", childAppContextEntry.getKey());
+					logger.debug("Cleaning application child context {} if eligible", childAppContextEntry.getKey());
 				}
 				return childAppContextEntry.getValue().cleanup(cleanupTime);
 			});
@@ -304,12 +304,12 @@ public class ApplicationContextBuilder implements AutoCloseable {
 
 		private void closeClassLoader() {
 			if (classLoader != null && classLoader instanceof AutoCloseable) {
-				if (logger.isDebugEnabled()) {
-					logger.debug("Application context class loader found for {}, closing classLoader {}", this, classLoader);
-					logger.debug("Parent classloader is {}", classLoader.getParent());
+				if (logger.isTraceEnabled()) {
+					logger.trace("Application context class loader found for {}, closing classLoader {}", this, classLoader);
+					logger.trace("Parent classloader is {}", classLoader.getParent());
 					if (classLoader instanceof URLClassLoader) {
 						URLClassLoader classLoader1 = (URLClassLoader) classLoader;
-						logger.debug("URLs: {}", Arrays.asList(classLoader1.getURLs()));
+						logger.trace("URLs: {}", Arrays.asList(classLoader1.getURLs()));
 					}
 				}
 				try {
@@ -418,8 +418,8 @@ public class ApplicationContextBuilder implements AutoCloseable {
 	public ApplicationContextControl pushContext(String branchName, ApplicationContextFactory descriptor, boolean cleanable) throws ApplicationContextBuilderException {
 		synchronized(this) {
 			String contextKey = descriptor.getId();
-			if(logger.isDebugEnabled()) {
-				logger.debug("Pushing context "+contextKey+" to branch "+branchName);
+			if(logger.isTraceEnabled()) {
+                logger.trace("Pushing context {} to branch {}", contextKey, branchName);
 			}
  			ThreadLocal<ApplicationContext> branchCurrentContext = getBranch(branchName).getCurrentContexts();
 			ApplicationContext parentContext = branchCurrentContext.get();
@@ -429,8 +429,8 @@ public class ApplicationContextBuilder implements AutoCloseable {
 			
 			ApplicationContext context;
 			if(!parentContext.containsChildContextKey(contextKey)) {
-				if(logger.isDebugEnabled()) {
-					logger.debug("Context "+contextKey+" doesn't exist on branch "+branchName+". Creating new context");
+				if(logger.isTraceEnabled()) {
+                    logger.trace("Context {} doesn't exist on branch {}. Creating new context", contextKey, branchName);
 				}
 
 				try {
@@ -440,14 +440,14 @@ public class ApplicationContextBuilder implements AutoCloseable {
 				}
 				parentContext.putChildContext(contextKey, context);
 			} else {
-				if(logger.isDebugEnabled()) {
-					logger.debug("Context "+contextKey+" existing on branch. Reusing it.");
+				if(logger.isTraceEnabled()) {
+                    logger.trace("Context {} existing on branch. Reusing it.", contextKey);
 				}
 				context = parentContext.getChildContext(contextKey);
 				try {
 					if(descriptor.requiresReload()) {
-						if(logger.isDebugEnabled()) {
-							logger.debug("Context "+contextKey+" requires reload. Reloading...");
+						if(logger.isTraceEnabled()) {
+                            logger.trace("Context {} requires reload. Reloading...", contextKey);
 						}
 						context.reloadContext(descriptor, context);
 					}
@@ -514,6 +514,7 @@ public class ApplicationContextBuilder implements AutoCloseable {
 				logger.error("Timeout occurred while stopping the file manager clean up task.");
 			}
 		}
+		//The full tree of application contexts can be browsed (and closed) from the master branch root context
 		getBranch(MASTER).close();
 	}
 
