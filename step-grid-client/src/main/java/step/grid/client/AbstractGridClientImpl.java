@@ -82,7 +82,7 @@ public abstract class AbstractGridClientImpl implements GridClient {
 	
 	public static final String SELECTION_CRITERION_THREAD = "#THREADID#";
 	
-	private final GridClientConfiguration gridClientConfiguration;
+	protected final GridClientConfiguration gridClientConfiguration;
 	
 	private final TokenLifecycleStrategy tokenLifecycleStrategy;
 	
@@ -194,7 +194,7 @@ public abstract class AbstractGridClientImpl implements GridClient {
 		};
 		
 		localAgentTokenServices = new AgentTokenServices(fileManagerClient);
-		applicationContextBuilder = new ApplicationContextBuilder();
+		applicationContextBuilder = new ApplicationContextBuilder(gridClientConfiguration.getLocalTokenApplicationContextConfiguration());
 		localAgentTokenServices.setApplicationContextBuilder(applicationContextBuilder);
 	}
 
