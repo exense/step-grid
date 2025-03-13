@@ -44,7 +44,7 @@ public class FileManagerImplCachingTest {
 		// configure the expiration duration of the file modification cache of the FileManager to 10ms
 		config.setFileLastModificationCacheExpireAfter(10);
 		config.setConfigurationTimeUnit(TimeUnit.MILLISECONDS);
-		config.setCleanupLastAccessTimeThresholdMinutes(10);
+		config.setCleanupTimeToLiveMinutes(10);
 		fileManager = new FileManagerImpl(registryFolder, config);
 	}
 	

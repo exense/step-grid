@@ -71,7 +71,7 @@ public class ApplicationContextBuilder implements AutoCloseable {
 	private final long cleanupTTLMilliseconds;
 	private ScheduledExecutorService scheduledPool;
 	private ScheduledFuture<?> future;
-	private final ApplicationContextConfiguration applicationContextConfiguration;
+	private final ExecutionContextCacheConfiguration executionContextCacheConfiguration;
 
 	protected class Branch {
 		
@@ -326,8 +326,8 @@ public class ApplicationContextBuilder implements AutoCloseable {
 	 * Creates a new instance of {@link ApplicationContextBuilder} using the {@link ClassLoader} 
 	 * of this class as root {@link ClassLoader}
 	 */
-	public ApplicationContextBuilder(ApplicationContextConfiguration applicationContextConfiguration) {
-		this(ApplicationContextBuilder.class.getClassLoader(), applicationContextConfiguration);
+	public ApplicationContextBuilder(ExecutionContextCacheConfiguration executionContextCacheConfiguration) {
+		this(ApplicationContextBuilder.class.getClassLoader(), executionContextCacheConfiguration);
 	}
 	
 	/**
@@ -335,18 +335,18 @@ public class ApplicationContextBuilder implements AutoCloseable {
 	 * 
 	 * @param rootClassLoader the {@link ClassLoader} to be used as root of this context
 	 */
-	public ApplicationContextBuilder(ClassLoader rootClassLoader, ApplicationContextConfiguration applicationContextConfiguration) {
+	public ApplicationContextBuilder(ClassLoader rootClassLoader, ExecutionContextCacheConfiguration executionContextCacheConfiguration) {
 		ApplicationContext rootContext = new ApplicationContext(rootClassLoader, "rootContext");
 		Branch branch = new Branch(rootContext, MASTER);
 		branches.put(MASTER, branch);
-		this.applicationContextConfiguration = applicationContextConfiguration;
+		this.executionContextCacheConfiguration = executionContextCacheConfiguration;
 		//We're using here the time unit from configuration which is Minutes by default but can be overridden for junit test
-		this.cleanupTTLMilliseconds = applicationContextConfiguration.getConfigurationTimeUnit().toMillis(applicationContextConfiguration.getCleanupLastAccessTimeThresholdMinutes());
+		this.cleanupTTLMilliseconds = executionContextCacheConfiguration.getConfigurationTimeUnit().toMillis(executionContextCacheConfiguration.getCleanupTimeToLiveMinutes());
 		scheduleCleanupJob();
 	}
 
-	public ApplicationContextConfiguration getApplicationContextConfiguration() {
-		return applicationContextConfiguration;
+	public ExecutionContextCacheConfiguration getApplicationContextConfiguration() {
+		return executionContextCacheConfiguration;
 	}
 
 	/**
@@ -529,14 +529,15 @@ public class ApplicationContextBuilder implements AutoCloseable {
 	}
 
 	/**
-	 * Schedule the cleanup job of application context with the frequency defined with {@link ApplicationContextConfiguration#getCleanupIntervalMinutes()}.
-	 * <p>It can be disabled using the {@link ApplicationContextConfiguration#isCleanupEnabled()} flag.</p>
-	 * <p>The cleanup job browses all entries from the cache and remove the one marked as cleanable and not accessed for the period of time defined with {@link ApplicationContextConfiguration#getCleanupLastAccessTimeThresholdMinutes()}</p>
+	 * Schedule the cleanup job of application context with the frequency defined with {@link ExecutionContextCacheConfiguration#getCleanupFrequencyMinutes()}.
+	 * <p>It can be disabled using the {@link ExecutionContextCacheConfiguration#isEnableCleanup()} flag.</p>
+	 * <p>The cleanup job browses all entries from the cache and remove the one marked as cleanable and not accessed for the period of time defined with {@link ExecutionContextCacheConfiguration#getCleanupTimeToLiveMinutes()}</p>
 	 *
 	 */
 	protected void scheduleCleanupJob() {
-		if (applicationContextConfiguration.isCleanupEnabled()) {
-			long cleanupIntervalMinutes = applicationContextConfiguration.getCleanupIntervalMinutes();
+		if (executionContextCacheConfiguration.isEnableCleanup()) {
+			long cleanupIntervalMinutes = executionContextCacheConfiguration.getCleanupFrequencyMinutes();
+			logger.info("Scheduling execution context cache cleanup with a TTL of {} minutes and a frequency of {} minutes", executionContextCacheConfiguration.getCleanupTimeToLiveMinutes(), cleanupIntervalMinutes);
 			scheduledPool = Executors.newScheduledThreadPool(1);
 			future = scheduledPool.scheduleAtFixedRate(() -> {
 				try {
@@ -547,8 +548,9 @@ public class ApplicationContextBuilder implements AutoCloseable {
 				} catch (Throwable e) {
 					logger.error("Unhandled error while running the application context builder clean up task.", e);
 				}
-			}, cleanupIntervalMinutes, cleanupIntervalMinutes, applicationContextConfiguration.getConfigurationTimeUnit());
+			}, cleanupIntervalMinutes, cleanupIntervalMinutes, executionContextCacheConfiguration.getConfigurationTimeUnit());
+		} else {
+			logger.info("Execution context cache cleanup is disabled");
 		}
-
 	}
 }

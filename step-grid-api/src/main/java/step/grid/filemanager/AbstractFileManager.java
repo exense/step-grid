@@ -199,7 +199,7 @@ public class AbstractFileManager {
 				CachedFileVersion cachedFileVersion = versionCache.get(fileVersion.getVersionId());
 				if (cachedFileVersion != null) {
 					int currentUsage = cachedFileVersion.releaseUsage();
-					if (fileManagerConfiguration.isCleanupEnabled() && getCacheTTLms() == 0 && currentUsage == 0 && cachedFileVersion.isCleanable()) {
+					if (fileManagerConfiguration.isEnableCleanup() && getCacheTTLms() == 0 && currentUsage == 0 && cachedFileVersion.isCleanable()) {
 						if (logger.isDebugEnabled()) {
 							logger.debug("Usage reached 0 after decrementing and TTL is set to 0 directly removing {} from cache.", cachedFileVersion.getFileVersion());
 						}
@@ -244,7 +244,7 @@ public class AbstractFileManager {
 	}
 
 	public long getCacheTTLms() {
-		return fileManagerConfiguration.getConfigurationTimeUnit().toMillis(fileManagerConfiguration.getCleanupLastAccessTimeThresholdMinutes());
+		return fileManagerConfiguration.getConfigurationTimeUnit().toMillis(fileManagerConfiguration.getCleanupTimeToLiveMinutes());
 	}
 
 	public void cleanupCache() {
@@ -293,14 +293,15 @@ public class AbstractFileManager {
 	}
 
 	/**
-	 * Schedule the cache cleanup job with the frequency defined with {@link FileManagerConfiguration#getCleanupIntervalMinutes()}.
-	 * <p>It can be disabled using the {@link FileManagerConfiguration#isCleanupEnabled()} flag.</p>
-	 * <p>The cleanup job browses all entries from the cache and remove the one marked as cleanable and not accessed for the period of time defined with {@link FileManagerConfiguration#getCleanupLastAccessTimeThresholdMinutes()}</p>
+	 * Schedule the cache cleanup job with the frequency defined with {@link FileManagerConfiguration#getCleanupFrequencyMinutes()}.
+	 * <p>It can be disabled using the {@link FileManagerConfiguration#isEnableCleanup()} flag.</p>
+	 * <p>The cleanup job browses all entries from the cache and remove the one marked as cleanable and not accessed for the period of time defined with {@link FileManagerConfiguration#getCleanupTimeToLiveMinutes()}</p>
 	 *
 	 */
 	protected void scheduleCleanupJob() {
-		if (fileManagerConfiguration.isCleanupEnabled()) {
-			long cleanupIntervalMinutes = fileManagerConfiguration.getCleanupIntervalMinutes();
+		if (fileManagerConfiguration.isEnableCleanup()) {
+			long cleanupIntervalMinutes = fileManagerConfiguration.getCleanupFrequencyMinutes();
+			logger.info("Scheduling file manager cleanup with a TTL of {} minutes and a frequency of {} minutes", fileManagerConfiguration.getCleanupTimeToLiveMinutes(), cleanupIntervalMinutes);
 			scheduledPool = Executors.newScheduledThreadPool(1);
 			future = scheduledPool.scheduleAtFixedRate(() -> {
 				Thread.currentThread().setName("FileManagerCleanupThread");
@@ -310,6 +311,8 @@ public class AbstractFileManager {
 					logger.error("Unhandled error while running the file manager clean up task.", e);
 				}
 			}, cleanupIntervalMinutes, cleanupIntervalMinutes, fileManagerConfiguration.getConfigurationTimeUnit());
+		} else {
+			logger.info("File manager cleanup is disabled");
 		}
 	}
 

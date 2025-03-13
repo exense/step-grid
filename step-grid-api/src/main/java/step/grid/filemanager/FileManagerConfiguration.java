@@ -24,11 +24,11 @@ public class FileManagerConfiguration {
 
 	private TimeUnit configurationTimeUnit = TimeUnit.MINUTES;
 
-	private long cleanupLastAccessTimeThresholdMinutes = 120;
+	private long cleanupTimeToLiveMinutes = 1440;
 
-	private boolean cleanupEnabled = true;
+	private boolean enableCleanup = true;
 
-	private long cleanupIntervalMinutes = 60;
+	private long cleanupFrequencyMinutes = 60;
 
 	public FileManagerConfiguration() {
 	}
@@ -36,34 +36,34 @@ public class FileManagerConfiguration {
 	/**
 	 * @return the period of time in minutes since the last access of a cached file before it becomes eligible for cleanup. Refer to the cleanup job for details {@link AbstractFileManager#scheduleCleanupJob() }
 	 */
-	public long getCleanupLastAccessTimeThresholdMinutes() {
-		return cleanupLastAccessTimeThresholdMinutes;
+	public long getCleanupTimeToLiveMinutes() {
+		return cleanupTimeToLiveMinutes;
 	}
 
-	public void setCleanupLastAccessTimeThresholdMinutes(long cleanupLastAccessTimeThresholdMinutes) {
-		this.cleanupLastAccessTimeThresholdMinutes = cleanupLastAccessTimeThresholdMinutes;
+	public void setCleanupTimeToLiveMinutes(long cleanupTimeToLiveMinutes) {
+		this.cleanupTimeToLiveMinutes = cleanupTimeToLiveMinutes;
 	}
 
 	/**
 	 * @return whether the {@link AbstractFileManager#scheduleCleanupJob() cleanup job} should be enabled
 	 */
-	public boolean isCleanupEnabled() {
-		return cleanupEnabled;
+	public boolean isEnableCleanup() {
+		return enableCleanup;
 	}
 
-	public void setCleanupEnabled(boolean cleanupEnabled) {
-		this.cleanupEnabled = cleanupEnabled;
+	public void setEnableCleanup(boolean enableCleanup) {
+		this.enableCleanup = enableCleanup;
 	}
 
 	/**
 	 * @return the frequency of cleanup job in minutes. Refer to {@link AbstractFileManager#scheduleCleanupJob() } for more details
 	 */
-	public long getCleanupIntervalMinutes() {
-		return cleanupIntervalMinutes;
+	public long getCleanupFrequencyMinutes() {
+		return cleanupFrequencyMinutes;
 	}
 
-	public void setCleanupIntervalMinutes(long cleanupIntervalMinutes) {
-		this.cleanupIntervalMinutes = cleanupIntervalMinutes;
+	public void setCleanupFrequencyMinutes(long cleanupFrequencyMinutes) {
+		this.cleanupFrequencyMinutes = cleanupFrequencyMinutes;
 	}
 
 	public TimeUnit getConfigurationTimeUnit() {

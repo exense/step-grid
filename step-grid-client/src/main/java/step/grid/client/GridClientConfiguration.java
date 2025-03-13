@@ -18,7 +18,7 @@
  ******************************************************************************/
 package step.grid.client;
 
-import step.grid.contextbuilder.ApplicationContextConfiguration;
+import step.grid.contextbuilder.ExecutionContextCacheConfiguration;
 
 public class GridClientConfiguration {
 
@@ -37,7 +37,7 @@ public class GridClientConfiguration {
 
 	private int maxStringLength = 50000000;
 
-	private ApplicationContextConfiguration localTokenApplicationContextConfiguration = new ApplicationContextConfiguration();
+	private ExecutionContextCacheConfiguration localTokenExecutionContextCacheConfiguration = new ExecutionContextCacheConfiguration();
 	
 	public long getNoMatchExistsTimeout() {
 		return noMatchExistsTimeout;
@@ -119,11 +119,11 @@ public class GridClientConfiguration {
 		this.maxStringLength = maxStringLength;
 	}
 
-	public ApplicationContextConfiguration getLocalTokenApplicationContextConfiguration() {
-		return localTokenApplicationContextConfiguration;
+	public ExecutionContextCacheConfiguration getLocalTokenExecutionContextCacheConfiguration() {
+		return localTokenExecutionContextCacheConfiguration;
 	}
 
-	public void setLocalTokenApplicationContextConfiguration(ApplicationContextConfiguration localTokenApplicationContextConfiguration) {
-		this.localTokenApplicationContextConfiguration = localTokenApplicationContextConfiguration;
+	public void setLocalTokenExecutionContextCacheConfiguration(ExecutionContextCacheConfiguration localTokenExecutionContextCacheConfiguration) {
+		this.localTokenExecutionContextCacheConfiguration = localTokenExecutionContextCacheConfiguration;
 	}
 }

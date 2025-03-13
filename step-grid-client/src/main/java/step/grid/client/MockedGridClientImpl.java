@@ -149,7 +149,7 @@ public class MockedGridClientImpl extends AbstractGridClientImpl {
 		fileManagerClient = new MockedFileManagerClient();
 		
 		localAgentTokenServices = new AgentTokenServices(fileManagerClient);
-		applicationContextBuilder = new ApplicationContextBuilder(this.gridClientConfiguration.getLocalTokenApplicationContextConfiguration());
+		applicationContextBuilder = new ApplicationContextBuilder(this.gridClientConfiguration.getLocalTokenExecutionContextCacheConfiguration());
 		localAgentTokenServices.setApplicationContextBuilder(applicationContextBuilder);
 	}
 

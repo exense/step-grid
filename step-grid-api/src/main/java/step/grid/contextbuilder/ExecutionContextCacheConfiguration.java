@@ -18,65 +18,52 @@
  ******************************************************************************/
 package step.grid.contextbuilder;
 
-import step.grid.filemanager.FileManagerConfiguration;
-
 import java.util.concurrent.TimeUnit;
 
-public class ApplicationContextConfiguration {
+public class ExecutionContextCacheConfiguration {
 
 	private TimeUnit configurationTimeUnit = TimeUnit.MINUTES;
 
-	private long cleanupLastAccessTimeThresholdMinutes = 120;
+	private long cleanupTimeToLiveMinutes = 1440;
 
-	private boolean cleanupEnabled = true;
+	private boolean enableCleanup = true;
 
-	private long cleanupIntervalMinutes = 60;
+	private long cleanupFrequencyMinutes = 60;
 
-	public ApplicationContextConfiguration() {
-	}
-
-	/**
-	 * Constructor used to align the cleanup configuration with the file manager configuration
-	 * Should be used whenever the configuration for the application context is not explicitly provided
-	 * @param fileManagerConfiguration the file manager configuration to extract the configuration from
-	 */
-	public ApplicationContextConfiguration(FileManagerConfiguration fileManagerConfiguration) {
-		this.cleanupEnabled = fileManagerConfiguration.isCleanupEnabled();
-		this.cleanupIntervalMinutes = fileManagerConfiguration.getCleanupIntervalMinutes();
-		this.cleanupLastAccessTimeThresholdMinutes = fileManagerConfiguration.getCleanupLastAccessTimeThresholdMinutes();
+	public ExecutionContextCacheConfiguration() {
 	}
 
 	/**
 	 * @return the period of time in minutes since the last access of a cached file before it becomes eligible for cleanup. Refer to the cleanup job for details {@link ApplicationContextBuilder#scheduleCleanupJob() }
 	 */
-	public long getCleanupLastAccessTimeThresholdMinutes() {
-		return cleanupLastAccessTimeThresholdMinutes;
+	public long getCleanupTimeToLiveMinutes() {
+		return cleanupTimeToLiveMinutes;
 	}
 
-	public void setCleanupLastAccessTimeThresholdMinutes(long cleanupLastAccessTimeThresholdMinutes) {
-		this.cleanupLastAccessTimeThresholdMinutes = cleanupLastAccessTimeThresholdMinutes;
+	public void setCleanupTimeToLiveMinutes(long cleanupTimeToLiveMinutes) {
+		this.cleanupTimeToLiveMinutes = cleanupTimeToLiveMinutes;
 	}
 
 	/**
 	 * @return whether the {@link ApplicationContextBuilder#scheduleCleanupJob() cleanup job} should be enabled
 	 */
-	public boolean isCleanupEnabled() {
-		return cleanupEnabled;
+	public boolean isEnableCleanup() {
+		return enableCleanup;
 	}
 
-	public void setCleanupEnabled(boolean cleanupEnabled) {
-		this.cleanupEnabled = cleanupEnabled;
+	public void setEnableCleanup(boolean enableCleanup) {
+		this.enableCleanup = enableCleanup;
 	}
 
 	/**
 	 * @return the frequency of cleanup job in minutes. Refer to {@link ApplicationContextBuilder#scheduleCleanupJob() } for more details
 	 */
-	public long getCleanupIntervalMinutes() {
-		return cleanupIntervalMinutes;
+	public long getCleanupFrequencyMinutes() {
+		return cleanupFrequencyMinutes;
 	}
 
-	public void setCleanupIntervalMinutes(long cleanupIntervalMinutes) {
-		this.cleanupIntervalMinutes = cleanupIntervalMinutes;
+	public void setCleanupFrequencyMinutes(long cleanupFrequencyMinutes) {
+		this.cleanupFrequencyMinutes = cleanupFrequencyMinutes;
 	}
 
 	public TimeUnit getConfigurationTimeUnit() {

@@ -19,7 +19,7 @@
 package step.grid.agent.conf;
 
 import step.grid.app.configuration.AppConfiguration;
-import step.grid.contextbuilder.ApplicationContextConfiguration;
+import step.grid.contextbuilder.ExecutionContextCacheConfiguration;
 import step.grid.filemanager.FileManagerConfiguration;
 
 import java.util.List;
@@ -50,7 +50,7 @@ public class AgentConf extends AppConfiguration {
 
 	FileManagerConfiguration fileManagerConfiguration = new FileManagerConfiguration();
 
-	ApplicationContextConfiguration applicationContextConfiguration;
+	ExecutionContextCacheConfiguration executionContextCacheConfiguration = new ExecutionContextCacheConfiguration();
 
 	public AgentConf() {
 		super();
@@ -175,11 +175,11 @@ public class AgentConf extends AppConfiguration {
 		this.fileManagerConfiguration = fileManagerConfiguration;
 	}
 
-	public ApplicationContextConfiguration getApplicationContextConfiguration() {
-		return applicationContextConfiguration;
+	public ExecutionContextCacheConfiguration getExecutionContextCacheConfiguration() {
+		return executionContextCacheConfiguration;
 	}
 
-	public void setApplicationContextConfiguration(ApplicationContextConfiguration applicationContextConfiguration) {
-		this.applicationContextConfiguration = applicationContextConfiguration;
+	public void setExecutionContextCacheConfiguration(ExecutionContextCacheConfiguration executionContextCacheConfiguration) {
+		this.executionContextCacheConfiguration = executionContextCacheConfiguration;
 	}
 }
