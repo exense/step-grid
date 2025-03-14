@@ -42,7 +42,7 @@ public class GridImplTest {
 	private GridImpl getGridForCleanupTest() throws IOException {
 		GridImpl.GridImplConfig gridConfig = new GridImpl.GridImplConfig();
 		FileManagerImplConfig fileManagerConfiguration = new FileManagerImplConfig();
-		fileManagerConfiguration.setCleanupLastAccessTimeThresholdMinutes(0);
+		fileManagerConfiguration.setCleanupTimeToLiveMinutes(0);
 		gridConfig.setFileManagerImplConfig(fileManagerConfiguration);
 		return new GridImpl(FileHelper.createTempFolder("filemanager"),0, gridConfig);
 	}

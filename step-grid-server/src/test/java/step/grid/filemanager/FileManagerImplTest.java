@@ -52,7 +52,7 @@ public class FileManagerImplTest {
 		// disable caching
 		config.setFileLastModificationCacheExpireAfter(0);
 		//disable file cache cleanup, it is enabled for individual tests
-		config.setCleanupEnabled(false);
+		config.setEnableCleanup(false);
 		config.setConfigurationTimeUnit(TimeUnit.MILLISECONDS);
 		fileManager = new TestFileManagerImpl(registryFolder, config);
 	}
@@ -206,7 +206,7 @@ public class FileManagerImplTest {
 	
 	@Test
 	public void testCleanup() throws IOException, FileManagerException, InterruptedException {
-		config.setCleanupLastAccessTimeThresholdMinutes(1);
+		config.setCleanupTimeToLiveMinutes(1);
 
 		File testFile = FileHelper.createTempFile();
 		File testFile2 = FileHelper.createTempFile();
@@ -234,9 +234,9 @@ public class FileManagerImplTest {
 
 	@Test
 	public void testCleanupJob() throws IOException, FileManagerException, InterruptedException {
-		config.setCleanupLastAccessTimeThresholdMinutes(200);
-		config.setCleanupIntervalMinutes(100);
-		config.setCleanupEnabled(true);
+		config.setCleanupTimeToLiveMinutes(200);
+		config.setCleanupFrequencyMinutes(100);
+		config.setEnableCleanup(true);
 		fileManager.scheduleCleanupJob();//start the job
 
 		File testFile = FileHelper.createTempFile();
@@ -267,9 +267,9 @@ public class FileManagerImplTest {
 
 	@Test
 	public void testCleanupJobParallel() throws IOException, FileManagerException, InterruptedException, ExecutionException {
-		config.setCleanupLastAccessTimeThresholdMinutes(10);
-		config.setCleanupIntervalMinutes(5);
-		config.setCleanupEnabled(true);
+		config.setCleanupTimeToLiveMinutes(10);
+		config.setCleanupFrequencyMinutes(5);
+		config.setEnableCleanup(true);
 		fileManager.scheduleCleanupJob();//start the job
 
 		File testFile = FileHelper.createTempFile();

@@ -70,8 +70,8 @@ public class FileManagerClientImplTest {
 		FileManagerConfiguration fileManagerConfiguration = new FileManagerConfiguration();
 		//configure the cleanup schedule job for junit and start it
 		fileManagerConfiguration.setConfigurationTimeUnit(TimeUnit.MILLISECONDS);
-		fileManagerConfiguration.setCleanupLastAccessTimeThresholdMinutes(ttlMs);
-		fileManagerConfiguration.setCleanupIntervalMinutes(cleanupIntervalMs);
+		fileManagerConfiguration.setCleanupTimeToLiveMinutes(ttlMs);
+		fileManagerConfiguration.setCleanupFrequencyMinutes(cleanupIntervalMs);
 		fileManagerClient = new FileManagerClientImpl(fileManagerFolder, fileProvider, fileManagerConfiguration);
 	}
 	

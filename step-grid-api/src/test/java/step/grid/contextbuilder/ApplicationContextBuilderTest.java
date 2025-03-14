@@ -62,14 +62,14 @@ public class ApplicationContextBuilderTest {
 	private void testWithSession(TokenReservationSession tokenReservationSession, boolean immediateCleanup) throws ApplicationContextBuilderException, MalformedURLException, InterruptedException {
 		ClassLoader rootClassloader = Thread.currentThread().getContextClassLoader();
 
-		ApplicationContextConfiguration applicationContextConfiguration = new ApplicationContextConfiguration();
+		ExecutionContextCacheConfiguration executionContextCacheConfiguration = new ExecutionContextCacheConfiguration();
 		if (immediateCleanup) {
-			applicationContextConfiguration.setCleanupLastAccessTimeThresholdMinutes(0L);
+			executionContextCacheConfiguration.setCleanupTimeToLiveMinutes(0L);
 		} else {
-			applicationContextConfiguration.setConfigurationTimeUnit(TimeUnit.MILLISECONDS);
-			applicationContextConfiguration.setCleanupLastAccessTimeThresholdMinutes(1L);
+			executionContextCacheConfiguration.setConfigurationTimeUnit(TimeUnit.MILLISECONDS);
+			executionContextCacheConfiguration.setCleanupTimeToLiveMinutes(1L);
 		}
-		TestApplicationContextBuilder builder = new TestApplicationContextBuilder(applicationContextConfiguration);
+		TestApplicationContextBuilder builder = new TestApplicationContextBuilder(executionContextCacheConfiguration);
 
 		builder.forkCurrentContext("branch2");
 
@@ -138,9 +138,9 @@ public class ApplicationContextBuilderTest {
 		TokenReservationSession tokenReservationSession = new TokenReservationSession();
 		ClassLoader rootClassloader = Thread.currentThread().getContextClassLoader();
 
-		ApplicationContextConfiguration applicationContextConfiguration = new ApplicationContextConfiguration();
-		applicationContextConfiguration.setCleanupLastAccessTimeThresholdMinutes(0L);
-		TestApplicationContextBuilder builder = new TestApplicationContextBuilder(applicationContextConfiguration);
+		ExecutionContextCacheConfiguration executionContextCacheConfiguration = new ExecutionContextCacheConfiguration();
+		executionContextCacheConfiguration.setCleanupTimeToLiveMinutes(0L);
+		TestApplicationContextBuilder builder = new TestApplicationContextBuilder(executionContextCacheConfiguration);
 		builder.forkCurrentContext("branch2");
 
 		builder.resetContext();
@@ -195,8 +195,8 @@ public class ApplicationContextBuilderTest {
 
 		public final List<TestApplicationContextControl> appCtrl = new LinkedList<>();
 
-        public TestApplicationContextBuilder(ApplicationContextConfiguration applicationContextConfiguration) {
-			super(applicationContextConfiguration);
+        public TestApplicationContextBuilder(ExecutionContextCacheConfiguration executionContextCacheConfiguration) {
+			super(executionContextCacheConfiguration);
         }
 
         @Override

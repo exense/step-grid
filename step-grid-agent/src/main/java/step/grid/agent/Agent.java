@@ -35,7 +35,6 @@ import step.grid.app.configuration.ConfigurationParser;
 import step.grid.app.server.BaseServer;
 import step.grid.bootstrap.BootstrapManager;
 import step.grid.contextbuilder.ApplicationContextBuilder;
-import step.grid.contextbuilder.ApplicationContextConfiguration;
 import step.grid.filemanager.FileManagerClient;
 import step.grid.filemanager.FileManagerClientImpl;
 import step.grid.filemanager.FileManagerConfiguration;
@@ -135,9 +134,7 @@ public class Agent extends BaseServer implements AutoCloseable {
 		agentTokenServices = new AgentTokenServices(fileManagerClient);
 		agentTokenServices.setAgentProperties(agentConf.getProperties());
 		//Create and set the application context builder used by agentTokenServices
-		ApplicationContextConfiguration applicationContextConfiguration = Objects.requireNonNullElse(agentConf.getApplicationContextConfiguration(),
-				new ApplicationContextConfiguration(agentConf.getFileManagerConfiguration()));
-		applicationContextBuilder = new ApplicationContextBuilder(applicationContextConfiguration);
+		applicationContextBuilder = new ApplicationContextBuilder(agentConf.getExecutionContextCacheConfiguration());
 		agentTokenServices.setApplicationContextBuilder(applicationContextBuilder);
 
 		bootstrapManager = new BootstrapManager(agentTokenServices, true);
