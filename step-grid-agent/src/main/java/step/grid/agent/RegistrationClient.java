@@ -118,7 +118,7 @@ public class RegistrationClient implements FileVersionProvider {
 				throw new RuntimeException("Unexpected server error: "+error);
 			} else {
 				InputStream in = (InputStream) response.getEntity();
-				boolean isDirectory = response.getHeaderString("content-disposition").contains("dir");
+				boolean isDirectory = response.getHeaderString("content-disposition").contains("type = dir");
 				Matcher m = Pattern.compile(".*filename = (.+?);.*").matcher(response.getHeaderString("content-disposition"));
 				if(m.find()) {
 					String filename = m.group(1);
