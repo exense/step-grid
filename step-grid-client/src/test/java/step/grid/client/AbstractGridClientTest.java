@@ -59,22 +59,45 @@ public abstract class AbstractGridClientTest extends AbstractGridTest {
 
 	protected void testFileRegistration() throws AgentCommunicationException, FileManagerException, Exception {
 		getClient(0,10000,10000);
-		
+
 		TokenWrapper token = selectToken();
 
 		File testFile = ResourceExtractor.extractResource(this.getClass().getClassLoader(), "TestFile.txt");
 
 		// Register a single file
 		FileVersionId fileHandle = client.registerFile(testFile, true).getVersionId();
-		
+
 		JsonNode node = new ObjectMapper().createObjectNode().put("file", fileHandle.getFileId()).put("fileVersion", fileHandle.getVersion());
-		
+
 		// Call a simple test message handler that reads the content of the transfered file and returns it
 		OutputMessage output = client.call(token.getID(), node, TestMessageHandler.class.getName(), null, new HashMap<>(), 100000);
-		
+
 		// Assert the content of the file matches
 		assertEquals("TEST", output.getPayload().get("content").asText());
-		
+
+		// Return the token
+		client.returnTokenHandle(token.getID());
+	}
+
+	// SED-3956
+	protected void testFileRegistration2() throws AgentCommunicationException, FileManagerException, Exception {
+		getClient(0,10000,10000);
+
+		TokenWrapper token = selectToken();
+
+		File testFile = ResourceExtractor.extractResource(this.getClass().getClassLoader(), "not-a-directory-but-a-file.txt");
+
+		// Register a single file
+		FileVersionId fileHandle = client.registerFile(testFile, true).getVersionId();
+
+		JsonNode node = new ObjectMapper().createObjectNode().put("file", fileHandle.getFileId()).put("fileVersion", fileHandle.getVersion());
+
+		// Call a simple test message handler that reads the content of the transfered file and returns it
+		OutputMessage output = client.call(token.getID(), node, TestMessageHandler.class.getName(), null, new HashMap<>(), 100000);
+
+		// Assert the content of the file matches
+		assertEquals("TEST", output.getPayload().get("content").asText());
+
 		// Return the token
 		client.returnTokenHandle(token.getID());
 	}

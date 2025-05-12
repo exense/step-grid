@@ -31,7 +31,12 @@ public class RemoteGridClientTest extends AbstractGridClientTest {
 	public void testFileRegistration() throws Exception {
 		super.testFileRegistration();
 	}
-	
+
+	@Test
+	public void testFileRegistration2() throws Exception {
+		super.testFileRegistration2();
+	}
+
 
 	/**
 	 * Test the E2E FileManager process for a directory
