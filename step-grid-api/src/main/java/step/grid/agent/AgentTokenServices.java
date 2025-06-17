@@ -19,6 +19,7 @@
 package step.grid.agent;
 
 import java.util.Map;
+import java.util.Optional;
 
 import step.grid.contextbuilder.ApplicationContextBuilder;
 import step.grid.filemanager.FileManagerClient;
@@ -61,6 +62,6 @@ public class AgentTokenServices {
 	}
 
 	public StreamableAttachmentsHandlerFactory getStreamableAttachmentsHandlerFactory() {
-		return streamableAttachmentsContext.getHandlerFactory();
+		return Optional.ofNullable(streamableAttachmentsContext).map(StreamableAttachmentsContext::getHandlerFactory).orElse(null);
 	}
 }

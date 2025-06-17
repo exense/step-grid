@@ -139,7 +139,11 @@ public class Agent extends BaseServer implements AutoCloseable {
 
 		fileManagerClient = initFileManager(registrationClient, agentConf.getWorkingDir(), agentConf.getFileManagerConfiguration());
 
-		StreamableResourcesUploadClientFactory uploadFactory = new StreamableResourcesWebsocketUploadClient.Factory(URI.create(agentConf.getStreamUploadEndpoint()));
+		StreamableResourcesUploadClientFactory uploadFactory = null;
+		String uploadEndpoint = agentConf.getStreamUploadEndpoint();
+		if (uploadEndpoint != null) {
+			uploadFactory = new StreamableResourcesWebsocketUploadClient.Factory(URI.create(uploadEndpoint));
+		}
 		streamableAttachmentsContext = new StreamableAttachmentsContext(uploadFactory);
 
 		agentTokenServices = new AgentTokenServices(fileManagerClient, streamableAttachmentsContext);
