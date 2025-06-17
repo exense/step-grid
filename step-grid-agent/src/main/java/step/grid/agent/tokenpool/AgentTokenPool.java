@@ -81,6 +81,7 @@ public class AgentTokenPool {
 			}
 			
 			TokenReservationSession tokenReservationContext = new TokenReservationSession();
+			tokenReservationContext.put(TokenReservationSession.TOKENID_KEY, tokenId);
 			token.setTokenReservationSession(tokenReservationContext);
 		} else {
 			throw new InvalidTokenIdException();

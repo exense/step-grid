@@ -26,6 +26,8 @@ import java.util.*;
 
 public class TokenReservationSession extends AbstractSession {
 
+    public static final String TOKENID_KEY = "$tokenid";
+
     private static final Logger logger = LoggerFactory.getLogger(TokenReservationSession.class);
 
     private List<TokenEventListener> eventListeners = new ArrayList<>();
