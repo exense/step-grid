@@ -25,6 +25,28 @@
             <groupId>org.eclipse.jetty</groupId>
             <artifactId>jetty-webapp</artifactId>
         </dependency>
+        <!-- FIXME: move version declarations to exense-dependencies, update to 11.0.25 -->
+        <!-- Jetty WebSocket Server -->
+        <dependency>
+            <groupId>org.eclipse.jetty.websocket</groupId>
+            <artifactId>websocket-jetty-server</artifactId>
+            <version>11.0.21</version>
+        </dependency>
+
+        <!-- Jetty WebSocket Core -->
+        <dependency>
+            <groupId>org.eclipse.jetty.websocket</groupId>
+            <artifactId>websocket-core-server</artifactId>
+            <version>11.0.21</version>
+        </dependency>
+
+        <!-- Jetty WebSocket Jakarta support -->
+        <dependency>
+            <groupId>org.eclipse.jetty.websocket</groupId>
+            <artifactId>websocket-jakarta-server</artifactId>
+            <version>11.0.21</version>
+        </dependency>
+
         <dependency>
             <groupId>org.glassfish.jersey.containers</groupId>
             <artifactId>jersey-container-servlet-core</artifactId>

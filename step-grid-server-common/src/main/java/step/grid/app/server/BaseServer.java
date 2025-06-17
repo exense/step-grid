@@ -20,11 +20,13 @@ package step.grid.app.server;
 
 import io.prometheus.client.hotspot.DefaultExports;
 import io.prometheus.client.servlet.jakarta.exporter.MetricsServlet;
+import jakarta.websocket.server.ServerEndpointConfig;
 import org.eclipse.jetty.server.*;
 import org.eclipse.jetty.server.handler.ContextHandlerCollection;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.eclipse.jetty.util.ssl.SslContextFactory;
+import org.eclipse.jetty.websocket.jakarta.server.config.JakartaWebSocketServletContainerInitializer;
 import org.glassfish.jersey.jackson.JacksonFeature;
 import org.glassfish.jersey.jackson.internal.jackson.jaxrs.json.JacksonJsonProvider;
 import org.glassfish.jersey.server.ResourceConfig;
@@ -37,11 +39,12 @@ import java.net.Inet4Address;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.UnknownHostException;
+import java.util.List;
 
 public class BaseServer {
 
     private static final Logger logger = LoggerFactory.getLogger(BaseServer.class);
-    protected Server startServer(AppConfiguration appConfiguration, int port, ResourceConfig resourceConfig) throws Exception {
+    protected Server startServer(AppConfiguration appConfiguration, int port, ResourceConfig resourceConfig, List<ServerEndpointConfig> websocketEndpointConfigs) throws Exception {
         resourceConfig.register(JacksonJsonProvider.class);
         resourceConfig.register(JacksonFeature.class);
 
@@ -50,6 +53,13 @@ public class BaseServer {
         ServletContextHandler context = new ServletContextHandler(ServletContextHandler.SESSIONS);
         context.setContextPath("/");
         context.addServlet(sh, "/*");
+
+        JakartaWebSocketServletContainerInitializer.configure(context, (servletContext, container) -> {
+            for (ServerEndpointConfig endpointConfig : websocketEndpointConfigs) {
+                logger.info("Registering websocket endpoint:" + endpointConfig);
+                container.addEndpoint(endpointConfig);
+            }
+        });
 
         Server server = new Server();
 

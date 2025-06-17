@@ -45,6 +45,7 @@ import step.grid.proxy.services.GridProxyServices;
 import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class GridProxy extends BaseServer implements AutoCloseable {
@@ -112,7 +113,7 @@ public class GridProxy extends BaseServer implements AutoCloseable {
             }
         });
 
-        server = this.startServer(gridProxyConfiguration, serverPort, resourceConfig);
+        server = this.startServer(gridProxyConfiguration, serverPort, resourceConfig, List.of());
 
         int actualServerPort = this.getActualServerPort(server);
         logger.info("Successfully started grid proxy on port " + actualServerPort);

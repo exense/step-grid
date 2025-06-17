@@ -32,9 +32,13 @@ import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.servlet.ServletContainer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import step.grid.agent.JsonMessageCodec;
 import step.grid.agent.RegistrationMessage;
+import step.grid.agent.events.AgentEventMessage;
+import step.grid.agent.events.GridAgentEventsBroker;
 import step.grid.filemanager.*;
 import step.grid.filemanager.FileManagerImplConfig;
+import step.grid.io.stream.JsonMessage;
 import step.grid.tokenpool.*;
 import step.grid.tokenpool.affinityevaluator.TokenPoolAware;
 import step.grid.tokenpool.affinityevaluator.TokenWrapperAffinityEvaluatorImpl;
@@ -45,6 +49,7 @@ import java.io.InputStream;
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Consumer;
 
 public class GridImpl implements Grid {
 
@@ -67,6 +72,8 @@ public class GridImpl implements Grid {
 	private final List<RegistrationCallback<AgentRef>> agentRegistrationCallbacks = new CopyOnWriteArrayList<>();
 
 	private boolean acceptRegistrationMessages = false;
+
+	private final GridAgentEventsBroker gridAgentEventsBroker = new GridAgentEventsBroker();
 	
 	public GridImpl(Integer port) throws IOException {
 		this(FileHelper.createTempFolder("filemanager"), port);
@@ -84,8 +91,18 @@ public class GridImpl implements Grid {
 		this.fileManager = new FileManagerImpl(fileManagerFolder, config);
 		this.gridConfig = gridConfig;
 		this.acceptRegistrationMessages = !gridConfig.deferAcceptingRegistrationMessages;
+		// required for proper event (de)serialization
+		JsonMessage.setCodecIfRequired(JsonMessageCodec::new);
+    }
+
+	public void registerAgentEventCallback(String tokenId, Consumer<AgentEventMessage> callback) {
+		gridAgentEventsBroker.registerCallback(tokenId, callback);
 	}
-	
+
+	public void unregisterAgentEventCallback(String tokenId, Consumer<AgentEventMessage> callback) {
+		gridAgentEventsBroker.unregisterCallback(tokenId, callback);
+	}
+
 	public static class GridImplConfig {
 
 		int ttl = 60000;
@@ -173,6 +190,7 @@ public class GridImpl implements Grid {
 	}
 
 	public void stop() throws Exception {
+		gridAgentEventsBroker.close();
 		server.stop();
 		agentRefs.close();
 		tokenPool.close();
@@ -196,6 +214,7 @@ public class GridImpl implements Grid {
 			logger.debug("Unregistering agents with {} callbacks: {}", agentRegistrationCallbacks.size(), expired);
 		}
 		agentRegistrationCallbacks.forEach(callback -> callback.afterUnregistering(expired));
+		gridAgentEventsBroker.unregisterAgents(expired);
 	}
 
 	private void initializeTokenPool() throws Exception {
@@ -276,6 +295,7 @@ public class GridImpl implements Grid {
 		}
 		if (allowed) {
 			agentRefs.putOrTouch(agentRef.getAgentId(), agentRef);
+			gridAgentEventsBroker.registerAgent(agentRef);
 			for (Token token : message.getTokens()) {
 				tokenPool.offerToken(new TokenWrapper(token, agentRef));
 			}

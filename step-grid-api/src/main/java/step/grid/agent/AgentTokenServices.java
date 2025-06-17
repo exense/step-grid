@@ -22,19 +22,22 @@ import java.util.Map;
 
 import step.grid.contextbuilder.ApplicationContextBuilder;
 import step.grid.filemanager.FileManagerClient;
+import step.grid.io.stream.StreamableAttachmentsContext;
+import step.grid.io.stream.StreamableAttachmentsHandlerFactory;
 
 public class AgentTokenServices {
 	
-	FileManagerClient fileManagerClient;
+	final FileManagerClient fileManagerClient;
+	private final StreamableAttachmentsContext streamableAttachmentsContext;
 		
 	Map<String,String> agentProperties;
 	
 	ApplicationContextBuilder applicationContextBuilder;
 	
-	public AgentTokenServices(FileManagerClient fileManagerClient) {
+	public AgentTokenServices(FileManagerClient fileManagerClient, StreamableAttachmentsContext streamableAttachmentsContext) {
 		super();
-		
 		this.fileManagerClient = fileManagerClient;
+		this.streamableAttachmentsContext = streamableAttachmentsContext;
 	}
 
 	public FileManagerClient getFileManagerClient() {
@@ -55,5 +58,9 @@ public class AgentTokenServices {
 
 	public void setApplicationContextBuilder(ApplicationContextBuilder applicationContextBuilder) {
 		this.applicationContextBuilder = applicationContextBuilder;
+	}
+
+	public StreamableAttachmentsHandlerFactory getStreamableAttachmentsHandlerFactory() {
+		return streamableAttachmentsContext.getHandlerFactory();
 	}
 }

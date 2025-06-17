@@ -192,8 +192,9 @@ public abstract class AbstractGridClientImpl implements GridClient {
 
 			}
 		};
-		
-		localAgentTokenServices = new AgentTokenServices(fileManagerClient);
+
+		// FIXME: provide streamableAttachmentsContext
+		localAgentTokenServices = new AgentTokenServices(fileManagerClient, null);
 		applicationContextBuilder = new ApplicationContextBuilder(gridClientConfiguration.getLocalTokenExecutionContextCacheConfiguration());
 		localAgentTokenServices.setApplicationContextBuilder(applicationContextBuilder);
 	}

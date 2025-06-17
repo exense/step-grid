@@ -20,6 +20,7 @@ package step.grid.agent;
 
 import ch.exense.commons.app.ArgumentParser;
 
+import jakarta.websocket.server.ServerEndpointConfig;
 import org.eclipse.jetty.server.*;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
 import org.glassfish.jersey.server.ResourceConfig;
@@ -29,6 +30,7 @@ import step.grid.Token;
 import step.grid.agent.conf.AgentConf;
 import step.grid.agent.conf.TokenConf;
 import step.grid.agent.conf.TokenGroupConf;
+import step.grid.agent.events.AgentEventsWebsocketServerEndpoint;
 import step.grid.agent.tokenpool.AgentTokenPool;
 import step.grid.agent.tokenpool.AgentTokenWrapper;
 import step.grid.app.configuration.ConfigurationParser;
@@ -38,10 +40,15 @@ import step.grid.contextbuilder.ApplicationContextBuilder;
 import step.grid.filemanager.FileManagerClient;
 import step.grid.filemanager.FileManagerClientImpl;
 import step.grid.filemanager.FileManagerConfiguration;
+import step.grid.io.WebsocketServerEndpointSessionsHandler;
+import step.grid.io.stream.JsonMessage;
+import step.grid.io.stream.StreamableAttachmentsContext;
+import step.grid.io.stream.StreamableResourcesUploadClientFactory;
+import step.grid.io.stream.upload.StreamableResourcesWebsocketUploadClient;
 import step.grid.tokenpool.Interest;
 
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
+import java.net.URI;
 import java.nio.file.Files;
 import java.util.*;
 import java.util.Map.Entry;
@@ -62,6 +69,7 @@ public class Agent extends BaseServer implements AutoCloseable {
 	private final Timer timer;
 	private final RegistrationTask registrationTask;
 	private final AgentTokenServices agentTokenServices;
+	private final StreamableAttachmentsContext streamableAttachmentsContext;
 	
 	private final String agentUrl;
 	private final long gracefulShutdownTimeout;
@@ -131,7 +139,10 @@ public class Agent extends BaseServer implements AutoCloseable {
 
 		fileManagerClient = initFileManager(registrationClient, agentConf.getWorkingDir(), agentConf.getFileManagerConfiguration());
 
-		agentTokenServices = new AgentTokenServices(fileManagerClient);
+		StreamableResourcesUploadClientFactory uploadFactory = new StreamableResourcesWebsocketUploadClient.Factory(URI.create(agentConf.getStreamUploadEndpoint()));
+		streamableAttachmentsContext = new StreamableAttachmentsContext(uploadFactory);
+
+		agentTokenServices = new AgentTokenServices(fileManagerClient, streamableAttachmentsContext);
 		agentTokenServices.setAgentProperties(agentConf.getProperties());
 		//Create and set the application context builder used by agentTokenServices
 		applicationContextBuilder = new ApplicationContextBuilder(agentConf.getExecutionContextCacheConfiguration());
@@ -200,7 +211,12 @@ public class Agent extends BaseServer implements AutoCloseable {
 			}
 		});
 
-		return this.startServer(agentConf, port, resourceConfig);
+		// Initialize Websockets message codec, provide Agent events websocket endpoint
+		JsonMessage.setCodecIfRequired(JsonMessageCodec::new);
+		List<ServerEndpointConfig> websocketEndpoints = new ArrayList<>();
+		websocketEndpoints.add(AgentEventsWebsocketServerEndpoint.getEndpointConfig(streamableAttachmentsContext));
+
+		return this.startServer(agentConf, port, resourceConfig, websocketEndpoints);
 	}
 
 	private void validateConfiguration(AgentConf agentConf) {
@@ -302,6 +318,9 @@ public class Agent extends BaseServer implements AutoCloseable {
 	public synchronized void preStop() throws Exception {
 		if(!stopped) {
 			logger.info("Shutting down...");
+
+			// Stop all websocket sessions
+			WebsocketServerEndpointSessionsHandler.shutdown();
 
 			// Stopping registration task
 			if (timer != null) {

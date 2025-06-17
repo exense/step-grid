@@ -29,6 +29,8 @@ public class AgentConf extends AppConfiguration {
 	
 	String gridHost;
 
+	String streamUploadEndpoint;
+
 	String fileServerHost;
 	
 	Integer agentPort;
@@ -85,6 +87,14 @@ public class AgentConf extends AppConfiguration {
 		this.gridHost = gridHost.endsWith("/") ?
 				gridHost.substring(0,gridHost.length()-1) :
 				gridHost;
+	}
+
+	public String getStreamUploadEndpoint() {
+		return streamUploadEndpoint;
+	}
+
+	public void setStreamUploadEndpoint(String streamUploadEndpoint) {
+		this.streamUploadEndpoint = streamUploadEndpoint;
 	}
 
 	public String getFileServerHost() {
