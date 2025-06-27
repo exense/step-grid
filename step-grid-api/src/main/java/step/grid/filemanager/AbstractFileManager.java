@@ -24,11 +24,7 @@ import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.FilenameFilter;
 import java.io.IOException;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Properties;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -40,6 +36,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import ch.exense.commons.io.FileHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import step.grid.threads.NamedThreadFactory;
 
 public class AbstractFileManager {
 
@@ -302,7 +299,8 @@ public class AbstractFileManager {
 		if (fileManagerConfiguration.isEnableCleanup()) {
 			long cleanupIntervalMinutes = fileManagerConfiguration.getCleanupFrequencyMinutes();
 			logger.info("Scheduling file manager cleanup with a TTL of {} minutes and a frequency of {} minutes", fileManagerConfiguration.getCleanupTimeToLiveMinutes(), cleanupIntervalMinutes);
-			scheduledPool = Executors.newScheduledThreadPool(1);
+			NamedThreadFactory factory = new NamedThreadFactory("file-manager-cleanup-pool-" + UUID.randomUUID());
+			scheduledPool = Executors.newScheduledThreadPool(1, factory);
 			future = scheduledPool.scheduleAtFixedRate(() -> {
 				Thread.currentThread().setName("FileManagerCleanupThread");
 				try {

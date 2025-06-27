@@ -21,6 +21,7 @@ package step.grid.contextbuilder;
 import java.net.URLClassLoader;
 import java.util.Arrays;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
@@ -29,6 +30,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import step.grid.filemanager.FileManagerException;
+import step.grid.threads.NamedThreadFactory;
 
 /**
  * This class provides an API for the creation of hierarchical classloaders.
@@ -137,7 +139,7 @@ public class ApplicationContextBuilder implements AutoCloseable {
 
 		private Map<String, ApplicationContext> childContexts = new ConcurrentHashMap<>();
 
-		private ConcurrentHashMap<String, Object> contextObjects = new ConcurrentHashMap<>();
+		private ConcurrentHashMap<String, ContextObjectWrapper> contextObjects = new ConcurrentHashMap<>();
 		protected final boolean cleanable;
 
 		protected ApplicationContext(ApplicationContextFactory descriptor, ApplicationContext parentContext, String applicationContextId, boolean cleanable) throws FileManagerException {
@@ -159,15 +161,28 @@ public class ApplicationContextBuilder implements AutoCloseable {
 		}
 
 		public Object get(Object key) {
-			return contextObjects.get(key);
+			ContextObjectWrapper contextObjectWrapper = contextObjects.get(key);
+			if(contextObjectWrapper != null) {
+				return contextObjectWrapper.object;
+			} else {
+				return null;
+			}
 		}
 
 		public Object computeIfAbsent(String key, Function<? super String, Object> mappingFunction) {
-			return contextObjects.computeIfAbsent(key, mappingFunction);
+			return contextObjects.computeIfAbsent(key, k -> new ContextObjectWrapper(mappingFunction.apply(k), false)).object;
+		}
+
+		public Object computeObjectToBeClosedWithContextIfAbsent(String key, Function<? super String, AutoCloseable> mappingFunction) {
+			return contextObjects.computeIfAbsent(key, k -> new ContextObjectWrapper(mappingFunction.apply(k), true)).object;
 		}
 
 		public Object put(String key, Object value) {
-			return contextObjects.put(key, value);
+			return contextObjects.put(key, new ContextObjectWrapper(value, false)).object;
+		}
+
+		public Object putObjectToBeClosedWithContext(String key, AutoCloseable value) {
+			return contextObjects.put(key, new ContextObjectWrapper(value, true)).object;
 		}
 
 		public ClassLoader getClassLoader() {
@@ -244,20 +259,22 @@ public class ApplicationContextBuilder implements AutoCloseable {
 				logger.debug("Loading classloader for {} in application context builder {}", descriptor.getId(), this);
 			}
 			this.classLoader = classLoader;
+			closeContextObjects();
 			contextObjects.clear();
 		}
 
 		public boolean _close() {
+			boolean result;
 			if (logger.isDebugEnabled()) {
 				logger.debug("Starting cleanup of application context {}", applicationContextId);
 			}
 			int currentUsage = usage.get();
 			if (currentUsage != 0) {
 				logger.error("Cleanup requested while the application context {} is still in use, usage count: {}", applicationContextId, currentUsage);
-				return false;
+				result = false;
 			} else if (!childContexts.isEmpty()) {
 				logger.error("Cleanup requested while the application context still has child context still in use, usage count: {}, child contexts: {}", currentUsage, childContexts);
-				return false;
+				result = false;
 			} else if (descriptor != null) {
 				if (logger.isDebugEnabled()) {
 					logger.debug("closing classloader {} for app context {}", classLoader, applicationContextId);
@@ -267,13 +284,24 @@ public class ApplicationContextBuilder implements AutoCloseable {
 					logger.debug("Notifying application context factory");
 				}
 				descriptor.onClassLoaderClosed();
-				return true;
+				result = true;
 			} else {
 				if (logger.isDebugEnabled()) {
 					logger.debug("Cleanup requested for the application context {}. Classloader was provided to the context by its creator, nothing to do.", applicationContextId);
 				}
-				return true;
+				result = true;
 			}
+			if (result) {
+				closeContextObjects();
+			}
+			return result;
+		}
+
+		private void closeContextObjects() {
+			if (logger.isDebugEnabled()) {
+				logger.debug("Closing application context objects...");
+			}
+			contextObjects.values().forEach(ContextObjectWrapper::close);
 		}
 
 		public boolean close() {
@@ -316,6 +344,28 @@ public class ApplicationContextBuilder implements AutoCloseable {
 					((AutoCloseable) classLoader).close();
 				} catch (Exception e) {
 					logger.error("Application context class loader found could not be closed for context {}", this, e);
+				}
+			}
+		}
+
+		private class ContextObjectWrapper implements AutoCloseable {
+
+			private final Object object;
+			private final boolean closeWithContext;
+
+			public ContextObjectWrapper(Object object, boolean closeWithContext) {
+				this.object = object;
+				this.closeWithContext = closeWithContext;
+			}
+
+			@Override
+			public void close() {
+				if(closeWithContext && object instanceof AutoCloseable) {
+					try {
+						((AutoCloseable) object).close();
+					} catch (Exception e) {
+						logger.error("Error while closing context object", e);
+					}
 				}
 			}
 		}
@@ -538,7 +588,8 @@ public class ApplicationContextBuilder implements AutoCloseable {
 		if (executionContextCacheConfiguration.isEnableCleanup()) {
 			long cleanupIntervalMinutes = executionContextCacheConfiguration.getCleanupFrequencyMinutes();
 			logger.info("Scheduling execution context cache cleanup with a TTL of {} minutes and a frequency of {} minutes", executionContextCacheConfiguration.getCleanupTimeToLiveMinutes(), cleanupIntervalMinutes);
-			scheduledPool = Executors.newScheduledThreadPool(1);
+			NamedThreadFactory factory = new NamedThreadFactory("application-context-builder-cleanup-pool-" + UUID.randomUUID());
+			scheduledPool = Executors.newScheduledThreadPool(1, factory);
 			future = scheduledPool.scheduleAtFixedRate(() -> {
 				try {
 					if (logger.isDebugEnabled()) {
