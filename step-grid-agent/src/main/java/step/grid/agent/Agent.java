@@ -19,8 +19,7 @@
 package step.grid.agent;
 
 import ch.exense.commons.app.ArgumentParser;
-
-import org.eclipse.jetty.server.*;
+import org.eclipse.jetty.server.Server;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.slf4j.Logger;
@@ -38,6 +37,7 @@ import step.grid.contextbuilder.ApplicationContextBuilder;
 import step.grid.filemanager.FileManagerClient;
 import step.grid.filemanager.FileManagerClientImpl;
 import step.grid.filemanager.FileManagerConfiguration;
+import step.grid.threads.NamedThreadFactory;
 import step.grid.tokenpool.Interest;
 
 import java.io.File;
@@ -45,6 +45,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.*;
 import java.util.Map.Entry;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
 
@@ -69,6 +71,7 @@ public class Agent extends BaseServer implements AutoCloseable {
 	private final FileManagerClient fileManagerClient;
 	private final ApplicationContextBuilder applicationContextBuilder;
 	private final BootstrapManager bootstrapManager;
+	private final ExecutorService executor;
 	private volatile boolean stopped = false;
 	private volatile boolean registered = false;
 
@@ -140,6 +143,14 @@ public class Agent extends BaseServer implements AutoCloseable {
 		bootstrapManager = new BootstrapManager(agentTokenServices, true);
 
 		buildTokenList(agentConf);
+
+		if (agentConf.isExposeAgentControlServices()) {
+			AgentControlServicesImpl agentControlServices = new AgentControlServicesImpl(this);
+			tokenPool.getTokens().forEach(t -> t.getSession().put(AgentControlServices.class.getName(), agentControlServices));
+		}
+
+		logger.info("Starting token executor...");
+		executor = Executors.newCachedThreadPool(NamedThreadFactory.create("agent-token-executor"));
 
 		int serverPort = this.resolveServerPort(agentUrl, agentPort);
 
@@ -332,6 +343,11 @@ public class Agent extends BaseServer implements AutoCloseable {
 			if (fileManagerClient != null) {
 				fileManagerClient.close();
 			}
+
+			if (executor != null) {
+				logger.info("Shutting down token executor...");
+				executor.shutdownNow();
+			}
 		}
 	}
 
@@ -372,5 +388,9 @@ public class Agent extends BaseServer implements AutoCloseable {
 
 	public BootstrapManager getBootstrapManager() {
 		return bootstrapManager;
+	}
+
+	public ExecutorService getTokenExecutor() {
+		return executor;
 	}
 }

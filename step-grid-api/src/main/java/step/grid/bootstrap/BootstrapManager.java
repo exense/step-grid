@@ -59,7 +59,7 @@ public class BootstrapManager {
 			@Override
 			public OutputMessage call() throws Exception {
 				ApplicationContextBuilder.ApplicationContext currentContext = contextBuilder.getCurrentContext();
-				MessageHandlerPool handlerPool = (MessageHandlerPool) currentContext.computeIfAbsent("handlerPool",
+				MessageHandlerPool handlerPool = (MessageHandlerPool) currentContext.computeObjectToBeClosedWithContextIfAbsent("handlerPool",
 						k -> new MessageHandlerPool(agentTokenServices));
 				MessageHandler handler = handlerPool.get(handlerClass);
 				return handler.handle(token, message);

@@ -52,6 +52,8 @@ public class AgentConf extends AppConfiguration {
 
 	ExecutionContextCacheConfiguration executionContextCacheConfiguration = new ExecutionContextCacheConfiguration();
 
+	boolean exposeAgentControlServices = false;
+
 	public AgentConf() {
 		super();
 	}
@@ -181,5 +183,13 @@ public class AgentConf extends AppConfiguration {
 
 	public void setExecutionContextCacheConfiguration(ExecutionContextCacheConfiguration executionContextCacheConfiguration) {
 		this.executionContextCacheConfiguration = executionContextCacheConfiguration;
+	}
+
+	public boolean isExposeAgentControlServices() {
+		return exposeAgentControlServices;
+	}
+
+	public void setExposeAgentControlServices(boolean exposeAgentControlServices) {
+		this.exposeAgentControlServices = exposeAgentControlServices;
 	}
 }

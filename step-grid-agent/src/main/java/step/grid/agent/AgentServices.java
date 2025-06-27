@@ -65,21 +65,21 @@ public class AgentServices extends AbstractGridServices {
 	@Inject
 	Agent agent;
 
-	final ExecutorService executor;
+	ExecutorService executor;
 
 	AgentTokenPool tokenPool;
 
 	BootstrapManager bootstrapManager;
 
 	public AgentServices() {
-		super();	
-		executor = Executors.newCachedThreadPool();
+		super();
 	}
 
 	@PostConstruct
 	public void init() {
 		tokenPool = agent.getTokenPool();
 		bootstrapManager = agent.getBootstrapManager();
+		executor = agent.getTokenExecutor();
 	}
 
 	class ExecutionContext {
