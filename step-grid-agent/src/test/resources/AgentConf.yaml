@@ -26,3 +26,4 @@ tokenGroups:
 # A list of properties
 properties:
   prop1 : value 1
+exposeAgentControlServices: true

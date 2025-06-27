@@ -144,6 +144,11 @@ public class Agent extends BaseServer implements AutoCloseable {
 
 		buildTokenList(agentConf);
 
+		if (agentConf.isExposeAgentControlServices()) {
+			AgentControlServicesImpl agentControlServices = new AgentControlServicesImpl(this);
+			tokenPool.getTokens().forEach(t -> t.getSession().put(AgentControlServices.class.getName(), agentControlServices));
+		}
+
 		logger.info("Starting token executor...");
 		NamedThreadFactory factory = new NamedThreadFactory("agent-token-executor");
 		executor = Executors.newCachedThreadPool(factory);
