@@ -18,19 +18,17 @@
  ******************************************************************************/
 package step.grid.contextbuilder;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import step.grid.filemanager.FileManagerException;
+import step.grid.threads.NamedThreadFactory;
+
 import java.net.URLClassLoader;
 import java.util.Arrays;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import step.grid.filemanager.FileManagerException;
-import step.grid.threads.NamedThreadFactory;
 
 /**
  * This class provides an API for the creation of hierarchical classloaders.
