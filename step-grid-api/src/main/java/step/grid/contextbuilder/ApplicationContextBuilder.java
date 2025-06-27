@@ -590,8 +590,7 @@ public class ApplicationContextBuilder implements AutoCloseable {
 		if (executionContextCacheConfiguration.isEnableCleanup()) {
 			long cleanupIntervalMinutes = executionContextCacheConfiguration.getCleanupFrequencyMinutes();
 			logger.info("Scheduling execution context cache cleanup with a TTL of {} minutes and a frequency of {} minutes", executionContextCacheConfiguration.getCleanupTimeToLiveMinutes(), cleanupIntervalMinutes);
-			NamedThreadFactory factory = new NamedThreadFactory("application-context-builder-cleanup-pool-" + UUID.randomUUID());
-			scheduledPool = Executors.newScheduledThreadPool(1, factory);
+			scheduledPool = Executors.newScheduledThreadPool(1, NamedThreadFactory.create("application-context-builder-cleanup-pool"));
 			future = scheduledPool.scheduleAtFixedRate(() -> {
 				try {
 					if (logger.isDebugEnabled()) {

@@ -150,8 +150,7 @@ public class Agent extends BaseServer implements AutoCloseable {
 		}
 
 		logger.info("Starting token executor...");
-		NamedThreadFactory factory = new NamedThreadFactory("agent-token-executor");
-		executor = Executors.newCachedThreadPool(factory);
+		executor = Executors.newCachedThreadPool(NamedThreadFactory.create("agent-token-executor"));
 
 		int serverPort = this.resolveServerPort(agentUrl, agentPort);
 
@@ -345,8 +344,10 @@ public class Agent extends BaseServer implements AutoCloseable {
 				fileManagerClient.close();
 			}
 
-			logger.info("Shutting down token executor...");
-			executor.shutdownNow();
+			if (executor != null) {
+				logger.info("Shutting down token executor...");
+				executor.shutdownNow();
+			}
 		}
 	}
 

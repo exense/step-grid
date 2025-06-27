@@ -299,8 +299,7 @@ public class AbstractFileManager {
 		if (fileManagerConfiguration.isEnableCleanup()) {
 			long cleanupIntervalMinutes = fileManagerConfiguration.getCleanupFrequencyMinutes();
 			logger.info("Scheduling file manager cleanup with a TTL of {} minutes and a frequency of {} minutes", fileManagerConfiguration.getCleanupTimeToLiveMinutes(), cleanupIntervalMinutes);
-			NamedThreadFactory factory = new NamedThreadFactory("file-manager-cleanup-pool-" + UUID.randomUUID());
-			scheduledPool = Executors.newScheduledThreadPool(1, factory);
+			scheduledPool = Executors.newScheduledThreadPool(1, NamedThreadFactory.create("file-manager-cleanup-pool"));
 			future = scheduledPool.scheduleAtFixedRate(() -> {
 				Thread.currentThread().setName("FileManagerCleanupThread");
 				try {
