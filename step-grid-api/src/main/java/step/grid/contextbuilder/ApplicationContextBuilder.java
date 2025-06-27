@@ -178,11 +178,13 @@ public class ApplicationContextBuilder implements AutoCloseable {
 		}
 
 		public Object put(String key, Object value) {
-			return contextObjects.put(key, new ContextObjectWrapper(value, false)).object;
+			ContextObjectWrapper previous = contextObjects.put(key, new ContextObjectWrapper(value, false));
+			return previous != null ? previous.object : null;
 		}
 
 		public Object putObjectToBeClosedWithContext(String key, AutoCloseable value) {
-			return contextObjects.put(key, new ContextObjectWrapper(value, true)).object;
+			ContextObjectWrapper previous = contextObjects.put(key, new ContextObjectWrapper(value, true));
+			return previous != null ? previous.object : null;
 		}
 
 		public ClassLoader getClassLoader() {
