@@ -18,6 +18,7 @@
  ******************************************************************************/
 package step.grid.agent.conf;
 
+import step.grid.agent.isolation.IsolatedExecutionConfiguration;
 import step.grid.app.configuration.AppConfiguration;
 import step.grid.contextbuilder.ExecutionContextCacheConfiguration;
 import step.grid.filemanager.FileManagerConfiguration;
@@ -53,6 +54,7 @@ public class AgentConf extends AppConfiguration {
 	ExecutionContextCacheConfiguration executionContextCacheConfiguration = new ExecutionContextCacheConfiguration();
 
 	boolean exposeAgentControlServices = false;
+	IsolatedExecutionConfiguration isolatedExecutionConfiguration;
 
 	public AgentConf() {
 		super();
@@ -191,5 +193,13 @@ public class AgentConf extends AppConfiguration {
 
 	public void setExposeAgentControlServices(boolean exposeAgentControlServices) {
 		this.exposeAgentControlServices = exposeAgentControlServices;
+	}
+
+	public IsolatedExecutionConfiguration getIsolatedExecutionConfiguration() {
+		return isolatedExecutionConfiguration;
+	}
+
+	public void setIsolatedExecutionConfiguration(IsolatedExecutionConfiguration isolatedExecutionConfiguration) {
+		this.isolatedExecutionConfiguration = isolatedExecutionConfiguration;
 	}
 }

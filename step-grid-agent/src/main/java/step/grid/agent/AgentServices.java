@@ -24,7 +24,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -47,9 +46,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import step.grid.Token;
+import step.grid.agent.isolation.IsolationManager;
 import step.grid.agent.tokenpool.AgentTokenPool;
 import step.grid.agent.tokenpool.AgentTokenPool.InvalidTokenIdException;
 import step.grid.agent.tokenpool.AgentTokenWrapper;
+import step.grid.agent.tokenpool.TokenReservationSession;
+import step.grid.agent.tokenpool.UnusableTokenReservationSession;
 import step.grid.bootstrap.BootstrapManager;
 import step.grid.contextbuilder.ApplicationContextBuilderException;
 import step.grid.filemanager.ControllerCallTimeout;
@@ -61,6 +63,7 @@ import step.grid.io.*;
 public class AgentServices extends AbstractGridServices {
 
 	private static final Logger logger = LoggerFactory.getLogger(AgentServices.class);
+	public static final String ISOLATION_MANAGER_SESSION = "IsolationManagerSession";
 
 	@Inject
 	Agent agent;
@@ -71,6 +74,8 @@ public class AgentServices extends AbstractGridServices {
 
 	BootstrapManager bootstrapManager;
 
+	private IsolationManager isolationManager;
+
 	public AgentServices() {
 		super();
 	}
@@ -80,6 +85,7 @@ public class AgentServices extends AbstractGridServices {
 		tokenPool = agent.getTokenPool();
 		bootstrapManager = agent.getBootstrapManager();
 		executor = agent.getTokenExecutor();
+		isolationManager = agent.getIsolationManager();
 	}
 
 	class ExecutionContext {
@@ -95,54 +101,78 @@ public class AgentServices extends AbstractGridServices {
 		try {
 			final AgentTokenWrapper tokenWrapper = tokenPool.getTokenForExecution(tokenId);
 			if(tokenWrapper!=null) {
-				// Now allowing token reuse
-				//if(!tokenWrapper.isInUse()) {
 				if(tokenWrapper.isInUse())
 					logger.warn("Token with id=" + tokenWrapper.getUid() + " was already in use.");
-				
-				final ExecutionContext context = new ExecutionContext();
+
 				tokenWrapper.setInUse(true);
-				Future<OutputMessage> future = executor.submit(new Callable<OutputMessage>() {
-					@Override
-					public OutputMessage call() throws Exception {
-						try {
-							context.t = Thread.currentThread();
-							agent.getAgentTokenServices().getApplicationContextBuilder().resetContext();
-							return bootstrapManager.runBootstraped(tokenWrapper, message);
-						} catch(ApplicationContextBuilderException e) {
-							return handleContextBuilderError(message, e);
-						} catch (Exception e) {
-							return handleUnexpectedError(message, e);
-						} finally {			
-							tokenWrapper.setInUse(false);
-							tokenPool.afterTokenExecution(tokenId);
+
+				if(isolationManager.isEnabled()) {
+					TokenReservationSession tokenReservationSession = tokenWrapper.getTokenReservationSession();
+					IsolationManager.IsolatedSession isolatedSession = (IsolationManager.IsolatedSession) tokenReservationSession.get(ISOLATION_MANAGER_SESSION);
+					boolean closeIsolatedSessionAfterCall = false;
+					if(isolatedSession == null) {
+						// Create a new isolated session
+						isolatedSession = isolationManager.newSession();
+						if(tokenReservationSession instanceof UnusableTokenReservationSession) {
+							closeIsolatedSessionAfterCall = true;
+						} else {
+							tokenReservationSession.put(ISOLATION_MANAGER_SESSION, isolatedSession);
 						}
 					}
-				});
-
-				try {
-					OutputMessage output = future.get(message.getCallTimeout(), TimeUnit.MILLISECONDS);
-					return output;
-				} catch(TimeoutException e) {
-					List<Attachment> attachments = new ArrayList<>();
-
-					int i=0;
-					boolean interruptionSucceeded = false;
-					while(!interruptionSucceeded && i++<10) {
-						interruptionSucceeded = tryInterruption(tokenWrapper, context, attachments);
+					try {
+						return isolatedSession.executeInIsolation(message);
+					} finally {
+						if(closeIsolatedSessionAfterCall) {
+							isolatedSession.close();
+						}
+						tokenWrapper.setInUse(false);
+						tokenPool.afterTokenExecution(tokenId);
 					}
+				} else {
+					final ExecutionContext context = new ExecutionContext();
 
-					future.cancel(true);
+					Future<OutputMessage> future = executor.submit(new Callable<OutputMessage>() {
+						@Override
+						public OutputMessage call() throws Exception {
+							try {
+								context.t = Thread.currentThread();
+								agent.getAgentTokenServices().getApplicationContextBuilder().resetContext();
+								return bootstrapManager.runBootstraped(tokenWrapper, message);
+							} catch(ApplicationContextBuilderException e) {
+								return handleContextBuilderError(message, e);
+							} catch (Exception e) {
+								return handleUnexpectedError(message, e);
+							} finally {
+								tokenWrapper.setInUse(false);
+								tokenPool.afterTokenExecution(tokenId);
+							}
+						}
+					});
 
-					if(!interruptionSucceeded) {
-						return newAgentErrorOutput(new AgentError(AgentErrorCode.TIMEOUT_REQUEST_NOT_INTERRUPTED), attachments.toArray(new Attachment[0]));		
-					} else {
-						return newAgentErrorOutput(new AgentError(AgentErrorCode.TIMEOUT_REQUEST_INTERRUPTED), attachments.toArray(new Attachment[0]));			
-					}	
+					try {
+						OutputMessage output = future.get(message.getCallTimeout(), TimeUnit.MILLISECONDS);
+						return output;
+					} catch(TimeoutException e) {
+						List<Attachment> attachments = new ArrayList<>();
+
+						int i=0;
+						boolean interruptionSucceeded = false;
+						while(!interruptionSucceeded && i++<10) {
+							interruptionSucceeded = tryInterruption(tokenWrapper, context, attachments);
+						}
+
+						future.cancel(true);
+
+						if(!interruptionSucceeded) {
+							return newAgentErrorOutput(new AgentError(AgentErrorCode.TIMEOUT_REQUEST_NOT_INTERRUPTED), attachments.toArray(new Attachment[0]));
+						} else {
+							return newAgentErrorOutput(new AgentError(AgentErrorCode.TIMEOUT_REQUEST_INTERRUPTED), attachments.toArray(new Attachment[0]));
+						}
+					}
+					//} else {
+					//	return newErrorOutput("Token " + tokenId + " already in use. The reason might be that a previous request timed out and couldn't be interrupted.");
+					//}
 				}
-				//} else {
-				//	return newErrorOutput("Token " + tokenId + " already in use. The reason might be that a previous request timed out and couldn't be interrupted.");					
-				//}
 			} else {
 				return newAgentErrorOutput(new AgentError(AgentErrorCode.TOKEN_NOT_FOUND));
 			}

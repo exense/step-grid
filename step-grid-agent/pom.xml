@@ -20,6 +20,19 @@
 			<artifactId>step-grid-api</artifactId>
 			<version>${project.version}</version>
 		</dependency>
+		<!-- TODO: remove these references and add these libraries dynamically -->
+		<dependency>
+			<groupId>ch.exense.step</groupId>
+			<artifactId>step-grid-server</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>ch.exense.step</groupId>
+			<artifactId>step-grid-client</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>ch.qos.logback</groupId>
+			<artifactId>logback-classic</artifactId>
+		</dependency>
 	</dependencies>
 
 	<build>

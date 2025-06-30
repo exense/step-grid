@@ -28,6 +28,7 @@ import step.grid.Token;
 import step.grid.agent.conf.AgentConf;
 import step.grid.agent.conf.TokenConf;
 import step.grid.agent.conf.TokenGroupConf;
+import step.grid.agent.isolation.IsolationManager;
 import step.grid.agent.tokenpool.AgentTokenPool;
 import step.grid.agent.tokenpool.AgentTokenWrapper;
 import step.grid.app.configuration.ConfigurationParser;
@@ -72,6 +73,7 @@ public class Agent extends BaseServer implements AutoCloseable {
 	private final ApplicationContextBuilder applicationContextBuilder;
 	private final BootstrapManager bootstrapManager;
 	private final ExecutorService executor;
+	private final IsolationManager isolationManager;
 	private volatile boolean stopped = false;
 	private volatile boolean registered = false;
 
@@ -165,6 +167,8 @@ public class Agent extends BaseServer implements AutoCloseable {
 		logger.info("Starting grid registration task using grid URL " + gridUrl + "...");
 		registrationTask = createGridRegistrationTask(registrationClient);
 		timer = createGridRegistrationTimerAndRegisterTask(agentConf);
+
+		isolationManager = new IsolationManager(agentConf.getIsolatedExecutionConfiguration(), fileServerHost);
 
 		logger.info("Agent successfully started on port " + actualServerPort
 				+ ". The agent will publish following URL for incoming connections: " + this.agentUrl);
@@ -299,6 +303,10 @@ public class Agent extends BaseServer implements AutoCloseable {
 
 	public AgentTokenServices getAgentTokenServices() {
 		return agentTokenServices;
+	}
+
+	public IsolationManager getIsolationManager() {
+		return isolationManager;
 	}
 
 	protected List<Token> getTokens() {
