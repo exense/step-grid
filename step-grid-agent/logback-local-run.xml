@@ -6,7 +6,7 @@
 	</appender>
 
 	<!-- loggers with deviating settings for specific packages -->
-<!--	<logger name="step.parameter.ParameterManager" level="debug" />-->
+	<logger name="step.grid.tokenpool.TokenPool" level="trace" />
 
 	<root level="info">
 		<appender-ref ref="STDOUT" />

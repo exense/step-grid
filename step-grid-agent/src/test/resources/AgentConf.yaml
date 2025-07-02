@@ -27,6 +27,6 @@ tokenGroups:
 properties:
   prop1 : value 1
 exposeAgentControlServices: true
-isolatedExecutionConfiguration:
+agentForkerConfiguration:
   enabled: true
   javaPath: "C:\\Program Files\\Java\\jdk-17.0.1\\bin\\java.exe"

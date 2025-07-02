@@ -28,7 +28,9 @@ import step.grid.Token;
 import step.grid.agent.conf.AgentConf;
 import step.grid.agent.conf.TokenConf;
 import step.grid.agent.conf.TokenGroupConf;
-import step.grid.agent.isolation.IsolationManager;
+import step.grid.agent.forker.AgentForker;
+import step.grid.agent.forker.AgentForkerConfiguration;
+import step.grid.agent.forker.AgentForkerFactoryFacade;
 import step.grid.agent.tokenpool.AgentTokenPool;
 import step.grid.agent.tokenpool.AgentTokenWrapper;
 import step.grid.app.configuration.ConfigurationParser;
@@ -73,7 +75,7 @@ public class Agent extends BaseServer implements AutoCloseable {
 	private final ApplicationContextBuilder applicationContextBuilder;
 	private final BootstrapManager bootstrapManager;
 	private final ExecutorService executor;
-	private final IsolationManager isolationManager;
+	private final AgentForker agentForker;
 	private volatile boolean stopped = false;
 	private volatile boolean registered = false;
 
@@ -168,7 +170,13 @@ public class Agent extends BaseServer implements AutoCloseable {
 		registrationTask = createGridRegistrationTask(registrationClient);
 		timer = createGridRegistrationTimerAndRegisterTask(agentConf);
 
-		isolationManager = new IsolationManager(agentConf.getIsolatedExecutionConfiguration(), fileServerHost);
+		AgentForkerFactoryFacade agentForkerFactory = new AgentForkerFactoryFacade(applicationContextBuilder);
+		AgentForkerConfiguration agentForkerConfiguration = agentConf.getAgentForkerConfiguration();
+		if (agentForkerConfiguration != null) {
+			agentForker = agentForkerFactory.create(agentForkerConfiguration, fileServerHost);
+		} else {
+			agentForker = null;
+		}
 
 		logger.info("Agent successfully started on port " + actualServerPort
 				+ ". The agent will publish following URL for incoming connections: " + this.agentUrl);
@@ -305,8 +313,8 @@ public class Agent extends BaseServer implements AutoCloseable {
 		return agentTokenServices;
 	}
 
-	public IsolationManager getIsolationManager() {
-		return isolationManager;
+	public AgentForker getAgentForker() {
+		return agentForker;
 	}
 
 	protected List<Token> getTokens() {

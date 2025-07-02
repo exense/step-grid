@@ -18,35 +18,19 @@
  ******************************************************************************/
 package step.grid.agent;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-
 import jakarta.annotation.PostConstruct;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.ws.rs.Consumes;
-import jakarta.ws.rs.GET;
-import jakarta.ws.rs.POST;
-import jakarta.ws.rs.Path;
-import jakarta.ws.rs.PathParam;
-import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
-
 import jakarta.ws.rs.core.Response;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import step.grid.Token;
-import step.grid.agent.isolation.IsolationManager;
+import step.grid.agent.forker.AgentForker;
+import step.grid.agent.forker.AgentForkerSession;
 import step.grid.agent.tokenpool.AgentTokenPool;
 import step.grid.agent.tokenpool.AgentTokenPool.InvalidTokenIdException;
 import step.grid.agent.tokenpool.AgentTokenWrapper;
@@ -57,6 +41,12 @@ import step.grid.contextbuilder.ApplicationContextBuilderException;
 import step.grid.filemanager.ControllerCallTimeout;
 import step.grid.filemanager.FileManagerException;
 import step.grid.io.*;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.*;
 
 @Singleton
 @Path("/")
@@ -74,7 +64,7 @@ public class AgentServices extends AbstractGridServices {
 
 	BootstrapManager bootstrapManager;
 
-	private IsolationManager isolationManager;
+	private AgentForker agentForker;
 
 	public AgentServices() {
 		super();
@@ -85,7 +75,7 @@ public class AgentServices extends AbstractGridServices {
 		tokenPool = agent.getTokenPool();
 		bootstrapManager = agent.getBootstrapManager();
 		executor = agent.getTokenExecutor();
-		isolationManager = agent.getIsolationManager();
+		agentForker = agent.getAgentForker();
 	}
 
 	class ExecutionContext {
@@ -106,13 +96,13 @@ public class AgentServices extends AbstractGridServices {
 
 				tokenWrapper.setInUse(true);
 
-				if(isolationManager.isEnabled()) {
+				if(agentForker != null && agentForker.isEnabled()) {
 					TokenReservationSession tokenReservationSession = tokenWrapper.getTokenReservationSession();
-					IsolationManager.IsolatedSession isolatedSession = (IsolationManager.IsolatedSession) tokenReservationSession.get(ISOLATION_MANAGER_SESSION);
+					AgentForkerSession isolatedSession = (AgentForkerSession) tokenReservationSession.get(ISOLATION_MANAGER_SESSION);
 					boolean closeIsolatedSessionAfterCall = false;
 					if(isolatedSession == null) {
 						// Create a new isolated session
-						isolatedSession = isolationManager.newSession();
+						isolatedSession = agentForker.newSession();
 						if(tokenReservationSession instanceof UnusableTokenReservationSession) {
 							closeIsolatedSessionAfterCall = true;
 						} else {
