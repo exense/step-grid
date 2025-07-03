@@ -21,6 +21,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
@@ -58,7 +59,7 @@ public class AgentForkerImpl implements AgentForker {
         } catch (Exception e) {
             throw new RuntimeException("Error while starting sub-agent grid on port " + port, e);
         }
-        logger.info("Started agent forker grid on port "+forkedExecutionGrid.getServerPort());
+        logger.info("Started agent forker grid on port " + forkedExecutionGrid.getServerPort());
         return forkedExecutionGrid;
     }
 
@@ -106,16 +107,15 @@ public class AgentForkerImpl implements AgentForker {
 
         public AgentForkerSessionImpl() throws Exception {
             id = UUID.randomUUID().toString();
-            logger.info("Creating isolated session...");
-            logger.info("Starting isolated agent in a separated JVM...");
-            this.process = jvmLauncher.launchExternalJVM("IsolatedExecutionAgent", "step.grid.agent.Agent", List.of(), List.of("-config=" + forkedAgentConf.toAbsolutePath(), "-gridHost=http://localhost:" + grid.getServerPort(), "-fileServerHost=" + fileServerHost, "-isolatedSessionId=" + id), true);
+            logger.info("Starting forked agent...");
+            this.process = jvmLauncher.launchExternalJVM("ForkedAgent", findMainClass(), List.of(), List.of("-config=" + forkedAgentConf.toAbsolutePath(), "-gridHost=http://localhost:" + grid.getServerPort(), "-fileServerHost=" + fileServerHost, "-isolatedSessionId=" + id), true);
             try {
                 // Wait for the token to join the grid
-                logger.info("Waiting for isolated agent to connect...");
+                logger.info("Waiting for forked agent to connect...");
                 tokenHandle = gridClient.getTokenHandle(Map.of(), Map.of("isolatedSessionId", new Interest(Pattern.compile(id), true)), true);
             } catch (Throwable e) {
                 try {
-                    logger.info("Stopping isolated agent...");
+                    logger.info("Stopping forked agent...");
                     process.close();
                 } catch (IOException ex) {
 
@@ -126,14 +126,20 @@ public class AgentForkerImpl implements AgentForker {
         }
 
         @Override
-        public OutputMessage executeInIsolation(InputMessage message) throws Exception {
-            logger.info("Calling sub-agent...");
+        public OutputMessage delegateExecution(InputMessage message) throws Exception {
+            logger.info("Calling forked agent...");
             return gridClient.call(tokenHandle.getID(), message.getPayload(), message.getHandler(), message.getHandlerPackage(), message.getProperties(), message.getCallTimeout());
+        }
+
+        private String findMainClass() {
+            String command = Objects.requireNonNull(System.getProperty("sun.java.command"),
+                    "Unable to determine the main class to use for the forked agent. The property 'sun.java.command' is not set");
+            return command.split(" ")[0];
         }
 
         @Override
         public void close() throws Exception {
-            logger.info("Stopping isolated agent...");
+            logger.info("Stopping forked agent...");
             process.close();
         }
     }

@@ -110,7 +110,7 @@ public class AgentServices extends AbstractGridServices {
 						}
 					}
 					try {
-						return isolatedSession.executeInIsolation(message);
+						return isolatedSession.delegateExecution(message);
 					} finally {
 						if(closeIsolatedSessionAfterCall) {
 							isolatedSession.close();
