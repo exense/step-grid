@@ -20,14 +20,6 @@
 			<artifactId>step-grid-api</artifactId>
 			<version>${project.version}</version>
 		</dependency>
-		<!-- This dependency is only required to force the build of
-		the module step-grid-agent-forker to occur before step-grid-agent
-		 and thus to ensure the produced artifacts are available for the copy phase below -->
-		<dependency>
-			<groupId>ch.exense.step</groupId>
-			<artifactId>step-grid-agent-forker</artifactId>
-			<version>${project.version}</version>
-		</dependency>
 		<dependency>
 			<groupId>ch.qos.logback</groupId>
 			<artifactId>logback-classic</artifactId>
