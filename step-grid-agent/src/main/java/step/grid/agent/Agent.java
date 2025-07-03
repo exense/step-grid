@@ -28,9 +28,7 @@ import step.grid.Token;
 import step.grid.agent.conf.AgentConf;
 import step.grid.agent.conf.TokenConf;
 import step.grid.agent.conf.TokenGroupConf;
-import step.grid.agent.forker.AgentForker;
-import step.grid.agent.forker.AgentForkerConfiguration;
-import step.grid.agent.forker.AgentForkerFactoryFacade;
+import step.grid.agent.forker.*;
 import step.grid.agent.tokenpool.AgentTokenPool;
 import step.grid.agent.tokenpool.AgentTokenWrapper;
 import step.grid.app.configuration.ConfigurationParser;
@@ -170,10 +168,9 @@ public class Agent extends BaseServer implements AutoCloseable {
 		registrationTask = createGridRegistrationTask(registrationClient);
 		timer = createGridRegistrationTimerAndRegisterTask(agentConf);
 
-		AgentForkerFactoryFacade agentForkerFactory = new AgentForkerFactoryFacade(applicationContextBuilder);
 		AgentForkerConfiguration agentForkerConfiguration = agentConf.getAgentForkerConfiguration();
 		if (agentForkerConfiguration != null) {
-			agentForker = agentForkerFactory.create(agentForkerConfiguration, fileServerHost);
+			agentForker = new AgentForker(agentForkerConfiguration, fileServerHost);
 		} else {
 			agentForker = null;
 		}

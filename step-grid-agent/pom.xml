@@ -27,7 +27,6 @@
 			<groupId>ch.exense.step</groupId>
 			<artifactId>step-grid-agent-forker</artifactId>
 			<version>${project.version}</version>
-			<scope>provided</scope>
 		</dependency>
 		<dependency>
 			<groupId>ch.qos.logback</groupId>
@@ -52,34 +51,6 @@
 						<goals>
 							<goal>single</goal>
 						</goals>
-					</execution>
-				</executions>
-			</plugin>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-dependency-plugin</artifactId>
-				<executions>
-					<execution>
-						<id>copy</id>
-						<phase>validate</phase>
-						<goals>
-							<goal>copy</goal>
-						</goals>
-						<configuration>
-							<artifactItems>
-								<artifactItem>
-									<groupId>ch.exense.step</groupId>
-									<artifactId>step-grid-agent-forker</artifactId>
-									<type>jar</type>
-									<classifier>jar-with-dependencies</classifier>
-									<overWrite>true</overWrite>
-									<outputDirectory>${project.basedir}/src/main/resources</outputDirectory>
-									<destFileName>step-grid-agent-forker.jar</destFileName>
-								</artifactItem>
-							</artifactItems>
-							<overWriteReleases>true</overWriteReleases>
-							<overWriteSnapshots>true</overWriteSnapshots>
-						</configuration>
 					</execution>
 				</executions>
 			</plugin>

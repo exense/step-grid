@@ -25,9 +25,9 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
-public class AgentForkerImpl implements AgentForker {
+public class AgentForker implements AutoCloseable {
 
-    private static final Logger logger = LoggerFactory.getLogger(AgentForkerImpl.class);
+    private static final Logger logger = LoggerFactory.getLogger(AgentForker.class);
     private final AgentForkerConfiguration configuration;
     private final GridImpl grid;
     private final String fileServerHost;
@@ -35,12 +35,13 @@ public class AgentForkerImpl implements AgentForker {
     private ExternalJVMLauncher jvmLauncher;
     private LocalGridClientImpl gridClient;
 
-    public AgentForkerImpl(AgentForkerConfiguration configuration, String fileServerHost) throws IOException {
+    public AgentForker(AgentForkerConfiguration configuration, String fileServerHost) throws IOException {
         this.configuration = configuration;
         this.fileServerHost = fileServerHost;
 
         forkedAgentConf = Files.createTempFile("ForkedAgentConf", ".yaml");
-        Files.write(forkedAgentConf, FileHelper.readResourceAsByteArray(AgentForkerSessionImpl.class, "ForkedAgentConf.yaml"), new OpenOption[]{StandardOpenOption.APPEND});
+        Files.write(forkedAgentConf, FileHelper.readClassLoaderResourceAsByteArray(getClass().getClassLoader(), "ForkedAgentConf.yaml"),
+                new OpenOption[]{StandardOpenOption.APPEND});
 
         if (configuration.enabled) {
             this.jvmLauncher = newJvmLauncher();
@@ -76,7 +77,6 @@ public class AgentForkerImpl implements AgentForker {
         forkedAgentConf.toFile().delete();
     }
 
-    @Override
     public AgentForkerSessionImpl newSession() throws Exception {
         return new AgentForkerSessionImpl();
     }
@@ -94,7 +94,6 @@ public class AgentForkerImpl implements AgentForker {
         return gridClient;
     }
 
-    @Override
     public boolean isEnabled() {
         return configuration.enabled;
     }

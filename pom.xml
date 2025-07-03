@@ -79,7 +79,6 @@
 		<module>step-grid-server</module>
 		<module>step-grid-client</module>
 		<module>step-grid-agent</module>
-		<module>step-grid-agent-forker</module>
 		<module>step-grid-api</module>
 		<module>step-grid-proxy</module>
 		<module>step-grid-tests</module>
