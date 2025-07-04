@@ -58,8 +58,8 @@
 
 		<!-- internal dependencies -->
 		<dependencies.version>2025.6.25</dependencies.version>
-		<exense-commons.version>2025.6.25-685c19d064523b01b0babff2</exense-commons.version>
-		<step-api.version>2025.6.27-685e87e364523b01b022c623</step-api.version>
+		<exense-commons.version>2.0.13</exense-commons.version>
+		<step-api.version>1.4.0</step-api.version>
 
 		<!-- maven build dependencies -->
 		<dep.mvn.jacoco.version>0.8.12</dep.mvn.jacoco.version>
@@ -410,6 +410,26 @@
 								</configuration>
 							</execution>
 						</executions>
+					</plugin>
+
+					<!-- Disable old maven-deploy plugin -->
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-deploy-plugin</artifactId>
+						<configuration>
+							<skip>true</skip>
+						</configuration>
+					</plugin>
+
+					<!-- Publish directly to central instead -->
+					<plugin>
+						<groupId>org.sonatype.central</groupId>
+						<artifactId>central-publishing-maven-plugin</artifactId>
+						<version>0.8.0</version>
+						<extensions>true</extensions>
+						<configuration>
+							<publishingServerId>sonatype</publishingServerId>
+						</configuration>
 					</plugin>
 				</plugins>
 			</build>
