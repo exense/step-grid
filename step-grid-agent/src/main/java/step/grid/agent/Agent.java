@@ -26,6 +26,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import step.grid.Token;
 import step.grid.agent.conf.AgentConf;
+import step.grid.agent.conf.AgentForkerConfiguration;
 import step.grid.agent.conf.TokenConf;
 import step.grid.agent.conf.TokenGroupConf;
 import step.grid.agent.forker.*;
@@ -154,6 +155,15 @@ public class Agent extends BaseServer implements AutoCloseable {
 		logger.info("Starting token executor...");
 		executor = Executors.newCachedThreadPool(NamedThreadFactory.create("agent-token-executor"));
 
+		AgentForkerConfiguration agentForkerConfiguration = agentConf.getAgentForkerConfiguration();
+		if (agentForkerConfiguration != null && agentForkerConfiguration.enabled) {
+			logger.info("Agent forker is enabled. All token messages will be executed in forked agent processes.");
+			agentForker = new AgentForker(agentForkerConfiguration, fileServerHost);
+		} else {
+			logger.info("Agent forker is disabled. All token messages will be executed within this JVM.");
+			agentForker = null;
+		}
+
 		int serverPort = this.resolveServerPort(agentUrl, agentPort);
 
 		logger.info("Starting server...");
@@ -168,12 +178,6 @@ public class Agent extends BaseServer implements AutoCloseable {
 		registrationTask = createGridRegistrationTask(registrationClient);
 		timer = createGridRegistrationTimerAndRegisterTask(agentConf);
 
-		AgentForkerConfiguration agentForkerConfiguration = agentConf.getAgentForkerConfiguration();
-		if (agentForkerConfiguration != null) {
-			agentForker = new AgentForker(agentForkerConfiguration, fileServerHost);
-		} else {
-			agentForker = null;
-		}
 
 		logger.info("Agent successfully started on port " + actualServerPort
 				+ ". The agent will publish following URL for incoming connections: " + this.agentUrl);
@@ -271,7 +275,7 @@ public class Agent extends BaseServer implements AutoCloseable {
 	}
 	
 	private Map<String, Interest> createInterestMap(Map<String, String> selectionPatterns) {
-		HashMap<String, Interest> result = new HashMap<String, Interest>();
+		HashMap<String, Interest> result = new HashMap<>();
 		if(selectionPatterns!=null) {
 			for(Entry<String, String> entry:selectionPatterns.entrySet()) {
 				Interest i = new Interest(Pattern.compile(entry.getValue()), true);
@@ -293,9 +297,8 @@ public class Agent extends BaseServer implements AutoCloseable {
 		if(!fileManagerDir.exists()) {
 			Files.createDirectories(fileManagerDir.toPath());
 		}
-		
-		FileManagerClient fileManagerClient = new FileManagerClientImpl(fileManagerDir, registrationClient, fileManagerConfig);
-		return fileManagerClient;
+
+        return new FileManagerClientImpl(fileManagerDir, registrationClient, fileManagerConfig);
 	}
 
 	protected String getAgentUrl() {

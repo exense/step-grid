@@ -30,7 +30,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import step.grid.Token;
 import step.grid.agent.forker.AgentForker;
-import step.grid.agent.forker.AgentForkerSession;
 import step.grid.agent.tokenpool.AgentTokenPool;
 import step.grid.agent.tokenpool.AgentTokenPool.InvalidTokenIdException;
 import step.grid.agent.tokenpool.AgentTokenWrapper;
@@ -96,9 +95,9 @@ public class AgentServices extends AbstractGridServices {
 
 				tokenWrapper.setInUse(true);
 
-				if(agentForker != null && agentForker.isEnabled()) {
+				if(agentForker != null) {
 					TokenReservationSession tokenReservationSession = tokenWrapper.getTokenReservationSession();
-					AgentForkerSession isolatedSession = (AgentForkerSession) tokenReservationSession.get(ISOLATION_MANAGER_SESSION);
+					AgentForker.AgentForkerSession isolatedSession = (AgentForker.AgentForkerSession) tokenReservationSession.get(ISOLATION_MANAGER_SESSION);
 					boolean closeIsolatedSessionAfterCall = false;
 					if(isolatedSession == null) {
 						// Create a new isolated session

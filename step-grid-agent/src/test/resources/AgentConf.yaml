@@ -29,4 +29,5 @@ properties:
 exposeAgentControlServices: true
 agentForkerConfiguration:
   enabled: true
-  javaPath: "C:\\Program Files\\Java\\jdk-17.0.1\\bin\\java.exe"
+  #javaPath: "C:\\Program Files\\Java\\jdk-17.0.1\\bin\\java.exe"
+  #vmArgs: "-Xmx100m"

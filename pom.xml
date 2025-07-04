@@ -58,7 +58,7 @@
 
 		<!-- internal dependencies -->
 		<dependencies.version>2025.6.25</dependencies.version>
-		<exense-commons.version>2025.7.2-68650d84343e7d5ee6f0b519</exense-commons.version>
+		<exense-commons.version>2025.7.4-686790ccf551c55946ab2cc0</exense-commons.version>
 		<step-api.version>2025.6.27-685e87e364523b01b022c623</step-api.version>
 
 		<!-- maven build dependencies -->
@@ -282,26 +282,24 @@
 			</plugins>
 		</pluginManagement>
 		<plugins>
-<!--			Causing: An error has occurred in JaCoCo report generation.: Error while creating report: Error while analyzing C:\Users\jecom\Git\step-grid\step-grid-agent\target\classes\step-grid-agent-forker.jar@META-INF/versions/11/com/fasterxml/jackson/core/io/doubleparser/BigSignificand.class with JaCoCo 0.8.12.202403310830/dbfb6f2. Can't add different class with same name: com/fasterxml/jackson/core/io/doubleparser/BigSignificand -> [Help 1]-->
-<!--			TODO: renable once the issue is fixed-->
-<!--			<plugin>-->
-<!--				<groupId>org.jacoco</groupId>-->
-<!--				<artifactId>jacoco-maven-plugin</artifactId>-->
-<!--				<executions>-->
-<!--					<execution>-->
-<!--						<id>default-prepare-agent</id>-->
-<!--						<goals>-->
-<!--							<goal>prepare-agent</goal>-->
-<!--						</goals>-->
-<!--					</execution>-->
-<!--					<execution>-->
-<!--						<id>default-report</id>-->
-<!--						<goals>-->
-<!--							<goal>report</goal>-->
-<!--						</goals>-->
-<!--					</execution>-->
-<!--				</executions>-->
-<!--			</plugin>-->
+			<plugin>
+				<groupId>org.jacoco</groupId>
+				<artifactId>jacoco-maven-plugin</artifactId>
+				<executions>
+					<execution>
+						<id>default-prepare-agent</id>
+						<goals>
+							<goal>prepare-agent</goal>
+						</goals>
+					</execution>
+					<execution>
+					<id>default-report</id>
+						<goals>
+							<goal>report</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>

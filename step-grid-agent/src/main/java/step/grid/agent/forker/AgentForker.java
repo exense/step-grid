@@ -2,27 +2,26 @@ package step.grid.agent.forker;
 
 import ch.exense.commons.io.FileHelper;
 import ch.exense.commons.processes.ExternalJVMLauncher;
+import ch.exense.commons.processes.ForkedJvmBuilder;
 import ch.exense.commons.processes.ManagedProcess;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import step.grid.GridImpl;
 import step.grid.TokenWrapper;
+import step.grid.agent.conf.AgentForkerConfiguration;
 import step.grid.client.GridClientConfiguration;
 import step.grid.client.LocalGridClientImpl;
 import step.grid.io.InputMessage;
 import step.grid.io.OutputMessage;
 import step.grid.tokenpool.Interest;
 
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 import java.nio.file.Files;
-import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.UUID;
+import java.util.*;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 
 public class AgentForker implements AutoCloseable {
@@ -32,35 +31,52 @@ public class AgentForker implements AutoCloseable {
     private final GridImpl grid;
     private final String fileServerHost;
     private final Path forkedAgentConf;
-    private ExternalJVMLauncher jvmLauncher;
-    private LocalGridClientImpl gridClient;
+    private final ExternalJVMLauncher jvmLauncher;
+    private final LocalGridClientImpl gridClient;
+    private static final AtomicInteger nextSessionId = new AtomicInteger(1);
 
     public AgentForker(AgentForkerConfiguration configuration, String fileServerHost) throws IOException {
+        if (!configuration.enabled) {
+            throw new IllegalArgumentException("Agent forker configuration is disabled. The AgentForker is not supposed to be instantiated.");
+        }
+
         this.configuration = configuration;
         this.fileServerHost = fileServerHost;
-
-        forkedAgentConf = Files.createTempFile("ForkedAgentConf", ".yaml");
-        Files.write(forkedAgentConf, FileHelper.readClassLoaderResourceAsByteArray(getClass().getClassLoader(), "ForkedAgentConf.yaml"),
-                new OpenOption[]{StandardOpenOption.APPEND});
-
-        if (configuration.enabled) {
-            this.jvmLauncher = newJvmLauncher();
-            this.grid = createGrid(0);
-            this.gridClient = newClient();
-        } else {
-            this.grid = null;
-        }
+        forkedAgentConf = getForkedAgentConf(configuration);
+        jvmLauncher = newJvmLauncher();
+        grid = createGrid();
+        gridClient = newClient();
     }
 
-    private static GridImpl createGrid(int port) {
+    private Path getForkedAgentConf(AgentForkerConfiguration configuration) throws IOException {
+        final Path forkedAgentConf;
+        if (configuration.agentConf != null) {
+            forkedAgentConf = Path.of(configuration.agentConf);
+            logger.info("Initializing agent forker using agent conf: {}", forkedAgentConf);
+        } else {
+            forkedAgentConf = Files.createTempFile("ForkedAgentConf", ".yaml");
+            forkedAgentConf.toFile().deleteOnExit();
+            Files.write(forkedAgentConf, FileHelper.readClassLoaderResourceAsByteArray(getClass().getClassLoader(),
+                    "ForkedAgentConf.yaml"), StandardOpenOption.APPEND);
+            logger.info("Initializing agent forker using embedded agent conf");
+        }
+        if (!Files.exists(forkedAgentConf)) {
+            throw new IOException("Agent forker configuration file does not exist: " + forkedAgentConf);
+        }
+        return forkedAgentConf;
+    }
+
+    private static GridImpl createGrid() throws IOException {
         logger.info("Starting agent forker grid...");
-        GridImpl forkedExecutionGrid = new GridImpl(new File("./filemanager"), port);
+        File agentForkerGridFilemanager = FileHelper.createTempFolder("agentForkerGridFilemanager");
+        agentForkerGridFilemanager.deleteOnExit();
+        GridImpl forkedExecutionGrid = new GridImpl(agentForkerGridFilemanager, 0);
         try {
             forkedExecutionGrid.start();
         } catch (Exception e) {
-            throw new RuntimeException("Error while starting sub-agent grid on port " + port, e);
+            throw new RuntimeException("Error while starting sub-agent grid on port " + 0, e);
         }
-        logger.info("Started agent forker grid on port " + forkedExecutionGrid.getServerPort());
+        logger.info("Started agent forker grid on port {}", forkedExecutionGrid.getServerPort());
         return forkedExecutionGrid;
     }
 
@@ -74,59 +90,86 @@ public class AgentForker implements AutoCloseable {
             logger.info("Stopping agent forker grid client...");
             gridClient.close();
         }
-        forkedAgentConf.toFile().delete();
     }
 
-    public AgentForkerSessionImpl newSession() throws Exception {
-        return new AgentForkerSessionImpl();
+    public AgentForkerSession newSession() throws Exception {
+        return new AgentForkerSession();
     }
 
     private ExternalJVMLauncher newJvmLauncher() {
-        //try(ManagedProcess process = jvmLauncher.launchExternalJVM("AgentTokenProcessor" + tokenId, Agent.class, List.of("-agentlib:jdwp=transport=dt_socket,server=n,address=DESKTOP-7NQHKTC.home:5005,suspend=y"), List.of("-config=C:\\Users\\jecom\\Git\\step-grid\\step-grid-agent\\src\\test\\resources\\SubAgentConf.yaml"))) {
         return new ExternalJVMLauncher(configuration.javaPath, new File("."));
     }
 
     private LocalGridClientImpl newClient() {
         GridClientConfiguration gridClientConfiguration = new GridClientConfiguration();
-        // Configure the selection timeout (this should be higher than the start time of the container)
-        gridClientConfiguration.setNoMatchExistsTimeout(60_000);
-        LocalGridClientImpl gridClient = new LocalGridClientImpl(gridClientConfiguration, grid);
-        return gridClient;
+        gridClientConfiguration.setNoMatchExistsTimeout(configuration.startTimeoutMs);
+        return new LocalGridClientImpl(gridClientConfiguration, grid);
     }
 
-    public boolean isEnabled() {
-        return configuration.enabled;
-    }
+    public class AgentForkerSession implements AutoCloseable {
 
-    private class AgentForkerSessionImpl implements AgentForkerSession {
-
-        final ManagedProcess process;
+        final Process process;
         private final TokenWrapper tokenHandle;
-        private final String id;
+        private final ForkedJvmBuilder forkedJvmBuilder;
+        private final int id;
+        private final Path tempDirectory;
 
-        public AgentForkerSessionImpl() throws Exception {
-            id = UUID.randomUUID().toString();
-            logger.info("Starting forked agent...");
-            this.process = jvmLauncher.launchExternalJVM("ForkedAgent", findMainClass(), List.of(), List.of("-config=" + forkedAgentConf.toAbsolutePath(), "-gridHost=http://localhost:" + grid.getServerPort(), "-fileServerHost=" + fileServerHost, "-isolatedSessionId=" + id), true);
-            try {
-                // Wait for the token to join the grid
-                logger.info("Waiting for forked agent to connect...");
-                tokenHandle = gridClient.getTokenHandle(Map.of(), Map.of("isolatedSessionId", new Interest(Pattern.compile(id), true)), true);
-            } catch (Throwable e) {
-                try {
-                    logger.info("Stopping forked agent...");
-                    process.close();
-                } catch (IOException ex) {
+        public AgentForkerSession() throws Exception {
+            id = nextSessionId.getAndIncrement();
+            tempDirectory = Files.createTempDirectory("forked-agent" + id);
+            logger.info("Starting forked agent {} in {}...", id, tempDirectory);
+            forkedJvmBuilder = new ForkedJvmBuilder(getJavaPath(), findMainClass(), getVmArgs(), getProgArgs());
+            process = new ProcessBuilder(forkedJvmBuilder.getProcessCommand())
+                    .directory(tempDirectory.toFile()).redirectErrorStream(true).start();
 
+            CompletableFuture.runAsync(()  -> {
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        logger.info("Forked agent {} output -- {}", id, line);
+                    }
+                } catch (Exception e) {
+                    logger.error("Error reading output of forked agent {}", id, e);
                 }
-                // TODO
-                throw new Exception(e);
+            });
+
+            try {
+                logger.info("Waiting for forked agent {} to connect...", id);
+                tokenHandle = gridClient.getTokenHandle(Map.of(), Map.of("forkedAgentId", new Interest(Pattern.compile("^" + id + "$"), true)), true);
+            } catch (Throwable e) {
+                String message;
+                if (e.getMessage().contains("Not able to find any agent token")) {
+                    message = "Timeout while waiting for the forked agent {} to start and join the forked agent grid";
+                } else {
+                    message = "Unexpected error while starting the forked agent {}";
+                }
+                logger.error(message, id, e);
+                close();
+                throw new Exception(message, e);
             }
         }
 
-        @Override
+        private List<String> getProgArgs() {
+            return List.of("-config=" + forkedAgentConf.toAbsolutePath(), "-gridHost=http://localhost:" + grid.getServerPort(), "-fileServerHost=" + fileServerHost, "-forkedAgentId=" + id);
+        }
+
+        private String getJavaPath() {
+            return Optional.ofNullable(configuration.javaPath).orElse(ProcessHandle.current().info().command().orElseThrow(() ->
+                    new IllegalArgumentException("The javaPath is not set and the path to the java executable of the current process could not be determined.")));
+        }
+
+        private List<String> getVmArgs() {
+            List<String> vmArgs;
+            if(configuration.vmArgs != null && !configuration.vmArgs.isEmpty()) {
+                vmArgs = Arrays.asList(configuration.vmArgs.split(" "));
+            } else {
+                vmArgs = List.of();
+            }
+            return vmArgs;
+        }
+
         public OutputMessage delegateExecution(InputMessage message) throws Exception {
-            logger.info("Calling forked agent...");
+            logger.info("Calling forked agent {}...", id);
             return gridClient.call(tokenHandle.getID(), message.getPayload(), message.getHandler(), message.getHandlerPackage(), message.getProperties(), message.getCallTimeout());
         }
 
@@ -137,9 +180,31 @@ public class AgentForker implements AutoCloseable {
         }
 
         @Override
-        public void close() throws Exception {
-            logger.info("Stopping forked agent...");
-            process.close();
+        public void close() {
+            logger.info("Stopping forked agent {}...", id);
+            process.destroy();
+            try {
+                boolean terminated = process.waitFor(configuration.shutdownTimeout, TimeUnit.SECONDS);
+                if(!terminated) {
+                    logger.warn("Timeout while waiting for the forked agent {} to shut down gracefully. Destroying it forcibly.", id);
+                    process.destroyForcibly();
+                    terminated = process.waitFor(configuration.shutdownTimeout, TimeUnit.SECONDS);
+                    if(!terminated) {
+                        logger.error("Timeout while waiting for the forked agent {} to stop after destroying it forcibly.", id);
+                    } else {
+                        logger.info("Successfully stopped forked agent forcibly {}.", id);
+                    }
+                } else {
+                    logger.info("Successfully stopped forked agent {}.", id);
+                }
+            } catch (InterruptedException e) {
+                logger.error("Interrupted while waiting for the forked agent {} to stop.", id, e);
+            }
+
+            logger.info("Deleting forked agent execution directory {}...", tempDirectory);
+            tempDirectory.toFile().delete();
+
+            forkedJvmBuilder.close();
         }
     }
 }

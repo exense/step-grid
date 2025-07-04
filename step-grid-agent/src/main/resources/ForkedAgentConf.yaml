@@ -10,7 +10,7 @@ tokenGroups:
 - capacity: 1
   tokenConf:
     attributes:
-      isolatedSessionId: ${isolatedSessionId}
+      forkedAgentId: ${forkedAgentId}
     properties:
 properties:
 exposeAgentControlServices: true

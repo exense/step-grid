@@ -18,7 +18,6 @@
  ******************************************************************************/
 package step.grid.agent.conf;
 
-import step.grid.agent.forker.AgentForkerConfiguration;
 import step.grid.app.configuration.AppConfiguration;
 import step.grid.contextbuilder.ExecutionContextCacheConfiguration;
 import step.grid.filemanager.FileManagerConfiguration;
