@@ -96,27 +96,7 @@ public class AgentServices extends AbstractGridServices {
 				tokenWrapper.setInUse(true);
 
 				if(agentForker != null) {
-					TokenReservationSession tokenReservationSession = tokenWrapper.getTokenReservationSession();
-					AgentForker.AgentForkerSession isolatedSession = (AgentForker.AgentForkerSession) tokenReservationSession.get(ISOLATION_MANAGER_SESSION);
-					boolean closeIsolatedSessionAfterCall = false;
-					if(isolatedSession == null) {
-						// Create a new isolated session
-						isolatedSession = agentForker.newSession();
-						if(tokenReservationSession instanceof UnusableTokenReservationSession) {
-							closeIsolatedSessionAfterCall = true;
-						} else {
-							tokenReservationSession.put(ISOLATION_MANAGER_SESSION, isolatedSession);
-						}
-					}
-					try {
-						return isolatedSession.delegateExecution(message);
-					} finally {
-						if(closeIsolatedSessionAfterCall) {
-							isolatedSession.close();
-						}
-						tokenWrapper.setInUse(false);
-						tokenPool.afterTokenExecution(tokenId);
-					}
+					return processTokenInForkedAgent(tokenWrapper, message);
 				} else {
 					final ExecutionContext context = new ExecutionContext();
 
@@ -169,6 +149,31 @@ public class AgentServices extends AbstractGridServices {
 			return newAgentErrorOutput(new AgentError(AgentErrorCode.TOKEN_NOT_FOUND));
 		} catch (Exception e) {
 			return handleUnexpectedError(message, e);
+		}
+	}
+
+	private OutputMessage processTokenInForkedAgent(AgentTokenWrapper tokenWrapper, InputMessage message) throws Exception {
+		String tokenId = tokenWrapper.getUid();
+		TokenReservationSession tokenReservationSession = tokenWrapper.getTokenReservationSession();
+		AgentForker.AgentForkerSession isolatedSession = (AgentForker.AgentForkerSession) tokenReservationSession.get(ISOLATION_MANAGER_SESSION);
+		boolean closeIsolatedSessionAfterCall = false;
+		if(isolatedSession == null) {
+			// Create a new isolated session
+			isolatedSession = agentForker.newSession();
+			if(tokenReservationSession instanceof UnusableTokenReservationSession) {
+				closeIsolatedSessionAfterCall = true;
+			} else {
+				tokenReservationSession.put(ISOLATION_MANAGER_SESSION, isolatedSession);
+			}
+		}
+		try {
+			return isolatedSession.delegateExecution(message);
+		} finally {
+			if(closeIsolatedSessionAfterCall) {
+				isolatedSession.close();
+			}
+			tokenWrapper.setInUse(false);
+			tokenPool.afterTokenExecution(tokenId);
 		}
 	}
 

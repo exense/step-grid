@@ -379,6 +379,11 @@ public class Agent extends BaseServer implements AutoCloseable {
 			applicationContextBuilder.close();
 			logger.info("Agent application context closed");
 
+			if (agentForker != null) {
+				agentForker.close();
+				logger.info("Agent forker stopped");
+			}
+
 			stopped = true;
 		}
 	}

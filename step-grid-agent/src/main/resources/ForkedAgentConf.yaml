@@ -1,7 +1,7 @@
 ---
 registrationPeriod: 1000
 gridReadTimeout: 20000
-workingDir: ../work
+workingDir: ./work
 # If ssl is enabled or not
 ssl: false
 # Token groups

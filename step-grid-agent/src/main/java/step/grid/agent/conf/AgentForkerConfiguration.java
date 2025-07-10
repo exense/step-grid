@@ -7,4 +7,7 @@ public class AgentForkerConfiguration {
     public String agentConf;
     public long startTimeoutMs = 20_000;
     public long shutdownTimeout = 10_000;
+    public int gridPort = 0;
+    public int agentPortRangeStart = 0;
+    public int agentPortRangeEnd = 0;
 }

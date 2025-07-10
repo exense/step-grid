@@ -29,5 +29,7 @@ properties:
 exposeAgentControlServices: true
 agentForkerConfiguration:
   enabled: true
+  #agentPortRangeStart: 8085
+  #agentPortRangeEnd: 8090
   #javaPath: "C:\\Program Files\\Java\\jdk-17.0.1\\bin\\java.exe"
   #vmArgs: "-Xmx100m"
