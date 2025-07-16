@@ -117,7 +117,13 @@ public class AgentForker implements AutoCloseable {
         }
     }
 
-    public AgentForkerSession newSession() throws Exception {
+    /**
+     * Starts a dedicated forked agent process
+     * @param createSession if a session should be created in the forked agent when selecting its token
+     * @return the associated {@link AgentForkerSession} to interact with the forked agent
+     * @throws Exception if any error occurs while creating the forked agent
+     */
+    public AgentForkerSession startForkedAgent(boolean createSession) throws Exception {
         int port;
         if (freeAgentPorts != null) {
             logger.info("Reserving agent port for forked agent from configured range...");
@@ -126,7 +132,7 @@ public class AgentForker implements AutoCloseable {
         } else {
             port = 0;
         }
-        return new AgentForkerSession(port);
+        return new AgentForkerSession(port, createSession);
     }
 
     private ExternalJVMLauncher newJvmLauncher() {
@@ -148,7 +154,7 @@ public class AgentForker implements AutoCloseable {
         private final Path tempDirectory;
         private final int port;
 
-        public AgentForkerSession(int port) throws Exception {
+        public AgentForkerSession(int port, boolean createSession) throws Exception {
             this.port = port;
             id = nextSessionId.getAndIncrement();
             tempDirectory = Files.createTempDirectory("forked-agent" + id);
@@ -170,7 +176,7 @@ public class AgentForker implements AutoCloseable {
 
             try {
                 logger.info("Waiting for forked agent {} to connect...", id);
-                tokenHandle = gridClient.getTokenHandle(Map.of(), Map.of("forkedAgentId", new Interest(Pattern.compile("^" + id + "$"), true)), true);
+                tokenHandle = gridClient.getTokenHandle(Map.of(), Map.of("forkedAgentId", new Interest(Pattern.compile("^" + id + "$"), true)), createSession);
             } catch (Throwable e) {
                 String message;
                 if (e.getMessage().contains("Not able to find any agent token")) {

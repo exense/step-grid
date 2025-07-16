@@ -160,13 +160,13 @@ public class AgentServices extends AbstractGridServices {
 		if(tokenReservationSession instanceof UnusableTokenReservationSession) {
 			closeIsolatedSessionAfterCall = true;
 			// Create a new isolated session
-			isolatedSession = agentForker.newSession();
+			isolatedSession = agentForker.startForkedAgent(false);
 		} else {
 			closeIsolatedSessionAfterCall = false;
 			isolatedSession = (AgentForker.AgentForkerSession) tokenReservationSession.get(ISOLATION_MANAGER_SESSION);
 			if(isolatedSession == null) {
 				// Create a new isolated session
-				isolatedSession = agentForker.newSession();
+				isolatedSession = agentForker.startForkedAgent(true);
 				tokenReservationSession.put(ISOLATION_MANAGER_SESSION, isolatedSession);
 			}
 		}
