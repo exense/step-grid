@@ -1,7 +1,6 @@
 package step.grid.agent.forker;
 
 import ch.exense.commons.io.FileHelper;
-import ch.exense.commons.processes.ExternalJVMLauncher;
 import ch.exense.commons.processes.ForkedJvmBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,7 +34,6 @@ public class AgentForker implements AutoCloseable {
     private final GridImpl grid;
     private final String fileServerHost;
     private final Path forkedAgentConf;
-    private final ExternalJVMLauncher jvmLauncher;
     private final LocalGridClientImpl gridClient;
     private static final AtomicLong nextSessionId = new AtomicLong(1);
     private final LinkedBlockingQueue<Integer> freeAgentPorts;
@@ -44,11 +42,9 @@ public class AgentForker implements AutoCloseable {
         if (!configuration.enabled) {
             throw new IllegalArgumentException("Agent forker configuration is disabled. The AgentForker is not supposed to be instantiated.");
         }
-
         this.configuration = configuration;
         this.fileServerHost = fileServerHost;
         forkedAgentConf = getForkedAgentConf(configuration);
-        jvmLauncher = newJvmLauncher();
         grid = createGrid();
         gridClient = newClient();
         freeAgentPorts = parseAgentPortRangeAndCreateReservationTrackingQueue();
@@ -120,10 +116,11 @@ public class AgentForker implements AutoCloseable {
     /**
      * Starts a dedicated forked agent process
      * @param createSession if a session should be created in the forked agent when selecting its token
+     * @param agentProperties the full map of agent properties that should be used to start the forked agent
      * @return the associated {@link AgentForkerSession} to interact with the forked agent
      * @throws Exception if any error occurs while creating the forked agent
      */
-    public AgentForkerSession startForkedAgent(boolean createSession) throws Exception {
+    public AgentForkerSession startForkedAgent(boolean createSession, Map<String, String> agentProperties) throws Exception {
         int port;
         if (freeAgentPorts != null) {
             logger.info("Reserving agent port for forked agent from configured range...");
@@ -132,11 +129,7 @@ public class AgentForker implements AutoCloseable {
         } else {
             port = 0;
         }
-        return new AgentForkerSession(port, createSession);
-    }
-
-    private ExternalJVMLauncher newJvmLauncher() {
-        return new ExternalJVMLauncher(configuration.javaPath, new File("."));
+        return new AgentForkerSession(port, createSession, agentProperties);
     }
 
     private LocalGridClientImpl newClient() {
@@ -153,9 +146,11 @@ public class AgentForker implements AutoCloseable {
         private final long id;
         private final Path tempDirectory;
         private final int port;
+        private final Map<String, String> agentProperties;
 
-        public AgentForkerSession(int port, boolean createSession) throws Exception {
+        public AgentForkerSession(int port, boolean createSession, Map<String, String> agentProperties) throws Exception {
             this.port = port;
+            this.agentProperties = agentProperties;
             id = nextSessionId.getAndIncrement();
             tempDirectory = Files.createTempDirectory("forked-agent" + id);
             logger.info("Starting forked agent {} in {}...", id, tempDirectory);
@@ -191,9 +186,14 @@ public class AgentForker implements AutoCloseable {
         }
 
         private List<String> getProgArgs() {
-
-
-            return List.of("-config=" + forkedAgentConf.toAbsolutePath(), "-gridHost=http://localhost:" + grid.getServerPort(), "-fileServerHost=" + fileServerHost, "-forkedAgentId=" + id);
+            ArrayList<String> propArgs = new ArrayList<>();
+            if (agentProperties != null) {
+                agentProperties.forEach((key, value) -> {
+                    propArgs.add("-property." + key + "=" + value);
+                });
+            }
+            propArgs.addAll(List.of("-config=" + forkedAgentConf.toAbsolutePath(), "-gridHost=http://localhost:" + grid.getServerPort(), "-fileServerHost=" + fileServerHost, "-forkedAgentId=" + id));
+            return propArgs;
         }
 
         private String getJavaPath() {

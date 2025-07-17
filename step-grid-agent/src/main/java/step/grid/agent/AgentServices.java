@@ -157,16 +157,18 @@ public class AgentServices extends AbstractGridServices {
 		TokenReservationSession tokenReservationSession = tokenWrapper.getTokenReservationSession();
 		boolean closeIsolatedSessionAfterCall;
 		AgentForker.AgentForkerSession isolatedSession;
+        Map<String, String> allProperties = new HashMap<>(tokenWrapper.getServices().getAgentProperties());
+		allProperties.putAll(tokenWrapper.getProperties());
 		if(tokenReservationSession instanceof UnusableTokenReservationSession) {
 			closeIsolatedSessionAfterCall = true;
 			// Create a new isolated session
-			isolatedSession = agentForker.startForkedAgent(false);
+			isolatedSession = agentForker.startForkedAgent(false, allProperties);
 		} else {
 			closeIsolatedSessionAfterCall = false;
 			isolatedSession = (AgentForker.AgentForkerSession) tokenReservationSession.get(ISOLATION_MANAGER_SESSION);
 			if(isolatedSession == null) {
 				// Create a new isolated session
-				isolatedSession = agentForker.startForkedAgent(true);
+				isolatedSession = agentForker.startForkedAgent(true, allProperties);
 				tokenReservationSession.put(ISOLATION_MANAGER_SESSION, isolatedSession);
 			}
 		}

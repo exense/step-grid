@@ -110,7 +110,18 @@ public class Agent extends BaseServer implements AutoCloseable {
 			if(arguments.hasOption("agentUrl")) {
 				agentConf.setAgentUrl(arguments.getOption("agentUrl"));
 			}
-			
+
+			Map<String, String> options = arguments.getOptions();
+			if(agentConf.getProperties() == null) {
+				agentConf.setProperties(new HashMap<>());
+			}
+			options.forEach((key, value) -> {
+				if (key.startsWith("property.")) {
+					agentConf.getProperties().put(key.replaceFirst("property.", ""), value);
+				}
+			});
+			logger.info("Agent properties: {}", agentConf.getProperties());
+
 			return new Agent(agentConf);
 		} else {
 			throw new RuntimeException("Argument '-config' is missing.");

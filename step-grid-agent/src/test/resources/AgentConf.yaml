@@ -23,9 +23,11 @@ tokenGroups:
       key: val
     properties:
       prop1 : value 1
+      prop2 : value 1
 # A list of properties
 properties:
   prop1 : value 1
+  prop3 : value 1
 exposeAgentControlServices: true
 agentForkerConfiguration:
   enabled: true
