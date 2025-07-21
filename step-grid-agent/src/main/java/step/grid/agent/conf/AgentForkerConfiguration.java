@@ -5,6 +5,7 @@ public class AgentForkerConfiguration {
     public String javaPath;
     public String vmArgs;
     public String agentConf;
+    public String logbackConf;
     public long startTimeoutMs = 20_000;
     public long shutdownTimeout = 10_000;
     public int gridPort = 0;

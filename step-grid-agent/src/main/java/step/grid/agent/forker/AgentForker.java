@@ -42,6 +42,7 @@ public class AgentForker implements AutoCloseable {
     private final LocalGridClientImpl gridClient;
     private static final AtomicLong nextSessionId = new AtomicLong(1);
     private final LinkedBlockingQueue<Integer> freeAgentPorts;
+    private final Path logbackConfiguration;
 
     public AgentForker(AgentForkerConfiguration configuration, String fileServerHost) throws IOException {
         if (!configuration.enabled) {
@@ -50,6 +51,7 @@ public class AgentForker implements AutoCloseable {
         this.configuration = configuration;
         this.fileServerHost = fileServerHost;
         forkedAgentConf = getForkedAgentConf(configuration);
+        logbackConfiguration = getLogbackConfiguration(configuration);
         grid = createGrid();
         gridClient = newClient();
         freeAgentPorts = parseAgentPortRangeAndCreateReservationTrackingQueue();
@@ -71,6 +73,25 @@ public class AgentForker implements AutoCloseable {
             throw new IOException("Agent forker configuration file does not exist: " + forkedAgentConf);
         }
         return forkedAgentConf;
+    }
+
+    private Path getLogbackConfiguration(AgentForkerConfiguration configuration) throws IOException {
+        final Path logbackConfiguration;
+        if (configuration.logbackConf != null) {
+            logbackConfiguration = Path.of(configuration.logbackConf);
+            if (!Files.exists(logbackConfiguration)) {
+                throw new IOException("Logback configuration file does not exist: " + logbackConfiguration);
+            } else {
+                logger.info("Using logback configuration: {}", logbackConfiguration);
+            }
+        } else {
+            logbackConfiguration = Files.createTempFile("logback-forked-agent", ".xml");
+            logbackConfiguration.toFile().deleteOnExit();
+            Files.write(logbackConfiguration, FileHelper.readClassLoaderResourceAsByteArray(getClass().getClassLoader(),
+                    "logback-forked-agent.xml"), StandardOpenOption.APPEND);
+            logger.info("Using embedded logback configuration");
+        }
+        return logbackConfiguration;
     }
 
     private LinkedBlockingQueue<Integer> parseAgentPortRangeAndCreateReservationTrackingQueue() {
@@ -212,11 +233,10 @@ public class AgentForker implements AutoCloseable {
         }
 
         private List<String> getVmArgs() {
-            List<String> vmArgs;
+            List<String> vmArgs = new ArrayList<>();
+            vmArgs.add("-Dlogback.configurationFile=" + logbackConfiguration.toFile().getAbsolutePath());
             if (configuration.vmArgs != null && !configuration.vmArgs.isEmpty()) {
-                vmArgs = Arrays.asList(configuration.vmArgs.split(" "));
-            } else {
-                vmArgs = List.of();
+                vmArgs.addAll(Arrays.asList(configuration.vmArgs.split(" ")));
             }
             return vmArgs;
         }

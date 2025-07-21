@@ -13,6 +13,7 @@ import step.grid.io.Attachment;
 import step.grid.io.AttachmentHelper;
 import step.grid.io.OutputMessage;
 
+import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
@@ -92,6 +93,14 @@ public class ForkedAgentConfigurationTest extends AbstractGridTest {
         Assert.assertEquals(AgentErrorCode.UNEXPECTED, outputMessage.getAgentError().getErrorCode());
         Assert.assertTrue(attachmentAsString(outputMessage.getAttachments().get(0)).contains("Cannot run program \"wrong\""));
         Assert.assertTrue(attachmentAsString(outputMessage.getAttachments().get(0)).contains("Error while starting forked agent"));
+    }
+
+    @Test
+    public void testWrongLogbackConf() throws Exception {
+        AgentForkerConfiguration agentForkerConfiguration = enabledAgentForkerConfig();
+        // Configure a wrong logback configuration path
+        agentForkerConfiguration.logbackConf = "wrongFilepath";
+        Assert.assertThrows(IOException.class, () -> init(agentForkerConfiguration));
     }
 
     @Test
