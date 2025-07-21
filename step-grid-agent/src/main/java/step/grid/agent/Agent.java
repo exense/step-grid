@@ -32,6 +32,7 @@ import step.grid.agent.conf.TokenGroupConf;
 import step.grid.agent.forker.*;
 import step.grid.agent.tokenpool.AgentTokenPool;
 import step.grid.agent.tokenpool.AgentTokenWrapper;
+import step.grid.agent.tokenpool.TokenReservationSession;
 import step.grid.app.configuration.ConfigurationParser;
 import step.grid.app.server.BaseServer;
 import step.grid.bootstrap.BootstrapManager;
@@ -383,6 +384,14 @@ public class Agent extends BaseServer implements AutoCloseable {
 	public synchronized void close() throws Exception {
 		if(!stopped) {
 			preStop();
+
+			logger.info("Closing token reservation sessions...");
+			tokenPool.getTokens().forEach(token -> {
+				TokenReservationSession tokenReservationSession = token.getTokenReservationSession();
+				if (tokenReservationSession != null) {
+					tokenReservationSession.close();
+				}
+			});
 
 			// Stopping HTTP server
 			server.stop();
