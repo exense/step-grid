@@ -58,6 +58,7 @@ public class Agent extends BaseServer implements AutoCloseable {
 
 	private static final String TOKEN_ID = "$tokenid";
 	private static final String AGENT_ID = "$agentid";
+	public static final String PROPERTY_PREFIX = "property.";
 
 	private final String id = UUID.randomUUID().toString();
 	private final AgentTokenPool tokenPool = new AgentTokenPool();
@@ -116,8 +117,8 @@ public class Agent extends BaseServer implements AutoCloseable {
 				agentConf.setProperties(new HashMap<>());
 			}
 			options.forEach((key, value) -> {
-				if (key.startsWith("property.")) {
-					agentConf.getProperties().put(key.replaceFirst("property.", ""), value);
+				if (key.startsWith(PROPERTY_PREFIX)) {
+					agentConf.getProperties().put(key.replaceFirst(PROPERTY_PREFIX, ""), value);
 				}
 			});
 			logger.info("Agent properties: {}", agentConf.getProperties());

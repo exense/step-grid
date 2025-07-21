@@ -30,11 +30,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import step.grid.Token;
 import step.grid.agent.forker.AgentForker;
-import step.grid.agent.tokenpool.AgentTokenPool;
+import step.grid.agent.tokenpool.*;
 import step.grid.agent.tokenpool.AgentTokenPool.InvalidTokenIdException;
-import step.grid.agent.tokenpool.AgentTokenWrapper;
-import step.grid.agent.tokenpool.TokenReservationSession;
-import step.grid.agent.tokenpool.UnusableTokenReservationSession;
 import step.grid.bootstrap.BootstrapManager;
 import step.grid.contextbuilder.ApplicationContextBuilderException;
 import step.grid.filemanager.ControllerCallTimeout;
@@ -157,18 +154,19 @@ public class AgentServices extends AbstractGridServices {
 		TokenReservationSession tokenReservationSession = tokenWrapper.getTokenReservationSession();
 		boolean closeIsolatedSessionAfterCall;
 		AgentForker.AgentForkerSession isolatedSession;
-        Map<String, String> allProperties = new HashMap<>(tokenWrapper.getServices().getAgentProperties());
-		allProperties.putAll(tokenWrapper.getProperties());
+		Map<String, String> allProperties = buildAgentAndTokenPropertyMap(tokenWrapper);
 		if(tokenReservationSession instanceof UnusableTokenReservationSession) {
 			closeIsolatedSessionAfterCall = true;
 			// Create a new isolated session
 			isolatedSession = agentForker.startForkedAgent(false, allProperties);
+			tokenReservationSession.registerEventListener(isolatedSession::interruptExecution);
 		} else {
 			closeIsolatedSessionAfterCall = false;
 			isolatedSession = (AgentForker.AgentForkerSession) tokenReservationSession.get(ISOLATION_MANAGER_SESSION);
 			if(isolatedSession == null) {
 				// Create a new isolated session
 				isolatedSession = agentForker.startForkedAgent(true, allProperties);
+				tokenReservationSession.registerEventListener(isolatedSession::interruptExecution);
 				tokenReservationSession.put(ISOLATION_MANAGER_SESSION, isolatedSession);
 			}
 		}
@@ -183,11 +181,23 @@ public class AgentServices extends AbstractGridServices {
 		}
 	}
 
+	private static Map<String, String> buildAgentAndTokenPropertyMap(AgentTokenWrapper tokenWrapper) {
+		Map<String, String> allProperties = new HashMap<>();
+		if(tokenWrapper.getServices().getAgentProperties() != null) {
+			allProperties.putAll(tokenWrapper.getServices().getAgentProperties());
+		}
+		if(tokenWrapper.getProperties() != null) {
+			allProperties.putAll(tokenWrapper.getProperties());
+		}
+		return allProperties;
+	}
+
 	@POST
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
 	@Path("/token/{id}/interrupt-execution")
 	public void interruptTokenExecution(@PathParam("id") String tokenId) throws InvalidTokenIdException {
+		logger.info("Interrupting token execution for tokenId: " + tokenId);
 		final AgentTokenWrapper tokenWrapper = tokenPool.getTokenForExecution(tokenId);
 		if (tokenWrapper != null) {
 			tokenWrapper.getTokenReservationSession().getEventListeners().forEach(e -> e.onTokenInterruption());

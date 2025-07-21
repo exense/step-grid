@@ -6,8 +6,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import step.grid.GridImpl;
 import step.grid.TokenWrapper;
+import step.grid.agent.Agent;
 import step.grid.agent.conf.AgentForkerConfiguration;
+import step.grid.client.AbstractGridClientImpl;
 import step.grid.client.GridClientConfiguration;
+import step.grid.client.GridClientException;
 import step.grid.client.LocalGridClientImpl;
 import step.grid.io.InputMessage;
 import step.grid.io.OutputMessage;
@@ -26,6 +29,8 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Pattern;
+
+import static step.grid.agent.Agent.PROPERTY_PREFIX;
 
 public class AgentForker implements AutoCloseable {
 
@@ -71,7 +76,7 @@ public class AgentForker implements AutoCloseable {
     private LinkedBlockingQueue<Integer> parseAgentPortRangeAndCreateReservationTrackingQueue() {
         int agentPortRangeStart = configuration.agentPortRangeStart;
         int agentPortRangeEnd = configuration.agentPortRangeEnd;
-        if((agentPortRangeEnd > 0 && agentPortRangeStart <= 0) || (agentPortRangeEnd < agentPortRangeStart)) {
+        if ((agentPortRangeEnd > 0 && agentPortRangeStart <= 0) || (agentPortRangeEnd < agentPortRangeStart)) {
             throw new IllegalArgumentException("Agent port range start and end values are invalid.");
         }
         if (agentPortRangeStart > 0 && agentPortRangeEnd > 0) {
@@ -115,7 +120,8 @@ public class AgentForker implements AutoCloseable {
 
     /**
      * Starts a dedicated forked agent process
-     * @param createSession if a session should be created in the forked agent when selecting its token
+     *
+     * @param createSession   if a session should be created in the forked agent when selecting its token
      * @param agentProperties the full map of agent properties that should be used to start the forked agent
      * @return the associated {@link AgentForkerSession} to interact with the forked agent
      * @throws Exception if any error occurs while creating the forked agent
@@ -140,7 +146,7 @@ public class AgentForker implements AutoCloseable {
 
     public class AgentForkerSession implements AutoCloseable {
 
-        final Process process;
+        private final Process process;
         private final TokenWrapper tokenHandle;
         private final ForkedJvmBuilder forkedJvmBuilder;
         private final long id;
@@ -155,10 +161,16 @@ public class AgentForker implements AutoCloseable {
             tempDirectory = Files.createTempDirectory("forked-agent" + id);
             logger.info("Starting forked agent {} in {}...", id, tempDirectory);
             forkedJvmBuilder = new ForkedJvmBuilder(getJavaPath(), findMainClass(), getVmArgs(), getProgArgs());
-            process = new ProcessBuilder(forkedJvmBuilder.getProcessCommand())
-                    .directory(tempDirectory.toFile()).redirectErrorStream(true).start();
+            try {
+                process = new ProcessBuilder(forkedJvmBuilder.getProcessCommand())
+                        .directory(tempDirectory.toFile()).redirectErrorStream(true).start();
+            } catch (Exception e) {
+                logger.error("Error while starting forked agent {}", id, e);
+                close();
+                throw new Exception("Error while starting forked agent", e);
+            }
 
-            CompletableFuture.runAsync(()  -> {
+            CompletableFuture.runAsync(() -> {
                 try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
                     String line;
                     while ((line = reader.readLine()) != null) {
@@ -181,16 +193,14 @@ public class AgentForker implements AutoCloseable {
                 }
                 logger.error(message, id, e);
                 close();
-                throw new Exception(message, e);
+                throw new Exception(message.replace(" {}", ""), e);
             }
         }
 
         private List<String> getProgArgs() {
             ArrayList<String> propArgs = new ArrayList<>();
             if (agentProperties != null) {
-                agentProperties.forEach((key, value) -> {
-                    propArgs.add("-property." + key + "=" + value);
-                });
+                agentProperties.forEach((key, value) -> propArgs.add("-" + PROPERTY_PREFIX + key + "=" + value));
             }
             propArgs.addAll(List.of("-config=" + forkedAgentConf.toAbsolutePath(), "-gridHost=http://localhost:" + grid.getServerPort(), "-fileServerHost=" + fileServerHost, "-forkedAgentId=" + id));
             return propArgs;
@@ -203,7 +213,7 @@ public class AgentForker implements AutoCloseable {
 
         private List<String> getVmArgs() {
             List<String> vmArgs;
-            if(configuration.vmArgs != null && !configuration.vmArgs.isEmpty()) {
+            if (configuration.vmArgs != null && !configuration.vmArgs.isEmpty()) {
                 vmArgs = Arrays.asList(configuration.vmArgs.split(" "));
             } else {
                 vmArgs = List.of();
@@ -212,13 +222,25 @@ public class AgentForker implements AutoCloseable {
         }
 
         public OutputMessage delegateExecution(InputMessage message) throws Exception {
+            int callTimeout = Math.max(1, message.getCallTimeout() - 1000);
             logger.info("Calling forked agent {}...", id);
-            return gridClient.call(tokenHandle.getID(), message.getPayload(), message.getHandler(), message.getHandlerPackage(), message.getProperties(), message.getCallTimeout());
+            return gridClient.call(tokenHandle.getID(), message.getPayload(), message.getHandler(), message.getHandlerPackage(), message.getProperties(), callTimeout);
+        }
+
+        public void interruptExecution() {
+            logger.info("Interrupting execution on forked agent {}...", id);
+            try {
+                gridClient.interruptTokenExecution(tokenHandle.getID());
+            } catch (GridClientException | AbstractGridClientImpl.AgentCommunicationException e) {
+                logger.warn("Unexpected error while interrupting execution on forked agent {}", id, e);
+                throw new RuntimeException(e);
+            }
         }
 
         /**
-         * This method tries to determine the main class of the current process. For this it uses the system property 'sun.java.command'
-         * which in most JVM implementations contains the start command of the process
+         * This method tries to determine the main class of the current process, which can be different from {@link Agent}.
+         * For this it uses the system property 'sun.java.command'
+         * which in most JVM implementations contains the start command of the process.
          *
          * @return the main class of the current process
          */
@@ -228,33 +250,55 @@ public class AgentForker implements AutoCloseable {
             if (logger.isDebugEnabled()) {
                 logger.debug("Using the system property 'sun.java.command' to determine the main class of the current process: {}", command);
             }
-            return command.split(" ")[0];
+            String command0 = command.split(" ")[0];
+            // When running agent tests in JUnit for instance, the main class is a JUnit specific class.
+            // In this case we fall back to Agent.class
+            if (!command0.contains("Agent")) {
+                logger.warn("The main class of the current process is {} and doesn't seem to be an Agent main class. Falling back to Agent.class", command0);
+                command0 = Agent.class.getName();
+            }
+            return command0;
         }
 
         @Override
         public void close() {
-            logger.info("Stopping forked agent {}...", id);
-            process.destroy();
-            try {
-                boolean terminated = process.waitFor(configuration.shutdownTimeout, TimeUnit.SECONDS);
-                if(!terminated) {
-                    logger.warn("Timeout while waiting for the forked agent {} to shut down gracefully. Destroying it forcibly.", id);
-                    process.destroyForcibly();
-                    terminated = process.waitFor(configuration.shutdownTimeout, TimeUnit.SECONDS);
-                    if(!terminated) {
-                        logger.error("Timeout while waiting for the forked agent {} to stop after destroying it forcibly.", id);
-                    } else {
-                        logger.info("Successfully stopped forked agent forcibly {}.", id);
-                    }
-                } else {
-                    logger.info("Successfully stopped forked agent {}.", id);
+            if(tokenHandle != null) {
+                // Release the token in order for the session and its objects to be released in the forked agent
+                logger.info("Releasing token of forked agent {}...", id);
+                try {
+                    gridClient.returnTokenHandle(tokenHandle.getID());
+                } catch (Exception e) {
+                    logger.error("Error returning token handle for forked agent {}", id, e);
                 }
-            } catch (InterruptedException e) {
-                logger.error("Interrupted while waiting for the forked agent {} to stop.", id, e);
+            }
+            if(process != null) {
+                logger.info("Stopping forked agent {}...", id);
+                process.destroy();
+
+                try {
+                    boolean terminated = process.waitFor(configuration.shutdownTimeout, TimeUnit.SECONDS);
+                    if (!terminated) {
+                        logger.warn("Timeout while waiting for the forked agent {} to shut down gracefully. Destroying it forcibly.", id);
+                        process.destroyForcibly();
+                        terminated = process.waitFor(configuration.shutdownTimeout, TimeUnit.SECONDS);
+                        if (!terminated) {
+                            logger.error("Timeout while waiting for the forked agent {} to stop after destroying it forcibly.", id);
+                        } else {
+                            logger.info("Successfully stopped forked agent forcibly {}.", id);
+                        }
+                    } else {
+                        logger.info("Successfully stopped forked agent {}.", id);
+                    }
+                } catch (InterruptedException e) {
+                    logger.error("Interrupted while waiting for the forked agent {} to stop.", id, e);
+                }
             }
 
             logger.info("Deleting forked agent execution directory {}...", tempDirectory);
-            tempDirectory.toFile().delete();
+            boolean deleted = tempDirectory.toFile().delete();
+            if (!deleted) {
+                logger.warn("Failed to delete forked agent execution directory {}.", tempDirectory);
+            }
 
             forkedJvmBuilder.close();
 

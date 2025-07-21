@@ -20,6 +20,8 @@ package step.grid.agent;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 import org.junit.Assert;
@@ -30,6 +32,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import step.grid.TokenWrapper;
+import step.grid.agent.conf.AgentForkerConfiguration;
+import step.grid.client.AbstractGridClientImpl;
+import step.grid.client.GridClientException;
 import step.grid.client.LocalGridClientImpl;
 import step.grid.io.AgentErrorCode;
 import step.grid.io.OutputMessage;
@@ -39,10 +44,15 @@ public class AgentTest extends AbstractGridTest {
 	
 	@Before
 	public void init() throws Exception {
-		super.init();
+		init(null);
+	}
+
+	@Override
+	public void init(AgentForkerConfiguration agentForkerConfiguration) throws Exception {
+		super.init(agentForkerConfiguration);
 		client = new LocalGridClientImpl(grid);
 	}
-	
+
 	@Test
 	public void test() throws Exception {
 		Map<String, Interest> interests = new HashMap<>();
@@ -51,8 +61,8 @@ public class AgentTest extends AbstractGridTest {
 		JsonNode o = newDummyJson();
 		
 		TokenWrapper token = client.getTokenHandle(null, interests, true);
-		OutputMessage outputMessage = client.call(token.getID(), o, TestTokenHandler.class.getName(), null, null, 1000);
-		Assert.assertEquals(outputMessage.getPayload(), o);;
+		OutputMessage outputMessage = client.call(token.getID(), o, TestTokenHandler.class.getName(), null, null, 5000);
+		Assert.assertEquals(o, outputMessage.getPayload());
 	}
 	
 	@Test
@@ -63,7 +73,7 @@ public class AgentTest extends AbstractGridTest {
 		JsonNode o = new ObjectMapper().createObjectNode().put("exception", "My Error");
 		
 		TokenWrapper token = client.getTokenHandle(null, interests, true);
-		OutputMessage outputMessage = client.call(token.getID(), o, TestTokenHandler.class.getName(), null, null, 1000);
+		OutputMessage outputMessage = client.call(token.getID(), o, TestTokenHandler.class.getName(), null, null, 5000);
 		Assert.assertEquals(AgentErrorCode.UNEXPECTED, outputMessage.getAgentError().getErrorCode());
 		Assert.assertTrue(outputMessage.getAttachments().size()==1);
 	}
@@ -76,7 +86,7 @@ public class AgentTest extends AbstractGridTest {
 		JsonNode o = newDummyJson();
 		
 		TokenWrapper token = client.getTokenHandle(null, interests, false);		
-		OutputMessage outputMessage = client.call(token.getID(), o, TestTokenHandler.class.getName(), null, null, 1000);
+		OutputMessage outputMessage = client.call(token.getID(), o, TestTokenHandler.class.getName(), null, null, 5000);
 		Assert.assertEquals(outputMessage.getPayload(), o);;
 	}
 	
@@ -133,5 +143,30 @@ public class AgentTest extends AbstractGridTest {
 		OutputMessage outputMessage = client.call(token.getID(), o, TestTokenHandler.class.getName(), null, null, 1000);
 		
 		Assert.assertEquals(outputMessage.getPayload(), o);;
+	}
+
+	@Test
+	public void testInterruption() throws Exception {
+		testInterruption(true);
+		testInterruption(false);
+	}
+
+	private void testInterruption(boolean createSession) throws Exception {
+		TokenWrapper token = client.getTokenHandle(null, Map.of(), createSession);
+		// Interrupt the execution in 4s. We have to wait that long because the start of the execution may take some time with the forked agent
+		CompletableFuture.delayedExecutor(4000, TimeUnit.MILLISECONDS).execute(() -> {
+			try {
+				client.interruptTokenExecution(token.getID());
+			} catch (GridClientException | AbstractGridClientImpl.AgentCommunicationException e) {
+				throw new RuntimeException(e);
+			}
+		});
+		JsonNode o = new ObjectMapper().createObjectNode().put("delay", 5000);
+		try {
+			OutputMessage outputMessage = client.call(token.getID(), o, TestTokenHandler.class.getName(), null, null, 10_000);
+			Assert.assertEquals("{\"status\":\"interrupted\"}", outputMessage.getPayload().toString());
+		} finally {
+			client.returnTokenHandle(token.getID());
+		}
 	}
 }
