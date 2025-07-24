@@ -144,10 +144,10 @@ public class AgentForker implements AutoCloseable {
      *
      * @param createSession   if a session should be created in the forked agent when selecting its token
      * @param agentProperties the full map of agent properties that should be used to start the forked agent
-     * @return the associated {@link AgentForkerSession} to interact with the forked agent
+     * @return the associated {@link ForkedAgent} to interact with the forked agent
      * @throws Exception if any error occurs while creating the forked agent
      */
-    public AgentForkerSession startForkedAgent(boolean createSession, Map<String, String> agentProperties) throws Exception {
+    public ForkedAgent startForkedAgent(boolean createSession, Map<String, String> agentProperties) throws Exception {
         int port;
         if (freeAgentPorts != null) {
             logger.info("Reserving agent port for forked agent from configured range...");
@@ -156,7 +156,7 @@ public class AgentForker implements AutoCloseable {
         } else {
             port = 0;
         }
-        return new AgentForkerSession(port, createSession, agentProperties);
+        return new ForkedAgent(port, createSession, agentProperties);
     }
 
     private LocalGridClientImpl newClient() {
@@ -165,7 +165,7 @@ public class AgentForker implements AutoCloseable {
         return new LocalGridClientImpl(gridClientConfiguration, grid);
     }
 
-    public class AgentForkerSession implements AutoCloseable {
+    public class ForkedAgent implements AutoCloseable {
 
         private final Process process;
         private final TokenWrapper tokenHandle;
@@ -175,7 +175,7 @@ public class AgentForker implements AutoCloseable {
         private final int port;
         private final Map<String, String> agentProperties;
 
-        public AgentForkerSession(int port, boolean createSession, Map<String, String> agentProperties) throws Exception {
+        public ForkedAgent(int port, boolean createSession, Map<String, String> agentProperties) throws Exception {
             this.port = port;
             this.agentProperties = agentProperties;
             id = nextSessionId.getAndIncrement();

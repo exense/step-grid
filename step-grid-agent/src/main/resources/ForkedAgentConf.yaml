@@ -1,18 +1,13 @@
 ---
+# This is the default configuration of the forked agent
 registrationPeriod: 1000
 gridReadTimeout: 20000
 workingDir: ./work
-# If ssl is enabled or not
 ssl: false
-# Token groups
 tokenGroups:
-# The number of tokens to be emitted
 - capacity: 1
   tokenConf:
     attributes:
       forkedAgentId: ${forkedAgentId}
-    properties:
-properties:
-exposeAgentControlServices: true
-agentForkerConfiguration:
+agentForker:
   enabled: false

@@ -24,7 +24,6 @@ import java.util.Map;
 import java.util.regex.Pattern;
 
 import org.junit.After;
-import org.junit.Before;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -76,7 +75,7 @@ public abstract class AbstractGridTest {
 				
 		AgentConf agentConf = new AgentConf("http://localhost:"+grid.getServerPort(), 0, null, 100);
 		if(agentForkerConfiguration != null) {
-			agentConf.setAgentForkerConfiguration(agentForkerConfiguration);
+			agentConf.setAgentForker(agentForkerConfiguration);
 		}
 		agentConf.setGracefulShutdownTimeout(100l);
 		configureAgent(agentConf);

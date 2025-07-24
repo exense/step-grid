@@ -29,7 +29,7 @@ properties:
   prop1 : value 1
   prop3 : value 1
 exposeAgentControlServices: true
-agentForkerConfiguration:
+agentForker:
   enabled: true
   #agentPortRangeStart: 8085
   #agentPortRangeEnd: 8090

@@ -168,7 +168,7 @@ public class Agent extends BaseServer implements AutoCloseable {
 		logger.info("Starting token executor...");
 		executor = Executors.newCachedThreadPool(NamedThreadFactory.create("agent-token-executor"));
 
-		AgentForkerConfiguration agentForkerConfiguration = agentConf.getAgentForkerConfiguration();
+		AgentForkerConfiguration agentForkerConfiguration = agentConf.getAgentForker();
 		if (agentForkerConfiguration != null && agentForkerConfiguration.enabled) {
 			logger.info("Agent forker is enabled. All token messages will be executed in forked agent processes.");
 			agentForker = new AgentForker(agentForkerConfiguration, fileServerHost);

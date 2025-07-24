@@ -54,7 +54,7 @@ public class AgentConf extends AppConfiguration {
 
 	boolean exposeAgentControlServices = false;
 
-	AgentForkerConfiguration isolatedExecutionConfiguration;
+	AgentForkerConfiguration agentForker;
 
 	public AgentConf() {
 		super();
@@ -195,11 +195,11 @@ public class AgentConf extends AppConfiguration {
 		this.exposeAgentControlServices = exposeAgentControlServices;
 	}
 
-	public AgentForkerConfiguration getAgentForkerConfiguration() {
-		return isolatedExecutionConfiguration;
+	public AgentForkerConfiguration getAgentForker() {
+		return agentForker;
 	}
 
-	public void setAgentForkerConfiguration(AgentForkerConfiguration isolatedExecutionConfiguration) {
-		this.isolatedExecutionConfiguration = isolatedExecutionConfiguration;
+	public void setAgentForker(AgentForkerConfiguration isolatedExecutionConfiguration) {
+		this.agentForker = isolatedExecutionConfiguration;
 	}
 }

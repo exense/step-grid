@@ -49,7 +49,7 @@ import java.util.concurrent.*;
 public class AgentServices extends AbstractGridServices {
 
 	private static final Logger logger = LoggerFactory.getLogger(AgentServices.class);
-	public static final String ISOLATION_MANAGER_SESSION = "IsolationManagerSession";
+	public static final String FORKED_AGENT = "ForkedAgent";
 
 	@Inject
 	Agent agent;
@@ -92,7 +92,7 @@ public class AgentServices extends AbstractGridServices {
 
 				tokenWrapper.setInUse(true);
 
-				if(agentForker != null) {
+				if (agentForker != null) {
 					return processTokenInForkedAgent(tokenWrapper, message);
 				} else {
 					final ExecutionContext context = new ExecutionContext();
@@ -152,29 +152,29 @@ public class AgentServices extends AbstractGridServices {
 	private OutputMessage processTokenInForkedAgent(AgentTokenWrapper tokenWrapper, InputMessage message) throws Exception {
 		String tokenId = tokenWrapper.getUid();
 		TokenReservationSession tokenReservationSession = tokenWrapper.getTokenReservationSession();
-		boolean closeIsolatedSessionAfterCall;
-		AgentForker.AgentForkerSession isolatedSession;
+		boolean closeForkedAgentAfterCall;
+		AgentForker.ForkedAgent forkedAgent;
 		Map<String, String> allProperties = buildAgentAndTokenPropertyMap(tokenWrapper);
-		if(tokenReservationSession instanceof UnusableTokenReservationSession) {
-			closeIsolatedSessionAfterCall = true;
-			// Create a new isolated session
-			isolatedSession = agentForker.startForkedAgent(false, allProperties);
-			tokenReservationSession.registerEventListener(isolatedSession::interruptExecution);
+		if (tokenReservationSession instanceof UnusableTokenReservationSession) {
+			closeForkedAgentAfterCall = true;
+			// Start a forked agent without creating a session on it
+			forkedAgent = agentForker.startForkedAgent(false, allProperties);
+			tokenReservationSession.registerEventListener(forkedAgent::interruptExecution);
 		} else {
-			closeIsolatedSessionAfterCall = false;
-			isolatedSession = (AgentForker.AgentForkerSession) tokenReservationSession.get(ISOLATION_MANAGER_SESSION);
-			if(isolatedSession == null) {
-				// Create a new isolated session
-				isolatedSession = agentForker.startForkedAgent(true, allProperties);
-				tokenReservationSession.registerEventListener(isolatedSession::interruptExecution);
-				tokenReservationSession.put(ISOLATION_MANAGER_SESSION, isolatedSession);
+			closeForkedAgentAfterCall = false;
+			forkedAgent = (AgentForker.ForkedAgent) tokenReservationSession.get(FORKED_AGENT);
+			if (forkedAgent == null) {
+				// Start a forked agent and create a session on it
+				forkedAgent = agentForker.startForkedAgent(true, allProperties);
+				tokenReservationSession.registerEventListener(forkedAgent::interruptExecution);
+				tokenReservationSession.put(FORKED_AGENT, forkedAgent);
 			}
 		}
 		try {
-			return isolatedSession.delegateExecution(message);
+			return forkedAgent.delegateExecution(message);
 		} finally {
-			if(closeIsolatedSessionAfterCall) {
-				isolatedSession.close();
+			if (closeForkedAgentAfterCall) {
+				forkedAgent.close();
 			}
 			tokenWrapper.setInUse(false);
 			tokenPool.afterTokenExecution(tokenId);
