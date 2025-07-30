@@ -167,6 +167,7 @@ public class AgentForker implements AutoCloseable {
 
     public class ForkedAgent implements AutoCloseable {
 
+        public static final int CALL_TIMEOUT_OFFSET = 1000;
         private final Process process;
         private final TokenWrapper tokenHandle;
         private final ForkedJvmBuilder forkedJvmBuilder;
@@ -242,7 +243,14 @@ public class AgentForker implements AutoCloseable {
         }
 
         public OutputMessage delegateExecution(InputMessage message) throws Exception {
-            int callTimeout = Math.max(1, message.getCallTimeout() - 1000);
+            // Subtract an offset from the initial call timeout to ensure that the forked agent's timeout
+            // triggers first. This allows the forked agent to handle the timeout gracefully and
+            // terminate or clean up before the call to the forked agent times out.
+            int callTimeout = message.getCallTimeout() - CALL_TIMEOUT_OFFSET;
+            if (callTimeout <= 0) {
+                throw new IllegalArgumentException("The defined call timeout is too low. It must be greater than the required offset of " + CALL_TIMEOUT_OFFSET + "ms.");
+            }
+
             logger.info("Calling forked agent {}...", id);
             return gridClient.call(tokenHandle.getID(), message.getPayload(), message.getHandler(), message.getHandlerPackage(), message.getProperties(), callTimeout);
         }

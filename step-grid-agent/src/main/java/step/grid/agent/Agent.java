@@ -310,8 +310,7 @@ public class Agent extends BaseServer implements AutoCloseable {
 		if(!fileManagerDir.exists()) {
 			Files.createDirectories(fileManagerDir.toPath());
 		}
-
-        return new FileManagerClientImpl(fileManagerDir, registrationClient, fileManagerConfig);
+		return new FileManagerClientImpl(fileManagerDir, registrationClient, fileManagerConfig);
 	}
 
 	protected String getAgentUrl() {
