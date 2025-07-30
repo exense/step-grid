@@ -24,7 +24,6 @@ import java.util.Map;
 import java.util.regex.Pattern;
 
 import org.junit.After;
-import org.junit.Before;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -35,6 +34,7 @@ import step.grid.GridImpl;
 import step.grid.GridImpl.GridImplConfig;
 import step.grid.TokenWrapper;
 import step.grid.agent.conf.AgentConf;
+import step.grid.agent.conf.AgentForkerConfiguration;
 import step.grid.client.AbstractGridClientImpl.AgentCommunicationException;
 import step.grid.client.GridClient;
 import step.grid.client.GridClientException;
@@ -58,13 +58,11 @@ public abstract class AbstractGridTest {
 		super();
 	}
 
-	public AbstractGridTest(int nTokens) {
-		super();
-		this.nTokens = nTokens;
+	public void init() throws Exception {
+		init(null);
 	}
 
-	@Before
-	public void init() throws Exception {
+	public void init(AgentForkerConfiguration agentForkerConfiguration) throws Exception {
 		File fileManagerFolder = FileHelper.createTempFolder();
 		
 		GridImplConfig gridConfig = new GridImplConfig();
@@ -76,6 +74,9 @@ public abstract class AbstractGridTest {
 		grid.start();
 				
 		AgentConf agentConf = new AgentConf("http://localhost:"+grid.getServerPort(), 0, null, 100);
+		if(agentForkerConfiguration != null) {
+			agentConf.setAgentForker(agentForkerConfiguration);
+		}
 		agentConf.setGracefulShutdownTimeout(100l);
 		configureAgent(agentConf);
 		agentConf.setFileManagerConfiguration(new FileManagerConfiguration());

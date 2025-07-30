@@ -23,7 +23,15 @@ tokenGroups:
       key: val
     properties:
       prop1 : value 1
+      prop2 : value 1
 # A list of properties
 properties:
   prop1 : value 1
+  prop3 : value 1
 exposeAgentControlServices: true
+agentForker:
+  enabled: true
+  #agentPortRangeStart: 8085
+  #agentPortRangeEnd: 8090
+  #javaPath: "C:\\Program Files\\Java\\jdk-17.0.1\\bin\\java.exe"
+  #vmArgs: "-Xmx100m"

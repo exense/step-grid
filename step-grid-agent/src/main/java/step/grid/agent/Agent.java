@@ -26,10 +26,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import step.grid.Token;
 import step.grid.agent.conf.AgentConf;
+import step.grid.agent.conf.AgentForkerConfiguration;
 import step.grid.agent.conf.TokenConf;
 import step.grid.agent.conf.TokenGroupConf;
+import step.grid.agent.forker.*;
 import step.grid.agent.tokenpool.AgentTokenPool;
 import step.grid.agent.tokenpool.AgentTokenWrapper;
+import step.grid.agent.tokenpool.TokenReservationSession;
 import step.grid.app.configuration.ConfigurationParser;
 import step.grid.app.server.BaseServer;
 import step.grid.bootstrap.BootstrapManager;
@@ -56,6 +59,7 @@ public class Agent extends BaseServer implements AutoCloseable {
 
 	private static final String TOKEN_ID = "$tokenid";
 	private static final String AGENT_ID = "$agentid";
+	public static final String PROPERTY_PREFIX = "property.";
 
 	private final String id = UUID.randomUUID().toString();
 	private final AgentTokenPool tokenPool = new AgentTokenPool();
@@ -72,6 +76,7 @@ public class Agent extends BaseServer implements AutoCloseable {
 	private final ApplicationContextBuilder applicationContextBuilder;
 	private final BootstrapManager bootstrapManager;
 	private final ExecutorService executor;
+	private final AgentForker agentForker;
 	private volatile boolean stopped = false;
 	private volatile boolean registered = false;
 
@@ -107,7 +112,18 @@ public class Agent extends BaseServer implements AutoCloseable {
 			if(arguments.hasOption("agentUrl")) {
 				agentConf.setAgentUrl(arguments.getOption("agentUrl"));
 			}
-			
+
+			Map<String, String> options = arguments.getOptions();
+			if(agentConf.getProperties() == null) {
+				agentConf.setProperties(new HashMap<>());
+			}
+			options.forEach((key, value) -> {
+				if (key.startsWith(PROPERTY_PREFIX)) {
+					agentConf.getProperties().put(key.replaceFirst(PROPERTY_PREFIX, ""), value);
+				}
+			});
+			logger.info("Agent properties: {}", agentConf.getProperties());
+
 			return new Agent(agentConf);
 		} else {
 			throw new RuntimeException("Argument '-config' is missing.");
@@ -152,6 +168,15 @@ public class Agent extends BaseServer implements AutoCloseable {
 		logger.info("Starting token executor...");
 		executor = Executors.newCachedThreadPool(NamedThreadFactory.create("agent-token-executor"));
 
+		AgentForkerConfiguration agentForkerConfiguration = agentConf.getAgentForker();
+		if (agentForkerConfiguration != null && agentForkerConfiguration.enabled) {
+			logger.info("Agent forker is enabled. All token messages will be executed in forked agent processes.");
+			agentForker = new AgentForker(agentForkerConfiguration, fileServerHost);
+		} else {
+			logger.info("Agent forker is disabled. All token messages will be executed within this JVM.");
+			agentForker = null;
+		}
+
 		int serverPort = this.resolveServerPort(agentUrl, agentPort);
 
 		logger.info("Starting server...");
@@ -165,6 +190,7 @@ public class Agent extends BaseServer implements AutoCloseable {
 		logger.info("Starting grid registration task using grid URL " + gridUrl + "...");
 		registrationTask = createGridRegistrationTask(registrationClient);
 		timer = createGridRegistrationTimerAndRegisterTask(agentConf);
+
 
 		logger.info("Agent successfully started on port " + actualServerPort
 				+ ". The agent will publish following URL for incoming connections: " + this.agentUrl);
@@ -262,7 +288,7 @@ public class Agent extends BaseServer implements AutoCloseable {
 	}
 	
 	private Map<String, Interest> createInterestMap(Map<String, String> selectionPatterns) {
-		HashMap<String, Interest> result = new HashMap<String, Interest>();
+		HashMap<String, Interest> result = new HashMap<>();
 		if(selectionPatterns!=null) {
 			for(Entry<String, String> entry:selectionPatterns.entrySet()) {
 				Interest i = new Interest(Pattern.compile(entry.getValue()), true);
@@ -284,9 +310,7 @@ public class Agent extends BaseServer implements AutoCloseable {
 		if(!fileManagerDir.exists()) {
 			Files.createDirectories(fileManagerDir.toPath());
 		}
-		
-		FileManagerClient fileManagerClient = new FileManagerClientImpl(fileManagerDir, registrationClient, fileManagerConfig);
-		return fileManagerClient;
+		return new FileManagerClientImpl(fileManagerDir, registrationClient, fileManagerConfig);
 	}
 
 	protected String getAgentUrl() {
@@ -299,6 +323,10 @@ public class Agent extends BaseServer implements AutoCloseable {
 
 	public AgentTokenServices getAgentTokenServices() {
 		return agentTokenServices;
+	}
+
+	public AgentForker getAgentForker() {
+		return agentForker;
 	}
 
 	protected List<Token> getTokens() {
@@ -356,12 +384,25 @@ public class Agent extends BaseServer implements AutoCloseable {
 		if(!stopped) {
 			preStop();
 
+			logger.info("Closing token reservation sessions...");
+			tokenPool.getTokens().forEach(token -> {
+				TokenReservationSession tokenReservationSession = token.getTokenReservationSession();
+				if (tokenReservationSession != null) {
+					tokenReservationSession.close();
+				}
+			});
+
 			// Stopping HTTP server
 			server.stop();
 			logger.info("Web server stopped");
 
 			applicationContextBuilder.close();
 			logger.info("Agent application context closed");
+
+			if (agentForker != null) {
+				agentForker.close();
+				logger.info("Agent forker stopped");
+			}
 
 			stopped = true;
 		}
