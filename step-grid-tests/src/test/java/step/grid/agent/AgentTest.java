@@ -102,7 +102,7 @@ public class AgentTest extends AbstractGridTest {
 		
 		
 		// check if the token has been returned to the pool. In this case the second call should return the same error
-		outputMessage = client.call(token.getID(), o, TestTokenHandler.class.getName(), null, null, 10);
+		outputMessage = client.call(token.getID(), o, TestTokenHandler.class.getName(), null, null, 100);
 		Assert.assertEquals(AgentErrorCode.TIMEOUT_REQUEST_INTERRUPTED,outputMessage.getAgentError().getErrorCode());
 	}
 	

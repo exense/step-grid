@@ -19,7 +19,6 @@
 package step.grid.agent;
 
 import org.junit.Before;
-import org.junit.Test;
 import step.grid.agent.conf.AgentForkerConfiguration;
 
 public class ForkedAgentTest extends AgentTest {
@@ -28,6 +27,7 @@ public class ForkedAgentTest extends AgentTest {
 	public void init() throws Exception {
 		AgentForkerConfiguration agentForkerConfiguration = new AgentForkerConfiguration();
 		agentForkerConfiguration.enabled = true;
+		agentForkerConfiguration.callTimeoutOffsetMs = 10;
 		super.init(agentForkerConfiguration);
 	}
 }

@@ -167,7 +167,6 @@ public class AgentForker implements AutoCloseable {
 
     public class ForkedAgent implements AutoCloseable {
 
-        public static final int CALL_TIMEOUT_OFFSET = 1000;
         private final Process process;
         private final TokenWrapper tokenHandle;
         private final ForkedJvmBuilder forkedJvmBuilder;
@@ -246,9 +245,9 @@ public class AgentForker implements AutoCloseable {
             // Subtract an offset from the initial call timeout to ensure that the forked agent's timeout
             // triggers first. This allows the forked agent to handle the timeout gracefully and
             // terminate or clean up before the call to the forked agent times out.
-            int callTimeout = message.getCallTimeout() - CALL_TIMEOUT_OFFSET;
+            int callTimeout = message.getCallTimeout() - configuration.callTimeoutOffsetMs;
             if (callTimeout <= 0) {
-                throw new IllegalArgumentException("The defined call timeout is too low. It must be greater than the required offset of " + CALL_TIMEOUT_OFFSET + "ms.");
+                throw new IllegalArgumentException("The defined call timeout is too low. It must be greater than the required offset of " + configuration.callTimeoutOffsetMs + "ms.");
             }
 
             logger.info("Calling forked agent {}...", id);
@@ -304,11 +303,11 @@ public class AgentForker implements AutoCloseable {
                 process.destroy();
 
                 try {
-                    boolean terminated = process.waitFor(configuration.shutdownTimeout, TimeUnit.SECONDS);
+                    boolean terminated = process.waitFor(configuration.shutdownTimeoutMs, TimeUnit.SECONDS);
                     if (!terminated) {
                         logger.warn("Timeout while waiting for the forked agent {} to shut down gracefully. Destroying it forcibly.", id);
                         process.destroyForcibly();
-                        terminated = process.waitFor(configuration.shutdownTimeout, TimeUnit.SECONDS);
+                        terminated = process.waitFor(configuration.shutdownTimeoutMs, TimeUnit.SECONDS);
                         if (!terminated) {
                             logger.error("Timeout while waiting for the forked agent {} to stop after destroying it forcibly.", id);
                         } else {
