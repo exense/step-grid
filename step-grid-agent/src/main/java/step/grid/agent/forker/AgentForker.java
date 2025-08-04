@@ -347,7 +347,8 @@ public class AgentForker implements AutoCloseable {
                     try {
                         Thread.sleep(configuration.tempDirectoryDeletionRetryWait);
                     } catch (InterruptedException e2) {
-                        throw new RuntimeException(e2);
+                        logger.error("Thread interrupted while waiting before retrying to delete the forked agent execution directory {}.", tempDirectory, e2);
+                        Thread.currentThread().interrupt();
                     }
                 }
             }
