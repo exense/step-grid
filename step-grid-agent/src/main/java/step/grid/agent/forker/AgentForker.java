@@ -53,13 +53,14 @@ public class AgentForker implements AutoCloseable {
         }
         this.configuration = configuration;
         this.fileServerHost = fileServerHost;
+        workingDirectory = Path.of(Objects.requireNonNull(configuration.workingDirectory)).toAbsolutePath();
+        workingDirectory.toFile().mkdirs();
+        logger.debug("Using working directory: {}", workingDirectory);
         forkedAgentConf = getForkedAgentConf(configuration);
         logbackConfiguration = getLogbackConfiguration(configuration);
         grid = createGrid();
         gridClient = newClient();
         freeAgentPorts = parseAgentPortRangeAndCreateReservationTrackingQueue();
-        workingDirectory = Path.of(Objects.requireNonNull(configuration.workingDirectory));
-        workingDirectory.toFile().mkdirs();
     }
 
     private Path getForkedAgentConf(AgentForkerConfiguration configuration) throws IOException {
@@ -68,7 +69,8 @@ public class AgentForker implements AutoCloseable {
             forkedAgentConf = Path.of(configuration.agentConf);
             logger.info("Initializing agent forker using agent conf: {}", forkedAgentConf);
         } else {
-            forkedAgentConf = Files.createTempFile("ForkedAgentConf", ".yaml");
+            logger.info("Extracting embedded agent conf to {}...", workingDirectory);
+            forkedAgentConf = Files.createTempFile(workingDirectory, "ForkedAgentConf", ".yaml");
             forkedAgentConf.toFile().deleteOnExit();
             Files.write(forkedAgentConf, FileHelper.readClassLoaderResourceAsByteArray(getClass().getClassLoader(),
                     "ForkedAgentConf.yaml"), StandardOpenOption.APPEND);
@@ -90,7 +92,8 @@ public class AgentForker implements AutoCloseable {
                 logger.info("Using logback configuration: {}", logbackConfiguration);
             }
         } else {
-            logbackConfiguration = Files.createTempFile("logback-forked-agent", ".xml");
+            logger.info("Extracting embedded logback conf to {}...", workingDirectory);
+            logbackConfiguration = Files.createTempFile(workingDirectory, "logback-forked-agent", ".xml");
             logbackConfiguration.toFile().deleteOnExit();
             Files.write(logbackConfiguration, FileHelper.readClassLoaderResourceAsByteArray(getClass().getClassLoader(),
                     "logback-forked-agent.xml"), StandardOpenOption.APPEND);
