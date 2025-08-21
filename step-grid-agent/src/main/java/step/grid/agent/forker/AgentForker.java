@@ -59,10 +59,7 @@ public class AgentForker implements AutoCloseable {
         gridClient = newClient();
         freeAgentPorts = parseAgentPortRangeAndCreateReservationTrackingQueue();
         workingDirectory = Path.of(Objects.requireNonNull(configuration.workingDirectory));
-        boolean created = workingDirectory.toFile().mkdirs();
-        if (!created) {
-            throw new RuntimeException("Unable to create working directory: " + workingDirectory);
-        }
+        workingDirectory.toFile().mkdirs();
     }
 
     private Path getForkedAgentConf(AgentForkerConfiguration configuration) throws IOException {
@@ -309,19 +306,21 @@ public class AgentForker implements AutoCloseable {
                 }
             }
             if(process != null) {
-                logger.info("Stopping forked agent {} gracefully...", id);
-                try {
-                    gridClient.shutdownAgent(agentRef);
-                } catch (AbstractGridClientImpl.AgentCommunicationException e) {
-                    logger.error("Error while shutting down forked agent {}", id, e);
+                if (agentRef != null) {
+                    logger.info("Stopping forked agent {} gracefully...", id);
+                    try {
+                        gridClient.shutdownAgent(agentRef);
+                    } catch (AbstractGridClientImpl.AgentCommunicationException e) {
+                        logger.error("Error while shutting down forked agent {}", id, e);
+                    }
                 }
 
                 try {
-                    boolean terminated = process.waitFor(configuration.shutdownTimeoutMs, TimeUnit.SECONDS);
+                    boolean terminated = process.waitFor(configuration.shutdownTimeoutMs, TimeUnit.MILLISECONDS);
                     if (!terminated) {
                         logger.warn("Timeout while waiting for the forked agent {} to shut down gracefully. Destroying it forcibly.", id);
                         process.destroyForcibly();
-                        terminated = process.waitFor(configuration.shutdownTimeoutMs, TimeUnit.SECONDS);
+                        terminated = process.waitFor(configuration.shutdownTimeoutMs, TimeUnit.MILLISECONDS);
                         if (!terminated) {
                             logger.error("Timeout while waiting for the forked agent {} to stop after destroying it forcibly.", id);
                         } else {
