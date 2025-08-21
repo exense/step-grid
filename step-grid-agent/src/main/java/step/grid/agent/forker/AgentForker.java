@@ -5,6 +5,7 @@ import ch.exense.commons.processes.ForkedJvmBuilder;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import step.grid.AgentRef;
 import step.grid.GridImpl;
 import step.grid.TokenWrapper;
 import step.grid.agent.Agent;
@@ -44,6 +45,7 @@ public class AgentForker implements AutoCloseable {
     private static final AtomicLong nextSessionId = new AtomicLong(1);
     private final LinkedBlockingQueue<Integer> freeAgentPorts;
     private final Path logbackConfiguration;
+    private final Path workingDirectory;
 
     public AgentForker(AgentForkerConfiguration configuration, String fileServerHost) throws IOException {
         if (!configuration.enabled) {
@@ -56,6 +58,11 @@ public class AgentForker implements AutoCloseable {
         grid = createGrid();
         gridClient = newClient();
         freeAgentPorts = parseAgentPortRangeAndCreateReservationTrackingQueue();
+        workingDirectory = Path.of(Objects.requireNonNull(configuration.workingDirectory));
+        boolean created = workingDirectory.toFile().mkdirs();
+        if (!created) {
+            throw new RuntimeException("Unable to create working directory: " + workingDirectory);
+        }
     }
 
     private Path getForkedAgentConf(AgentForkerConfiguration configuration) throws IOException {
@@ -175,12 +182,13 @@ public class AgentForker implements AutoCloseable {
         private final Path tempDirectory;
         private final int port;
         private final Map<String, String> agentProperties;
+        private final AgentRef agentRef;
 
         public ForkedAgent(int port, boolean createSession, Map<String, String> agentProperties) throws Exception {
             this.port = port;
             this.agentProperties = agentProperties;
             id = nextSessionId.getAndIncrement();
-            tempDirectory = Files.createTempDirectory("forked-agent" + id);
+            tempDirectory = Files.createTempDirectory(workingDirectory, "forked-agent" + id);
             logger.info("Starting forked agent {} in {}...", id, tempDirectory);
             forkedJvmBuilder = new ForkedJvmBuilder(getJavaPath(), findMainClass(), getVmArgs(), getProgArgs());
             try {
@@ -206,6 +214,7 @@ public class AgentForker implements AutoCloseable {
             try {
                 logger.info("Waiting for forked agent {} to connect...", id);
                 tokenHandle = gridClient.getTokenHandle(Map.of(), Map.of("forkedAgentId", new Interest(Pattern.compile("^" + id + "$"), true)), createSession);
+                agentRef = tokenHandle.getAgent();
             } catch (Throwable e) {
                 String message;
                 if (e.getMessage().contains("Not able to find any agent token")) {
@@ -300,8 +309,12 @@ public class AgentForker implements AutoCloseable {
                 }
             }
             if(process != null) {
-                logger.info("Stopping forked agent {}...", id);
-                process.destroy();
+                logger.info("Stopping forked agent {} gracefully...", id);
+                try {
+                    gridClient.shutdownAgent(agentRef);
+                } catch (AbstractGridClientImpl.AgentCommunicationException e) {
+                    logger.error("Error while shutting down forked agent {}", id, e);
+                }
 
                 try {
                     boolean terminated = process.waitFor(configuration.shutdownTimeoutMs, TimeUnit.SECONDS);
@@ -315,7 +328,7 @@ public class AgentForker implements AutoCloseable {
                             logger.info("Successfully stopped forked agent forcibly {}.", id);
                         }
                     } else {
-                        logger.info("Successfully stopped forked agent {}.", id);
+                        logger.info("Successfully stopped forked agent {} gracefully.", id);
                     }
                 } catch (InterruptedException e) {
                     logger.error("Interrupted while waiting for the forked agent {} to stop.", id, e);

@@ -64,4 +64,9 @@ public class AgentForkerConfiguration {
      * This value defines the wait time in milliseconds between each retry attempt.
      */
     public long tempDirectoryDeletionRetryWait = 100;
+    /**
+     * Path to the working directory where the execution directories of the
+     * forked agent are created.
+     */
+    public String workingDirectory = "work/forked-agents";
 }
