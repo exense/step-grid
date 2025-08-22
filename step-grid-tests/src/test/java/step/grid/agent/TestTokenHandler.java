@@ -18,6 +18,7 @@
  ******************************************************************************/
 package step.grid.agent;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import step.grid.agent.handler.MessageHandler;
 import step.grid.agent.tokenpool.AgentTokenWrapper;
 import step.grid.io.AgentError;
@@ -39,7 +40,13 @@ public class TestTokenHandler implements MessageHandler {
 			if(notInterruptable) {
 				sleepWithoutInterruptionUntil(System.currentTimeMillis()+delay);
 			} else {
-				sleep(delay);			
+				Thread thread = startSleepThread(delay);
+				token.getTokenReservationSession().registerEventListener(() -> {
+					// Interrupt the wait and return a specific payload when the token execution gets interrupted
+					output.setPayload(new ObjectMapper().createObjectNode().put("status", "interrupted"));
+					thread.interrupt();
+				});
+				thread.join();
 			}
 		} else if(message.getPayload().has("exception")) {
 			throw new Exception(message.getPayload().get("exception").asText());
@@ -52,8 +59,16 @@ public class TestTokenHandler implements MessageHandler {
 		return output;
 	}
 
-	private void sleep(Integer delay) throws InterruptedException {
-		Thread.sleep(delay.longValue());
+	private Thread startSleepThread(Integer delay) {
+		Thread thread = new Thread(() -> {
+			try {
+				Thread.sleep(delay.longValue());
+			} catch (InterruptedException e) {
+				System.out.println("Interrupted");
+			}
+		});
+		thread.start();
+		return thread;
 	}
 	
 	private void sleepWithoutInterruptionUntil(long until) {

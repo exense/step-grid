@@ -58,8 +58,8 @@
 
 		<!-- internal dependencies -->
 		<dependencies.version>2025.6.25</dependencies.version>
-		<exense-commons.version>2.0.13</exense-commons.version>
-		<step-api.version>2025.7.30-6889e1084e318f3fade9e265</step-api.version>
+		<exense-commons.version>2025.7.28-688790164e318f3fad9e6aad</exense-commons.version>
+		<step-api.version>2025.8.22-68a8826da5fd2f5679a329e5</step-api.version>
 
 		<!-- maven build dependencies -->
 		<dep.mvn.jacoco.version>0.8.12</dep.mvn.jacoco.version>
@@ -81,6 +81,7 @@
 		<module>step-grid-agent</module>
 		<module>step-grid-api</module>
 		<module>step-grid-proxy</module>
+		<module>step-grid-tests</module>
 	</modules>
 
 	<!-- available dependencies, can be used in dependent projects WITHOUT specifying a version number -->

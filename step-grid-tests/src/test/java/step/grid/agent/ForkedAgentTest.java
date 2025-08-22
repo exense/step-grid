@@ -1,0 +1,68 @@
+/*******************************************************************************
+ * Copyright (C) 2020, exense GmbH
+ *  
+ * This file is part of STEP
+ *  
+ * STEP is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *  
+ * STEP is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *  
+ * You should have received a copy of the GNU Affero General Public License
+ * along with STEP.  If not, see <http://www.gnu.org/licenses/>.
+ ******************************************************************************/
+package step.grid.agent;
+
+import org.junit.Before;
+import step.grid.agent.conf.AgentForkerConfiguration;
+
+public class ForkedAgentTest extends AgentTest {
+
+	@Before
+	public void init() throws Exception {
+		AgentForkerConfiguration agentForkerConfiguration = new AgentForkerConfiguration();
+		agentForkerConfiguration.enabled = true;
+		agentForkerConfiguration.callTimeoutOffsetMs = 10;
+		super.init(agentForkerConfiguration);
+	}
+
+	@Override
+	public void test() throws Exception {
+		super.test();
+	}
+
+	@Override
+	public void testException() throws Exception {
+		super.testException();
+	}
+
+	@Override
+	public void testNoSession() throws Exception {
+		super.testNoSession();
+	}
+
+	@Override
+	public void testTimeout() throws Exception {
+		super.testTimeout();
+	}
+
+	@Override
+	public void testTimeoutNoTokenReturn() throws Exception {
+		super.testTimeoutNoTokenReturn();
+	}
+
+	@Override
+	public void testLocalToken() throws Exception {
+		super.testLocalToken();
+	}
+
+	@Override
+	public void testInterruption() throws Exception {
+		super.testInterruption();
+	}
+}
