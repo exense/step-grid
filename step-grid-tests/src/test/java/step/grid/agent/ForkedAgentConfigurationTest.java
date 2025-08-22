@@ -69,6 +69,7 @@ public class ForkedAgentConfigurationTest extends AbstractGridTest {
         AgentForkerConfiguration agentForkerConfiguration = enabledAgentForkerConfig();
         // Configure a very short start timeout
         agentForkerConfiguration.startTimeoutMs = 1;
+        agentForkerConfiguration.shutdownTimeoutMs = 1000;
         init(agentForkerConfiguration);
 
         TokenWrapper token = client.getTokenHandle(null, Map.of(), true);

@@ -391,6 +391,11 @@ public abstract class AbstractGridClientImpl implements GridClient {
 			return builder.get();
 		}, gridClientConfiguration.getReleaseSessionTimeout());
 	}
+
+	public void shutdownAgent(AgentRef agentRef) throws AgentCommunicationException {
+		call(agentRef, "/shutdown", builder -> builder.post(null),
+				response -> null, gridClientConfiguration.getTokenExecutionInterruptionTimeout());
+	}
 	
 	private void call(AgentRef agentRef, Token token, String cmd, Function<Builder, Response> f, int callTimeout) throws AgentCommunicationException {
 		call(agentRef, token, cmd, f, null, callTimeout);

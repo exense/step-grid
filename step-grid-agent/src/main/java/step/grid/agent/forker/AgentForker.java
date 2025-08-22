@@ -2,8 +2,10 @@ package step.grid.agent.forker;
 
 import ch.exense.commons.io.FileHelper;
 import ch.exense.commons.processes.ForkedJvmBuilder;
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import step.grid.AgentRef;
 import step.grid.GridImpl;
 import step.grid.TokenWrapper;
 import step.grid.agent.Agent;
@@ -43,6 +45,7 @@ public class AgentForker implements AutoCloseable {
     private static final AtomicLong nextSessionId = new AtomicLong(1);
     private final LinkedBlockingQueue<Integer> freeAgentPorts;
     private final Path logbackConfiguration;
+    private final Path workingDirectory;
 
     public AgentForker(AgentForkerConfiguration configuration, String fileServerHost) throws IOException {
         if (!configuration.enabled) {
@@ -50,6 +53,9 @@ public class AgentForker implements AutoCloseable {
         }
         this.configuration = configuration;
         this.fileServerHost = fileServerHost;
+        workingDirectory = Path.of(Objects.requireNonNull(configuration.workingDirectory)).toAbsolutePath();
+        workingDirectory.toFile().mkdirs();
+        logger.debug("Using working directory: {}", workingDirectory);
         forkedAgentConf = getForkedAgentConf(configuration);
         logbackConfiguration = getLogbackConfiguration(configuration);
         grid = createGrid();
@@ -63,7 +69,8 @@ public class AgentForker implements AutoCloseable {
             forkedAgentConf = Path.of(configuration.agentConf);
             logger.info("Initializing agent forker using agent conf: {}", forkedAgentConf);
         } else {
-            forkedAgentConf = Files.createTempFile("ForkedAgentConf", ".yaml");
+            logger.info("Extracting embedded agent conf to {}...", workingDirectory);
+            forkedAgentConf = Files.createTempFile(workingDirectory, "ForkedAgentConf", ".yaml");
             forkedAgentConf.toFile().deleteOnExit();
             Files.write(forkedAgentConf, FileHelper.readClassLoaderResourceAsByteArray(getClass().getClassLoader(),
                     "ForkedAgentConf.yaml"), StandardOpenOption.APPEND);
@@ -85,7 +92,8 @@ public class AgentForker implements AutoCloseable {
                 logger.info("Using logback configuration: {}", logbackConfiguration);
             }
         } else {
-            logbackConfiguration = Files.createTempFile("logback-forked-agent", ".xml");
+            logger.info("Extracting embedded logback conf to {}...", workingDirectory);
+            logbackConfiguration = Files.createTempFile(workingDirectory, "logback-forked-agent", ".xml");
             logbackConfiguration.toFile().deleteOnExit();
             Files.write(logbackConfiguration, FileHelper.readClassLoaderResourceAsByteArray(getClass().getClassLoader(),
                     "logback-forked-agent.xml"), StandardOpenOption.APPEND);
@@ -174,12 +182,13 @@ public class AgentForker implements AutoCloseable {
         private final Path tempDirectory;
         private final int port;
         private final Map<String, String> agentProperties;
+        private final AgentRef agentRef;
 
         public ForkedAgent(int port, boolean createSession, Map<String, String> agentProperties) throws Exception {
             this.port = port;
             this.agentProperties = agentProperties;
             id = nextSessionId.getAndIncrement();
-            tempDirectory = Files.createTempDirectory("forked-agent" + id);
+            tempDirectory = Files.createTempDirectory(workingDirectory, "forked-agent" + id);
             logger.info("Starting forked agent {} in {}...", id, tempDirectory);
             forkedJvmBuilder = new ForkedJvmBuilder(getJavaPath(), findMainClass(), getVmArgs(), getProgArgs());
             try {
@@ -205,6 +214,7 @@ public class AgentForker implements AutoCloseable {
             try {
                 logger.info("Waiting for forked agent {} to connect...", id);
                 tokenHandle = gridClient.getTokenHandle(Map.of(), Map.of("forkedAgentId", new Interest(Pattern.compile("^" + id + "$"), true)), createSession);
+                agentRef = tokenHandle.getAgent();
             } catch (Throwable e) {
                 String message;
                 if (e.getMessage().contains("Not able to find any agent token")) {
@@ -299,39 +309,66 @@ public class AgentForker implements AutoCloseable {
                 }
             }
             if(process != null) {
-                logger.info("Stopping forked agent {}...", id);
-                process.destroy();
+                if (agentRef != null) {
+                    logger.info("Stopping forked agent {} gracefully...", id);
+                    try {
+                        gridClient.shutdownAgent(agentRef);
+                    } catch (AbstractGridClientImpl.AgentCommunicationException e) {
+                        logger.error("Error while shutting down forked agent {}", id, e);
+                    }
+                }
 
                 try {
-                    boolean terminated = process.waitFor(configuration.shutdownTimeoutMs, TimeUnit.SECONDS);
+                    boolean terminated = process.waitFor(configuration.shutdownTimeoutMs, TimeUnit.MILLISECONDS);
                     if (!terminated) {
                         logger.warn("Timeout while waiting for the forked agent {} to shut down gracefully. Destroying it forcibly.", id);
                         process.destroyForcibly();
-                        terminated = process.waitFor(configuration.shutdownTimeoutMs, TimeUnit.SECONDS);
+                        terminated = process.waitFor(configuration.shutdownTimeoutMs, TimeUnit.MILLISECONDS);
                         if (!terminated) {
                             logger.error("Timeout while waiting for the forked agent {} to stop after destroying it forcibly.", id);
                         } else {
                             logger.info("Successfully stopped forked agent forcibly {}.", id);
                         }
                     } else {
-                        logger.info("Successfully stopped forked agent {}.", id);
+                        logger.info("Successfully stopped forked agent {} gracefully.", id);
                     }
                 } catch (InterruptedException e) {
                     logger.error("Interrupted while waiting for the forked agent {} to stop.", id, e);
                 }
             }
 
-            logger.info("Deleting forked agent execution directory {}...", tempDirectory);
-            boolean deleted = tempDirectory.toFile().delete();
-            if (!deleted) {
-                logger.warn("Failed to delete forked agent execution directory {}.", tempDirectory);
-            }
+            deleteTempDir();
 
             forkedJvmBuilder.close();
 
             if (port != 0) {
                 logger.info("Releasing agent port {}...", port);
                 freeAgentPorts.offer(port);
+            }
+        }
+
+        private void deleteTempDir() {
+            logger.info("Deleting forked agent execution directory {}...", tempDirectory);
+            boolean deleted = false;
+            int nRetries = 5;
+            for (int i = 0; i <= nRetries; i++) {
+                try {
+                    FileUtils.deleteDirectory(tempDirectory.toFile());
+                    logger.info("Deleted forked agent execution directory {}.", tempDirectory);
+                    deleted = true;
+                    break;
+                } catch (IOException e) {
+                    logger.debug("Failed to delete forked agent execution directory {} after {} retries.", tempDirectory, i, e);
+                    try {
+                        Thread.sleep(configuration.tempDirectoryDeletionRetryWait);
+                    } catch (InterruptedException e2) {
+                        logger.error("Thread interrupted while waiting before retrying to delete the forked agent execution directory {}.", tempDirectory, e2);
+                        Thread.currentThread().interrupt();
+                    }
+                }
+            }
+            if (!deleted) {
+                logger.warn("Failed to delete forked agent execution directory {} after {} retries.", tempDirectory, nRetries);
             }
         }
     }
