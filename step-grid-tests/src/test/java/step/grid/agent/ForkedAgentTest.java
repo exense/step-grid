@@ -30,4 +30,39 @@ public class ForkedAgentTest extends AgentTest {
 		agentForkerConfiguration.callTimeoutOffsetMs = 10;
 		super.init(agentForkerConfiguration);
 	}
+
+	@Override
+	public void test() throws Exception {
+		super.test();
+	}
+
+	@Override
+	public void testException() throws Exception {
+		super.testException();
+	}
+
+	@Override
+	public void testNoSession() throws Exception {
+		super.testNoSession();
+	}
+
+	@Override
+	public void testTimeout() throws Exception {
+		super.testTimeout();
+	}
+
+	@Override
+	public void testTimeoutNoTokenReturn() throws Exception {
+		super.testTimeoutNoTokenReturn();
+	}
+
+	@Override
+	public void testLocalToken() throws Exception {
+		super.testLocalToken();
+	}
+
+	@Override
+	public void testInterruption() throws Exception {
+		super.testInterruption();
+	}
 }

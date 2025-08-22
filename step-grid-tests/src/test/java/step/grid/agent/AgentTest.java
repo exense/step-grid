@@ -34,6 +34,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import step.grid.TokenWrapper;
 import step.grid.agent.conf.AgentForkerConfiguration;
 import step.grid.client.AbstractGridClientImpl;
+import step.grid.client.GridClientConfiguration;
 import step.grid.client.GridClientException;
 import step.grid.client.LocalGridClientImpl;
 import step.grid.io.AgentErrorCode;
@@ -50,7 +51,11 @@ public class AgentTest extends AbstractGridTest {
 	@Override
 	public void init(AgentForkerConfiguration agentForkerConfiguration) throws Exception {
 		super.init(agentForkerConfiguration);
-		client = new LocalGridClientImpl(grid);
+		GridClientConfiguration gridClientConfiguration = new GridClientConfiguration();
+		// For the ForkedAgentTest we have to increase the offset as the default offset of 3s seems to be to low to
+		// let the forked agent start
+		gridClientConfiguration.setReadTimeoutOffset(5000);
+		client = new LocalGridClientImpl(gridClientConfiguration, grid);
 	}
 
 	@Test
