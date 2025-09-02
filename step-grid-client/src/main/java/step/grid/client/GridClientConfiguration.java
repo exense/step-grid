@@ -37,6 +37,8 @@ public class GridClientConfiguration {
 
 	private int maxStringLength = 50000000;
 
+	private boolean useLocalAgentUrlIfAvailable = false;
+
 	private ExecutionContextCacheConfiguration localTokenExecutionContextCacheConfiguration = new ExecutionContextCacheConfiguration();
 	
 	public long getNoMatchExistsTimeout() {
@@ -125,5 +127,13 @@ public class GridClientConfiguration {
 
 	public void setLocalTokenExecutionContextCacheConfiguration(ExecutionContextCacheConfiguration localTokenExecutionContextCacheConfiguration) {
 		this.localTokenExecutionContextCacheConfiguration = localTokenExecutionContextCacheConfiguration;
+	}
+
+	public boolean isUseLocalAgentUrlIfAvailable() {
+		return useLocalAgentUrlIfAvailable;
+	}
+
+	public void setUseLocalAgentUrlIfAvailable(boolean useLocalAgentUrlIfAvailable) {
+		this.useLocalAgentUrlIfAvailable = useLocalAgentUrlIfAvailable;
 	}
 }

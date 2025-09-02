@@ -406,7 +406,12 @@ public abstract class AbstractGridClientImpl implements GridClient {
 	}
 
 	private Object call(AgentRef agentRef, String path, Function<Builder, Response> f, Function<Response, Object> mapper, int readTimeout) throws AgentCommunicationException {
-		String agentUrl = agentRef.getAgentUrl();
+		String agentUrl;
+		if (gridClientConfiguration.isUseLocalAgentUrlIfAvailable() && agentRef.getLocalAgentUrl() != null) {
+			agentUrl = agentRef.getLocalAgentUrl();
+		} else {
+			agentUrl = agentRef.getAgentUrl();
+		}
 		int connectionTimeout = gridClientConfiguration.getReadTimeoutOffset();
 
 		String requestPath = agentUrl + path;
@@ -416,6 +421,10 @@ public abstract class AbstractGridClientImpl implements GridClient {
 
 		int maxConnectionRetries = gridClientConfiguration.getMaxConnectionRetries();
 		long connectionRetryGracePeriod = gridClientConfiguration.getConnectionRetryGracePeriod();
+		if (logger.isDebugEnabled()) {
+			logger.debug("Calling agent service {} with readTimeout {}, connectTimeout {}, maxConnectionRetries {}, connectionRetryGracePeriod {}",
+					requestPath, readTimeout, connectionTimeout, maxConnectionRetries, connectionRetryGracePeriod);
+		}
 		int retries = 0;
 		AgentConnectException lastException;
 		while (true) {

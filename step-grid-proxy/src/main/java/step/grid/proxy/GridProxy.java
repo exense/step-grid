@@ -164,6 +164,7 @@ public class GridProxy extends BaseServer implements AutoCloseable {
         String agentUrl = message.getAgentRef().getAgentUrl();
         // replace by proxyfied url (proxy base url + context root) and maintain the mapping
         message.getAgentRef().setAgentUrl(gridProxyUrl + "/" + getContextRoot(agentUrl));
+        message.getAgentRef().setLocalAgentUrl(agentUrl);
         //Forward registration message to grid server
         try (Response r = client.target(gridUrl + "/grid/register").request().property(ClientProperties.READ_TIMEOUT, gridReadTimeout)
                     .property(ClientProperties.CONNECT_TIMEOUT, gridConnectTimeout).post(Entity.entity(message, MediaType.APPLICATION_JSON))) {
