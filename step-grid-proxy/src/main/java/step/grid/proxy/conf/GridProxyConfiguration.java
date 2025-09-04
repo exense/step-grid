@@ -22,6 +22,7 @@ import step.grid.app.configuration.AppConfiguration;
 
 public class GridProxyConfiguration extends AppConfiguration {
 
+    private String gridProxyName;
     private String gridProxyHost;
     private Integer gridProxyPort;
     private String gridProxyUrl;
@@ -32,6 +33,14 @@ public class GridProxyConfiguration extends AppConfiguration {
 
     public GridProxyConfiguration() {
         super();
+    }
+
+    public String getGridProxyName() {
+        return gridProxyName;
+    }
+
+    public void setGridProxyName(String gridProxyName) {
+        this.gridProxyName = gridProxyName;
     }
 
     public String getGridProxyHost() {

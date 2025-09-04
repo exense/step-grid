@@ -34,6 +34,7 @@ import org.glassfish.jersey.jackson.internal.jackson.jaxrs.json.JacksonJsonProvi
 import org.glassfish.jersey.server.ResourceConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import step.grid.Token;
 import step.grid.agent.RegistrationMessage;
 import step.grid.app.configuration.ConfigurationParser;
 import step.grid.app.server.BaseServer;
@@ -47,16 +48,22 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class GridProxy extends BaseServer implements AutoCloseable {
 
     private static final Logger logger = LoggerFactory.getLogger(GridProxy.class);
+    public static final String TOKEN_ATTRIBUTE_GRID_PROXY_NAME = "$gridProxyName";
+    public static final String DEFAULT_GRID_PROXY_NAME = "UnnamedGridProxy";
     private final Server server;
 
     private final ConcurrentHashMap<String, String> agentUrlToContextRoot = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, String> contextRootToAgentUrl = new ConcurrentHashMap<>();
     private final String gridProxyUrl;
+    private final String gridProxyName;
     private final GridProxyConfiguration configuration;
     private Client client;
 
@@ -102,9 +109,15 @@ public class GridProxy extends BaseServer implements AutoCloseable {
     }
 
     public GridProxy(GridProxyConfiguration gridProxyConfiguration) throws Exception {
-        int serverPort = this.resolveServerPort(gridProxyConfiguration.getGridProxyUrl(), gridProxyConfiguration.getGridProxyPort());
         this.configuration = gridProxyConfiguration;
-        logger.info("Starting grid proxy...");
+        int serverPort = this.resolveServerPort(gridProxyConfiguration.getGridProxyUrl(), gridProxyConfiguration.getGridProxyPort());
+        if (configuration.getGridProxyName() == null) {
+            logger.warn("The grid proxy name isn't set in the proxy configuration (field 'gridProxyName'). Falling back to default name {}.", DEFAULT_GRID_PROXY_NAME);
+            gridProxyName = DEFAULT_GRID_PROXY_NAME;
+        } else {
+            gridProxyName = configuration.getGridProxyName();
+        }
+        logger.info("Starting grid proxy [name={}, localPort={}]...", gridProxyName, serverPort);
         ResourceConfig resourceConfig = new ResourceConfig();
         resourceConfig.packages(GridProxyServices.class.getPackage().getName());
         final GridProxy gridProxy = this;
@@ -151,6 +164,10 @@ public class GridProxy extends BaseServer implements AutoCloseable {
         return gridProxyUrl;
     }
 
+    public String getGridProxyName() {
+        return gridProxyName;
+    }
+
     public GridProxyConfiguration getConfiguration() {
         return configuration;
     }
@@ -165,6 +182,9 @@ public class GridProxy extends BaseServer implements AutoCloseable {
         // replace by proxyfied url (proxy base url + context root) and maintain the mapping
         message.getAgentRef().setAgentUrl(gridProxyUrl + "/" + getContextRoot(agentUrl));
         message.getAgentRef().setLocalAgentUrl(agentUrl);
+        // adding the name of the proxy to the token attributes in order to allow token selection by proxy name
+        Optional.ofNullable(message.getTokens()).ifPresent(tokens -> tokens.forEach(token ->
+                Optional.ofNullable(token.getAttributes()).ifPresent(attributes -> attributes.put(TOKEN_ATTRIBUTE_GRID_PROXY_NAME, gridProxyName))));
         //Forward registration message to grid server
         try (Response r = client.target(gridUrl + "/grid/register").request().property(ClientProperties.READ_TIMEOUT, gridReadTimeout)
                     .property(ClientProperties.CONNECT_TIMEOUT, gridConnectTimeout).post(Entity.entity(message, MediaType.APPLICATION_JSON))) {
