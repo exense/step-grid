@@ -18,6 +18,7 @@
  ******************************************************************************/
 package step.grid.client;
 
+import step.grid.client.security.ClientSecurityConfiguration;
 import step.grid.contextbuilder.ExecutionContextCacheConfiguration;
 
 public class GridClientConfiguration {
@@ -40,7 +41,9 @@ public class GridClientConfiguration {
 	private boolean useLocalAgentUrlIfAvailable = false;
 
 	private ExecutionContextCacheConfiguration localTokenExecutionContextCacheConfiguration = new ExecutionContextCacheConfiguration();
-	
+
+	private ClientSecurityConfiguration security;
+
 	public long getNoMatchExistsTimeout() {
 		return noMatchExistsTimeout;
 	}
@@ -135,5 +138,13 @@ public class GridClientConfiguration {
 
 	public void setUseLocalAgentUrlIfAvailable(boolean useLocalAgentUrlIfAvailable) {
 		this.useLocalAgentUrlIfAvailable = useLocalAgentUrlIfAvailable;
+	}
+
+	public ClientSecurityConfiguration getSecurity() {
+		return security;
+	}
+
+	public void setSecurity(ClientSecurityConfiguration security) {
+		this.security = security;
 	}
 }

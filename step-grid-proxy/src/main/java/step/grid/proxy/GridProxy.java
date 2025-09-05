@@ -48,10 +48,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+
+import static step.grid.security.JwtAuthenticationFilter.registerSecurityFilterIfAuthenticationIsEnabled;
 
 public class GridProxy extends BaseServer implements AutoCloseable {
 
@@ -119,6 +119,7 @@ public class GridProxy extends BaseServer implements AutoCloseable {
         }
         logger.info("Starting grid proxy [name={}, localPort={}]...", gridProxyName, serverPort);
         ResourceConfig resourceConfig = new ResourceConfig();
+        registerSecurityFilterIfAuthenticationIsEnabled(configuration.getSecurity(), resourceConfig, "grid proxy");
         resourceConfig.packages(GridProxyServices.class.getPackage().getName());
         final GridProxy gridProxy = this;
         resourceConfig.register(new AbstractBinder() {

@@ -18,18 +18,28 @@
  ******************************************************************************/
 package step.grid.client;
 
+import step.grid.client.security.ClientSecurityConfiguration;
+
 public class RemoteGridClientImpl extends AbstractGridClientImpl {
 
 	public RemoteGridClientImpl(String gridHost) {
-		this(new GridClientConfiguration(), new DefaultTokenLifecycleStrategy(), gridHost);
+		this(new GridClientConfiguration(), new DefaultTokenLifecycleStrategy(), gridHost, null);
+	}
+
+	public RemoteGridClientImpl(String gridHost, ClientSecurityConfiguration gridClientSecurityConfiguration) {
+		this(new GridClientConfiguration(), new DefaultTokenLifecycleStrategy(), gridHost, gridClientSecurityConfiguration);
 	}
 	
+	public RemoteGridClientImpl(GridClientConfiguration gridClientConfiguration, String gridHost, ClientSecurityConfiguration gridClientSecurityConfiguration) {
+		this(gridClientConfiguration, new DefaultTokenLifecycleStrategy(), gridHost, gridClientSecurityConfiguration);
+	}
+
 	public RemoteGridClientImpl(GridClientConfiguration gridClientConfiguration, String gridHost) {
-		this(gridClientConfiguration, new DefaultTokenLifecycleStrategy(), gridHost);
+		this(gridClientConfiguration, new DefaultTokenLifecycleStrategy(), gridHost, null);
 	}
-	
-	public RemoteGridClientImpl(GridClientConfiguration gridClientConfiguration, TokenLifecycleStrategy tokenLifecycleStrategy, String gridHost) {
-		super(gridClientConfiguration, tokenLifecycleStrategy, new RemoteGridImpl(gridHost));
+
+	public RemoteGridClientImpl(GridClientConfiguration gridClientConfiguration, TokenLifecycleStrategy tokenLifecycleStrategy, String gridHost, ClientSecurityConfiguration gridClientSecurityConfiguration) {
+		super(gridClientConfiguration, tokenLifecycleStrategy, new RemoteGridImpl(gridHost, gridClientSecurityConfiguration));
 	}
 	
 }

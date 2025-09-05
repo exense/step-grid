@@ -59,6 +59,7 @@ import step.grid.agent.handler.MessageHandler;
 import step.grid.agent.handler.MessageHandlerPool;
 import step.grid.agent.tokenpool.AgentTokenWrapper;
 import step.grid.agent.tokenpool.TokenReservationSession;
+import step.grid.client.security.JwtTokenGenerator;
 import step.grid.contextbuilder.ApplicationContextBuilder;
 import step.grid.filemanager.FileManagerClient;
 import step.grid.filemanager.FileManagerException;
@@ -68,10 +69,14 @@ import step.grid.io.InputMessage;
 import step.grid.io.OutputMessage;
 import step.grid.tokenpool.Interest;
 
+import static step.grid.client.security.JwtTokenGenerator.initializeJwtTokenGenerator;
+import static step.grid.client.security.JwtTokenGenerator.withAuthentication;
+
 public abstract class AbstractGridClientImpl implements GridClient {
 
 	private static final Logger logger = LoggerFactory.getLogger(AbstractGridClientImpl.class);
 
+	private final JwtTokenGenerator jwtTokenGenerator;
 	protected Client client;
 	protected ConcurrentHashMap<String, TokenReservationSession> localTokenSessions = new ConcurrentHashMap<>();
 	
@@ -95,7 +100,8 @@ public abstract class AbstractGridClientImpl implements GridClient {
 		this.gridClientConfiguration = gridClientConfiguration;
 		this.tokenLifecycleStrategy = tokenLifecycleStrategy;
 		this.grid = grid;
-		
+
+		jwtTokenGenerator = initializeJwtTokenGenerator(gridClientConfiguration.getSecurity(), "grid client");
 		ClientBuilder newBuilder = ClientBuilder.newBuilder();
 
 		if(gridClientConfiguration.isAllowInvalidSslCertificates()) {
@@ -415,7 +421,7 @@ public abstract class AbstractGridClientImpl implements GridClient {
 		int connectionTimeout = gridClientConfiguration.getReadTimeoutOffset();
 
 		String requestPath = agentUrl + path;
-		Builder builder =  client.target(requestPath).request()
+		Builder builder = withAuthentication(jwtTokenGenerator, client.target(requestPath).request())
 				.property(ClientProperties.READ_TIMEOUT, readTimeout)
 				.property(ClientProperties.CONNECT_TIMEOUT, connectionTimeout);
 

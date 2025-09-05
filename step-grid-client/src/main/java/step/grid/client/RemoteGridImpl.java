@@ -36,6 +36,8 @@ import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.media.multipart.file.FileDataBodyPart;
 import org.glassfish.jersey.media.multipart.file.StreamDataBodyPart;
 import step.grid.*;
+import step.grid.client.security.ClientSecurityConfiguration;
+import step.grid.client.security.JwtTokenGenerator;
 import step.grid.filemanager.FileManagerException;
 import step.grid.filemanager.FileVersion;
 import step.grid.filemanager.FileVersionId;
@@ -53,6 +55,7 @@ import java.util.function.Supplier;
 
 public class RemoteGridImpl implements Grid {
 
+	private final JwtTokenGenerator jwtTokenGenerator;
 	protected String gridHost;
 	
 	private Client client;
@@ -61,13 +64,15 @@ public class RemoteGridImpl implements Grid {
 	
 	int connectionTimeout;
 	
-	protected RemoteGridImpl(String gridHost) {
+	protected RemoteGridImpl(String gridHost, ClientSecurityConfiguration clientSecurityConfiguration) {
 		this.gridHost = gridHost;
 		
 		client = ClientBuilder.newClient();
 		client.register(GridObjectMapperResolver.class);
 		client.register(JacksonJsonProvider.class);
 		client.register(MultiPartFeature.class);
+
+		jwtTokenGenerator = JwtTokenGenerator.initializeJwtTokenGenerator(clientSecurityConfiguration, "remote grid client");
 	}
 	
 	protected Builder requestBuilder(String path) {
@@ -81,7 +86,7 @@ public class RemoteGridImpl implements Grid {
 				target=target.queryParam(key, queryParams.get(key));
 			}
 		}
-		Builder b = target.request();
+		Builder b = JwtTokenGenerator.withAuthentication(jwtTokenGenerator, target.request());
 		b.accept(MediaType.APPLICATION_JSON);
 		if(cookies!=null) {
 			for(NewCookie c:cookies.values()) {

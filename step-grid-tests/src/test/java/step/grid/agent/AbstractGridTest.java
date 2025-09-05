@@ -38,18 +38,24 @@ import step.grid.agent.conf.AgentForkerConfiguration;
 import step.grid.client.AbstractGridClientImpl.AgentCommunicationException;
 import step.grid.client.GridClient;
 import step.grid.client.GridClientException;
+import step.grid.client.security.ClientSecurityConfiguration;
 import step.grid.filemanager.FileManagerConfiguration;
 import step.grid.filemanager.FileManagerImplConfig;
 import step.grid.io.AgentErrorCode;
 import step.grid.io.OutputMessage;
+import step.grid.security.SecurityConfiguration;
 import step.grid.tokenpool.Interest;
 
 public abstract class AbstractGridTest {
 
+	public static final String GRID_SECRET = "SlILlEGSIvLKy3JWg7ny8aYoe2D9LNNafQ6OJFKFF8c=";
+	public static final String AGENT_SECRET = "/Ytoh2wZRO5ZpqunRzkflKGIzGUgWWcO4Nmu4Jbguec=";
 	protected Agent agent;
 	
 	protected GridImpl grid;
-	
+	protected boolean secureGridServices = false;
+	protected boolean secureAgentServices = false;
+
 	protected GridClient client;
 	
 	protected int nTokens = 1;
@@ -66,6 +72,10 @@ public abstract class AbstractGridTest {
 		File fileManagerFolder = FileHelper.createTempFolder();
 		
 		GridImplConfig gridConfig = new GridImplConfig();
+		if (secureGridServices) {
+			SecurityConfiguration securityConfiguration = new SecurityConfiguration(true, GRID_SECRET);
+			gridConfig.setSecurity(securityConfiguration);
+		}
 		// disable last modification cache
 		FileManagerImplConfig fileManagerImplConfig = new FileManagerImplConfig();
 		fileManagerImplConfig.setFileLastModificationCacheExpireAfter(0);
@@ -80,6 +90,13 @@ public abstract class AbstractGridTest {
 		agentConf.setGracefulShutdownTimeout(100l);
 		configureAgent(agentConf);
 		agentConf.setFileManagerConfiguration(new FileManagerConfiguration());
+		if (secureGridServices) {
+			agentConf.setRegistrationClientSecurity(new ClientSecurityConfiguration(GRID_SECRET));
+		}
+		if (secureAgentServices) {
+			agentConf.setSecurity(new SecurityConfiguration(true, AGENT_SECRET));
+		}
+
 		agent = new Agent(agentConf);
 		Map<String, String> attributes = new HashMap<String, String>();
 		attributes.put("att1", "val1");

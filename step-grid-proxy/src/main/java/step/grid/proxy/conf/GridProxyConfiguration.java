@@ -19,6 +19,7 @@
 package step.grid.proxy.conf;
 
 import step.grid.app.configuration.AppConfiguration;
+import step.grid.security.SecurityConfiguration;
 
 public class GridProxyConfiguration extends AppConfiguration {
 
@@ -30,6 +31,7 @@ public class GridProxyConfiguration extends AppConfiguration {
     private Integer agentConnectTimeout = 3000;
     private Integer agentReserveTimeout = 3000;
     private Integer agentReleaseTimeout = 3000;
+    private SecurityConfiguration security;
 
     public GridProxyConfiguration() {
         super();
@@ -97,5 +99,13 @@ public class GridProxyConfiguration extends AppConfiguration {
 
     public void setAgentReleaseTimeout(Integer agentReleaseTimeout) {
         this.agentReleaseTimeout = agentReleaseTimeout;
+    }
+
+    public SecurityConfiguration getSecurity() {
+        return security;
+    }
+
+    public void setSecurity(SecurityConfiguration security) {
+        this.security = security;
     }
 }
