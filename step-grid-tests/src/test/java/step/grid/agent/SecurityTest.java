@@ -110,7 +110,7 @@ public class SecurityTest {
     private static GridClientConfiguration gridClientConfigurationWithoutSecurity() {
         GridClientConfiguration gridClientConfiguration = new GridClientConfiguration();
         // This timeout should be high enough to let the agent start
-        gridClientConfiguration.setNoMatchExistsTimeout(3000);
+        gridClientConfiguration.setNoMatchExistsTimeout(2000);
         return gridClientConfiguration;
     }
 
@@ -138,6 +138,7 @@ public class SecurityTest {
 
     private static Agent startAgent(String gridHost, AgentConf agentConf) throws Exception {
         agentConf.setGridHost(gridHost);
+        agentConf.setRegistrationPeriod(10);
         Agent agent = new Agent(agentConf);
         agent.addTokens(1, Map.of(), Map.of(), Map.of());
         return agent;
