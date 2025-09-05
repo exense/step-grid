@@ -110,7 +110,7 @@ public class SecurityTest {
     private static GridClientConfiguration gridClientConfigurationWithoutSecurity() {
         GridClientConfiguration gridClientConfiguration = new GridClientConfiguration();
         // This timeout should be high enough to let the agent start
-        gridClientConfiguration.setNoMatchExistsTimeout(1000);
+        gridClientConfiguration.setNoMatchExistsTimeout(3000);
         return gridClientConfiguration;
     }
 
