@@ -17,20 +17,23 @@
  * along with Step.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package step.grid.client.security;
+package step.grid.security;
 
-public class ClientSecurityConfiguration {
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
+public class SymmetricSecurityConfiguration {
+    
     public String jwtSecretKey;
-    public boolean jwtAuthenticationEnabled;
 
-    public ClientSecurityConfiguration(String jwtSecretKey) {
+    public SymmetricSecurityConfiguration() {
+    }
+    
+    public SymmetricSecurityConfiguration(String jwtSecretKey) {
         this.jwtSecretKey = jwtSecretKey;
-        this.jwtAuthenticationEnabled = true;
     }
 
-    public ClientSecurityConfiguration() {
-        this.jwtSecretKey = null;
-        this.jwtAuthenticationEnabled = false;
+    @JsonIgnore
+    public boolean isJwtAuthenticationEnabled() {
+        return jwtSecretKey != null && !jwtSecretKey.isEmpty();
     }
 }

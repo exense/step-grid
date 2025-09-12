@@ -18,18 +18,11 @@
  ******************************************************************************/
 package step.grid.agent;
 
-import java.io.File;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.regex.Pattern;
-
-import org.junit.After;
-
+import ch.exense.commons.io.FileHelper;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-
-import ch.exense.commons.io.FileHelper;
+import org.junit.After;
 import step.grid.GridImpl;
 import step.grid.GridImpl.GridImplConfig;
 import step.grid.TokenWrapper;
@@ -38,23 +31,25 @@ import step.grid.agent.conf.AgentForkerConfiguration;
 import step.grid.client.AbstractGridClientImpl.AgentCommunicationException;
 import step.grid.client.GridClient;
 import step.grid.client.GridClientException;
-import step.grid.client.security.ClientSecurityConfiguration;
 import step.grid.filemanager.FileManagerConfiguration;
 import step.grid.filemanager.FileManagerImplConfig;
 import step.grid.io.AgentErrorCode;
 import step.grid.io.OutputMessage;
-import step.grid.security.SecurityConfiguration;
+import step.grid.security.SymmetricSecurityConfiguration;
 import step.grid.tokenpool.Interest;
+
+import java.io.File;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.regex.Pattern;
 
 public abstract class AbstractGridTest {
 
 	public static final String GRID_SECRET = "SlILlEGSIvLKy3JWg7ny8aYoe2D9LNNafQ6OJFKFF8c=";
-	public static final String AGENT_SECRET = "/Ytoh2wZRO5ZpqunRzkflKGIzGUgWWcO4Nmu4Jbguec=";
 	protected Agent agent;
 	
 	protected GridImpl grid;
-	protected boolean secureGridServices = false;
-	protected boolean secureAgentServices = false;
+	protected boolean secureGrid = false;
 
 	protected GridClient client;
 	
@@ -72,8 +67,8 @@ public abstract class AbstractGridTest {
 		File fileManagerFolder = FileHelper.createTempFolder();
 		
 		GridImplConfig gridConfig = new GridImplConfig();
-		if (secureGridServices) {
-			SecurityConfiguration securityConfiguration = new SecurityConfiguration(true, GRID_SECRET);
+		if (secureGrid) {
+			SymmetricSecurityConfiguration securityConfiguration = new SymmetricSecurityConfiguration(GRID_SECRET);
 			gridConfig.setSecurity(securityConfiguration);
 		}
 		// disable last modification cache
@@ -90,11 +85,8 @@ public abstract class AbstractGridTest {
 		agentConf.setGracefulShutdownTimeout(100l);
 		configureAgent(agentConf);
 		agentConf.setFileManagerConfiguration(new FileManagerConfiguration());
-		if (secureGridServices) {
-			agentConf.setRegistrationClientSecurity(new ClientSecurityConfiguration(GRID_SECRET));
-		}
-		if (secureAgentServices) {
-			agentConf.setSecurity(new SecurityConfiguration(true, AGENT_SECRET));
+		if (secureGrid) {
+			agentConf.setGridSecurity(new SymmetricSecurityConfiguration(GRID_SECRET));
 		}
 
 		agent = new Agent(agentConf);

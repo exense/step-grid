@@ -147,7 +147,7 @@ public class Agent extends BaseServer implements AutoCloseable {
 		String fileServerHost = Optional.ofNullable(agentConf.getFileServerHost()).orElse(gridUrl);
 
 		registrationClient = new RegistrationClient(gridUrl, fileServerHost,
-				agentConf.getGridConnectTimeout(), agentConf.getGridReadTimeout(), agentConf.getRegistrationClientSecurity());
+				agentConf.getGridConnectTimeout(), agentConf.getGridReadTimeout(), agentConf.getGridSecurity());
 
 
 		fileManagerClient = initFileManager(registrationClient, agentConf.getWorkingDir(), agentConf.getFileManagerConfiguration());
@@ -231,7 +231,7 @@ public class Agent extends BaseServer implements AutoCloseable {
 		ResourceConfig resourceConfig = new ResourceConfig();
 		resourceConfig.packages(AgentServices.class.getPackage().getName());
 		resourceConfig.register(ObjectMapperResolver.class);
-		registerSecurityFilterIfAuthenticationIsEnabled(agentConf.getSecurity(), resourceConfig, "agent");
+		registerSecurityFilterIfAuthenticationIsEnabled(agentConf.getGridSecurity(), resourceConfig, "agent");
 		final Agent agent = this;
 		resourceConfig.register(new AbstractBinder() {
 			@Override

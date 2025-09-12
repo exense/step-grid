@@ -25,6 +25,7 @@ import jakarta.ws.rs.client.Invocation;
 import jakarta.ws.rs.core.HttpHeaders;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import step.grid.security.SymmetricSecurityConfiguration;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -55,14 +56,11 @@ public class JwtTokenGenerator {
                 .compact();
     }
 
-    public static JwtTokenGenerator initializeJwtTokenGenerator(ClientSecurityConfiguration clientSecurityConfiguration, String clientName) {
+    public static JwtTokenGenerator initializeJwtTokenGenerator(SymmetricSecurityConfiguration securityConfiguration, String clientName) {
         final JwtTokenGenerator jwtTokenGenerator;
-        if (clientSecurityConfiguration != null && clientSecurityConfiguration.jwtAuthenticationEnabled) {
+        if (securityConfiguration != null && securityConfiguration.isJwtAuthenticationEnabled()) {
             logger.info("JWT authentication enabled for {}", clientName);
-            if(clientSecurityConfiguration.jwtSecretKey == null || clientSecurityConfiguration.jwtSecretKey.isEmpty()) {
-                throw new IllegalArgumentException("jwtSecretKey must be set when JWT authentication is enabled");
-            }
-            jwtTokenGenerator = new JwtTokenGenerator(clientSecurityConfiguration.jwtSecretKey);
+            jwtTokenGenerator = new JwtTokenGenerator(securityConfiguration.jwtSecretKey);
         } else {
             logger.info("JWT authentication is disabled for {}", clientName);
             jwtTokenGenerator = null;

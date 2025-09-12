@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeoutException;
 
+import step.grid.security.SymmetricSecurityConfiguration;
 import step.grid.tokenpool.Interest;
 
 public interface Grid extends GridFileService {
@@ -47,4 +48,6 @@ public interface Grid extends GridFileService {
 	void invalidateToken(String tokenId);
 
 	void cleanupFileManagerCache();
+
+	SymmetricSecurityConfiguration getSecurityConfiguration();
 }

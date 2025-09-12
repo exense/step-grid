@@ -34,7 +34,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import step.grid.agent.RegistrationMessage;
 import step.grid.filemanager.*;
-import step.grid.security.SecurityConfiguration;
+import step.grid.security.SymmetricSecurityConfiguration;
 import step.grid.tokenpool.*;
 import step.grid.tokenpool.affinityevaluator.TokenPoolAware;
 import step.grid.tokenpool.affinityevaluator.TokenWrapperAffinityEvaluatorImpl;
@@ -102,7 +102,7 @@ public class GridImpl implements Grid {
 		
 		Map<String, String> tokenAffinityEvaluatorProperties;
 
-		SecurityConfiguration security;
+		SymmetricSecurityConfiguration security;
 
 		public GridImplConfig() {
 			super();
@@ -153,11 +153,11 @@ public class GridImpl implements Grid {
 			this.deferAcceptingRegistrationMessages = deferAcceptingRegistrationMessages;
 		}
 
-		public SecurityConfiguration getSecurity() {
+		public SymmetricSecurityConfiguration getSecurity() {
 			return security;
 		}
 
-		public void setSecurity(SecurityConfiguration security) {
+		public void setSecurity(SymmetricSecurityConfiguration security) {
 			this.security = security;
 		}
 	}
@@ -417,5 +417,10 @@ public class GridImpl implements Grid {
 	@Override
 	public void unregisterFile(FileVersionId fileVersionId) {
 		fileManager.unregisterFileVersion(fileVersionId);
+	}
+
+	@Override
+	public SymmetricSecurityConfiguration getSecurityConfiguration() {
+		return gridConfig.getSecurity();
 	}
 }

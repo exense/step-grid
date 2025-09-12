@@ -11,6 +11,11 @@
 
     <dependencies>
         <dependency>
+            <groupId>ch.exense.step</groupId>
+            <artifactId>step-grid-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
             <groupId>ch.exense.commons</groupId>
             <artifactId>exense-basic-commons</artifactId>
         </dependency>

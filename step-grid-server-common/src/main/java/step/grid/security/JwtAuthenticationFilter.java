@@ -6,7 +6,6 @@ import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerRequestFilter;
 import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.Response;
-import jakarta.ws.rs.ext.Provider;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,8 +58,8 @@ public class JwtAuthenticationFilter implements ContainerRequestFilter {
         );
     }
 
-    public static void registerSecurityFilterIfAuthenticationIsEnabled(SecurityConfiguration securityConfiguration, ResourceConfig resourceConfig, String serviceName) {
-        if (securityConfiguration != null && securityConfiguration.jwtAuthenticationEnabled) {
+    public static void registerSecurityFilterIfAuthenticationIsEnabled(SymmetricSecurityConfiguration securityConfiguration, ResourceConfig resourceConfig, String serviceName) {
+        if (securityConfiguration != null && securityConfiguration.isJwtAuthenticationEnabled()) {
             logger.info("JWT authentication is enabled for {} services", serviceName);
             if (securityConfiguration.jwtSecretKey == null || securityConfiguration.jwtSecretKey.trim().isEmpty()) {
                 throw new IllegalStateException("JWT secret key must be configured when JWT authentication is enabled");

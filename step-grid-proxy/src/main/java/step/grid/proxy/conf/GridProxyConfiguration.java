@@ -19,7 +19,7 @@
 package step.grid.proxy.conf;
 
 import step.grid.app.configuration.AppConfiguration;
-import step.grid.security.SecurityConfiguration;
+import step.grid.security.SymmetricSecurityConfiguration;
 
 public class GridProxyConfiguration extends AppConfiguration {
 
@@ -27,11 +27,13 @@ public class GridProxyConfiguration extends AppConfiguration {
     private String gridProxyHost;
     private Integer gridProxyPort;
     private String gridProxyUrl;
+
     private String gridUrl;
+    private SymmetricSecurityConfiguration gridSecurity;
+
     private Integer agentConnectTimeout = 3000;
     private Integer agentReserveTimeout = 3000;
     private Integer agentReleaseTimeout = 3000;
-    private SecurityConfiguration security;
 
     public GridProxyConfiguration() {
         super();
@@ -101,11 +103,11 @@ public class GridProxyConfiguration extends AppConfiguration {
         this.agentReleaseTimeout = agentReleaseTimeout;
     }
 
-    public SecurityConfiguration getSecurity() {
-        return security;
+    public SymmetricSecurityConfiguration getGridSecurity() {
+        return gridSecurity;
     }
 
-    public void setSecurity(SecurityConfiguration security) {
-        this.security = security;
+    public void setGridSecurity(SymmetricSecurityConfiguration gridSecurity) {
+        this.gridSecurity = gridSecurity;
     }
 }

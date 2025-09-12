@@ -101,7 +101,7 @@ public abstract class AbstractGridClientImpl implements GridClient {
 		this.tokenLifecycleStrategy = tokenLifecycleStrategy;
 		this.grid = grid;
 
-		jwtTokenGenerator = initializeJwtTokenGenerator(gridClientConfiguration.getSecurity(), "grid client");
+		jwtTokenGenerator = initializeJwtTokenGenerator(gridClientConfiguration.getGridSecurity(), "grid client");
 		ClientBuilder newBuilder = ClientBuilder.newBuilder();
 
 		if(gridClientConfiguration.isAllowInvalidSslCertificates()) {

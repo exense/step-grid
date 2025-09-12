@@ -31,9 +31,9 @@ import org.glassfish.jersey.jackson.internal.jackson.jaxrs.json.JacksonJsonProvi
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import step.grid.Token;
-import step.grid.client.security.ClientSecurityConfiguration;
 import step.grid.client.security.JwtTokenGenerator;
 import step.grid.filemanager.*;
+import step.grid.security.SymmetricSecurityConfiguration;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -58,7 +58,7 @@ public class RegistrationClient implements FileVersionProvider {
 	int connectionTimeout;
 	int callTimeout;
 
-	public RegistrationClient(String registrationServer, String fileServer, int connectionTimeout, int callTimeout, ClientSecurityConfiguration clientSecurityConfiguration) {
+	public RegistrationClient(String registrationServer, String fileServer, int connectionTimeout, int callTimeout, SymmetricSecurityConfiguration gridSecurityConfiguration) {
 		super();
 		this.registrationServer = registrationServer;
 		this.fileServer = fileServer;
@@ -68,7 +68,7 @@ public class RegistrationClient implements FileVersionProvider {
 		this.callTimeout = callTimeout;
 		this.connectionTimeout = connectionTimeout;
 
-		jwtTokenGenerator = JwtTokenGenerator.initializeJwtTokenGenerator(clientSecurityConfiguration, "registration client");
+		jwtTokenGenerator = JwtTokenGenerator.initializeJwtTokenGenerator(gridSecurityConfiguration, "registration client");
 	}
 	
 	public boolean sendRegistrationMessage(RegistrationMessage message) {

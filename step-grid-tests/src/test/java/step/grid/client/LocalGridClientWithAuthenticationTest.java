@@ -20,15 +20,14 @@ package step.grid.client;
 
 import org.junit.Before;
 import org.junit.Test;
-import step.grid.client.security.ClientSecurityConfiguration;
+import step.grid.security.SymmetricSecurityConfiguration;
 
 public class LocalGridClientWithAuthenticationTest extends AbstractGridClientTest {
 
 	@Before
 	public void init() throws Exception {
-		// Secure both the grid and agent services
-		secureGridServices = true;
-		secureAgentServices = true;
+		// Secure the grid i.e enable JWT authentication in both directions
+		secureGrid = true;
 		super.init();
 	}
 
@@ -108,7 +107,7 @@ public class LocalGridClientWithAuthenticationTest extends AbstractGridClientTes
 		gridClientConfiguration.setReadTimeoutOffset(readOffset);
 		gridClientConfiguration.setReserveSessionTimeout(reserveTimeout);
 		gridClientConfiguration.setReleaseSessionTimeout(releaseTimeout);
-		gridClientConfiguration.setSecurity(new ClientSecurityConfiguration(AGENT_SECRET));
+		gridClientConfiguration.setGridSecurity(new SymmetricSecurityConfiguration(GRID_SECRET));
 		client = new LocalGridClientImpl(gridClientConfiguration, grid);
 	}
 

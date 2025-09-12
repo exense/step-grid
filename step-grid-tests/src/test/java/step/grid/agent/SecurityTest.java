@@ -29,8 +29,7 @@ import step.grid.client.AbstractGridClientImpl;
 import step.grid.client.GridClientConfiguration;
 import step.grid.client.RemoteClientException;
 import step.grid.client.RemoteGridClientImpl;
-import step.grid.client.security.ClientSecurityConfiguration;
-import step.grid.security.SecurityConfiguration;
+import step.grid.security.SymmetricSecurityConfiguration;
 
 import java.io.File;
 import java.util.Map;
@@ -39,15 +38,14 @@ import static org.junit.Assert.*;
 
 public class SecurityTest {
 
-    public static final String GRID_SERVICES_SECRET = "MAKFt7x4ILsVi3krtF/INHMBj7jxU2alQyvAla/cA1w=";
-    public static final String AGENT_SERVICES_SECRET = "0YOBzko5spoWMWgSchsMaOOdKFiMLa2nDZbebaQ8qxQ=";
+    public static final String GRID_SECRET = "MAKFt7x4ILsVi3krtF/INHMBj7jxU2alQyvAla/cA1w=";
 
     @Test
     public void test() throws Exception {
         GridImpl grid = startProtectedGrid();
         String gridHost = "http://127.0.0.1:" + grid.getServerPort();
         // Start an agent without client security configured. This agent shouldn't be able to register to the grid
-        try(Agent agent = startAgentWithoutClientSecurity(gridHost)) {
+        try(Agent agent = startAgentWithoutGridSecurity(gridHost)) {
             // Create a remote grid client without client security. This grid client shouldn't be able to call the grid
             try(RemoteGridClientImpl gridClient1 = new RemoteGridClientImpl(gridClientConfigurationWithoutSecurity(), gridHost)) {
                 RemoteClientException remoteClientException = assertThrows(RemoteClientException.class, () -> gridClient1.getTokenHandle(Map.of(), Map.of(), false));
@@ -55,7 +53,7 @@ public class SecurityTest {
 
             }
 
-            // Create a remote grid client with the proper client security configuration.
+            // Create a remote grid client with the proper security configuration.
             try(RemoteGridClientImpl gridClient = new RemoteGridClientImpl(gridClientConfigurationWithoutSecurity(), gridHost, remoteGridClientSecurity())) {
                 Exception exception = assertThrows(Exception.class, () -> gridClient.getTokenHandle(Map.of(), Map.of(), false));
                 // Assert that no token is present i.e. that the agent couldn't register
@@ -63,8 +61,8 @@ public class SecurityTest {
             }
         }
 
-        // Start the agent with the proper client security. This agent should be able to register itself into the grid
-        try(Agent agent = startAgentWithProperClientSecurity(gridHost)) {
+        // Start the agent with the proper security configuration. This agent should be able to register itself into the grid
+        try(Agent agent = startAgentWithGridSecurity(gridHost)) {
             try(RemoteGridClientImpl gridClient = new RemoteGridClientImpl(gridClientWithSecurity(), gridHost, remoteGridClientSecurity())) {
                 TokenWrapper tokenHandle = gridClient.getTokenHandle(Map.of(), Map.of(), false);
                 // Ensure that the agent token is available i.e. that the agent registered successfully
@@ -75,7 +73,9 @@ public class SecurityTest {
             }
         }
 
-        try(Agent agent = startProtectedAgent(gridHost)) {
+        // Start the agent with the proper security configuration. This agent should be able to register itself into the grid
+        try(Agent agent = startAgentWithGridSecurity(gridHost)) {
+            // Create a grid client without security. Calling the agent with this grid client should fail
             try(RemoteGridClientImpl gridClient = new RemoteGridClientImpl(gridClientConfigurationWithoutSecurity(), gridHost, remoteGridClientSecurity())) {
                 TokenWrapper tokenHandle = gridClient.getTokenHandle(Map.of(), Map.of(), false);
                 // Ensure that the agent token is available i.e. that the agent registered successfully
@@ -83,13 +83,13 @@ public class SecurityTest {
                 AgentRef agentRef = tokenHandle.getAgent();
                 // The ping service isn't protected and should work
                 gridClient.pingAgent(agentRef);
-                // The shutdown service is protected and should fail because
+                // The shutdown service is protected and should fail
                 AbstractGridClientImpl.AgentSideException agentSideException = assertThrows(AbstractGridClientImpl.AgentSideException.class, () -> gridClient.shutdownAgent(agentRef));
                 assertTrue(agentSideException.getMessage().contains("Missing or invalid Authorization header"));
             }
         }
 
-        try(Agent agent = startProtectedAgent(gridHost)) {
+        try(Agent agent = startAgentWithGridSecurity(gridHost)) {
             try(RemoteGridClientImpl gridClient = new RemoteGridClientImpl(gridClientWithSecurity(), gridHost, remoteGridClientSecurity())) {
                 TokenWrapper tokenHandle = gridClient.getTokenHandle(Map.of(), Map.of(), false);
                 // Ensure that the agent token is available i.e. that the agent registered successfully
@@ -103,7 +103,7 @@ public class SecurityTest {
 
     private static GridClientConfiguration gridClientWithSecurity() {
         GridClientConfiguration gridClientConfiguration = gridClientConfigurationWithoutSecurity();
-        gridClientConfiguration.setSecurity(new ClientSecurityConfiguration(AGENT_SERVICES_SECRET));
+        gridClientConfiguration.setGridSecurity(new SymmetricSecurityConfiguration(GRID_SECRET));
         return gridClientConfiguration;
     }
 
@@ -114,25 +114,18 @@ public class SecurityTest {
         return gridClientConfiguration;
     }
 
-    private static ClientSecurityConfiguration remoteGridClientSecurity() {
-        return new ClientSecurityConfiguration(GRID_SERVICES_SECRET);
+    private static SymmetricSecurityConfiguration remoteGridClientSecurity() {
+        return new SymmetricSecurityConfiguration(GRID_SECRET);
     }
 
-    private Agent startProtectedAgent(String gridHost) throws Exception {
+    private Agent startAgentWithGridSecurity(String gridHost) throws Exception {
         AgentConf agentConf = new AgentConf();
-        agentConf.setSecurity(new SecurityConfiguration(true, AGENT_SERVICES_SECRET));
-        agentConf.setRegistrationClientSecurity(new ClientSecurityConfiguration(GRID_SERVICES_SECRET));
+        agentConf.setGridSecurity(new SymmetricSecurityConfiguration(GRID_SECRET));
         return startAgent(gridHost, agentConf);
     }
 
-    private static Agent startAgentWithoutClientSecurity(String gridHost) throws Exception {
+    private static Agent startAgentWithoutGridSecurity(String gridHost) throws Exception {
         AgentConf agentConf = new AgentConf();
-        return startAgent(gridHost, agentConf);
-    }
-
-    private static Agent startAgentWithProperClientSecurity(String gridHost) throws Exception {
-        AgentConf agentConf = new AgentConf();
-        agentConf.setRegistrationClientSecurity(new ClientSecurityConfiguration(GRID_SERVICES_SECRET));
         return startAgent(gridHost, agentConf);
     }
 
@@ -148,7 +141,7 @@ public class SecurityTest {
         File tempFolder = FileHelper.createTempFolder();
         tempFolder.deleteOnExit();
         GridImpl.GridImplConfig gridConfig = new GridImpl.GridImplConfig();
-        gridConfig.setSecurity(new SecurityConfiguration(true, GRID_SERVICES_SECRET));
+        gridConfig.setSecurity(new SymmetricSecurityConfiguration(GRID_SECRET));
         GridImpl grid = new GridImpl(tempFolder, 0, gridConfig);
         grid.start();
         return grid;

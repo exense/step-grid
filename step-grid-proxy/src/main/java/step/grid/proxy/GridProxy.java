@@ -34,7 +34,6 @@ import org.glassfish.jersey.jackson.internal.jackson.jaxrs.json.JacksonJsonProvi
 import org.glassfish.jersey.server.ResourceConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import step.grid.Token;
 import step.grid.agent.RegistrationMessage;
 import step.grid.app.configuration.ConfigurationParser;
 import step.grid.app.server.BaseServer;
@@ -119,7 +118,7 @@ public class GridProxy extends BaseServer implements AutoCloseable {
         }
         logger.info("Starting grid proxy [name={}, localPort={}]...", gridProxyName, serverPort);
         ResourceConfig resourceConfig = new ResourceConfig();
-        registerSecurityFilterIfAuthenticationIsEnabled(configuration.getSecurity(), resourceConfig, "grid proxy");
+        registerSecurityFilterIfAuthenticationIsEnabled(configuration.getGridSecurity(), resourceConfig, "grid proxy");
         resourceConfig.packages(GridProxyServices.class.getPackage().getName());
         final GridProxy gridProxy = this;
         resourceConfig.register(new AbstractBinder() {
