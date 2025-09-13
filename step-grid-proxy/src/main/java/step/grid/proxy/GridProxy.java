@@ -42,19 +42,28 @@ import step.grid.io.OutputMessage;
 import step.grid.proxy.conf.GridProxyConfiguration;
 import step.grid.proxy.services.GridProxyServices;
 
-import java.io.*;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+
+import static step.grid.security.JwtAuthenticationFilter.registerSecurityFilterIfAuthenticationIsEnabled;
 
 public class GridProxy extends BaseServer implements AutoCloseable {
 
     private static final Logger logger = LoggerFactory.getLogger(GridProxy.class);
+    public static final String TOKEN_ATTRIBUTE_GRID_PROXY_NAME = "$gridProxyName";
+    public static final String DEFAULT_GRID_PROXY_NAME = "UnnamedGridProxy";
     private final Server server;
 
     private final ConcurrentHashMap<String, String> agentUrlToContextRoot = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, String> contextRootToAgentUrl = new ConcurrentHashMap<>();
     private final String gridProxyUrl;
+    private final String gridProxyName;
+    private final GridProxyConfiguration configuration;
     private Client client;
 
     private final String gridUrl;
@@ -65,7 +74,7 @@ public class GridProxy extends BaseServer implements AutoCloseable {
     private final Integer agentReleaseTimeout;
 
     public static void main(String[] args) throws Exception {
-        GridProxy gridProxy = newInstanceFromArgs(args);
+        GridProxy gridProxy = new GridProxy(args);
         Runtime.getRuntime().addShutdownHook(new Thread(()->{
             try {
                 gridProxy.close();
@@ -73,36 +82,43 @@ public class GridProxy extends BaseServer implements AutoCloseable {
                 logger.error("Error while closing the grid proxy", e);
             }
         }));
-
     }
 
-    public static GridProxy newInstanceFromArgs(String[] args) throws Exception {
+    private static GridProxyConfiguration validateArgumentsAndReadConfiguration(String[] args, Class<? extends GridProxyConfiguration> configurationClass) throws Exception {
         ArgumentParser arguments = new ArgumentParser(args);
-
         String gridProxyConfigPath = arguments.getOption("config");
-
         if(gridProxyConfigPath!=null) {
-            ConfigurationParser<GridProxyConfiguration> gridProxyConfigurationConfigurationParser = new ConfigurationParser<>();
-            GridProxyConfiguration config = gridProxyConfigurationConfigurationParser.parse(arguments, new File(gridProxyConfigPath), GridProxyConfiguration.class);
-            GridProxy gridProxy = new GridProxy(config);
-            Runtime.getRuntime().addShutdownHook(new Thread(()->{
-                try {
-                    gridProxy.close();
-                } catch (Exception e) {
-                    logger.error("Error while closing the grid proxy", e);
-                }
-            }));
-            return gridProxy;
+            return readConfiguration(arguments, gridProxyConfigPath, configurationClass);
         } else {
             throw new RuntimeException("Argument '-config' is missing.");
         }
     }
 
-    public GridProxy(GridProxyConfiguration gridProxyConfiguration) throws Exception {
-        int serverPort = this.resolveServerPort(gridProxyConfiguration.getGridProxyUrl(), gridProxyConfiguration.getGridProxyPort());
+    private static GridProxyConfiguration readConfiguration(ArgumentParser arguments, String gridProxyConfigPath, Class<? extends GridProxyConfiguration> configurationClass) throws Exception {
+        ConfigurationParser<GridProxyConfiguration> gridProxyConfigurationConfigurationParser = new ConfigurationParser<>();
+        return gridProxyConfigurationConfigurationParser.parse(arguments, new File(gridProxyConfigPath), (Class<GridProxyConfiguration>) configurationClass);
+    }
 
-        logger.info("Starting grid proxy...");
+    public GridProxy(String[] args) throws Exception {
+        this(args, GridProxyConfiguration.class);
+    }
+
+    public GridProxy(String[] args, Class<? extends GridProxyConfiguration> configurationClass) throws Exception {
+        this(validateArgumentsAndReadConfiguration(args, configurationClass));
+    }
+
+    public GridProxy(GridProxyConfiguration gridProxyConfiguration) throws Exception {
+        this.configuration = gridProxyConfiguration;
+        int serverPort = this.resolveServerPort(gridProxyConfiguration.getGridProxyUrl(), gridProxyConfiguration.getGridProxyPort());
+        if (configuration.getGridProxyName() == null) {
+            logger.warn("The grid proxy name isn't set in the proxy configuration (field 'gridProxyName'). Falling back to default name {}.", DEFAULT_GRID_PROXY_NAME);
+            gridProxyName = DEFAULT_GRID_PROXY_NAME;
+        } else {
+            gridProxyName = configuration.getGridProxyName();
+        }
+        logger.info("Starting grid proxy [name={}, localPort={}]...", gridProxyName, serverPort);
         ResourceConfig resourceConfig = new ResourceConfig();
+        registerSecurityFilterIfAuthenticationIsEnabled(configuration.getGridSecurity(), resourceConfig, "grid proxy");
         resourceConfig.packages(GridProxyServices.class.getPackage().getName());
         final GridProxy gridProxy = this;
         resourceConfig.register(new AbstractBinder() {
@@ -112,6 +128,7 @@ public class GridProxy extends BaseServer implements AutoCloseable {
             }
         });
 
+        beforeServerStart(resourceConfig);
         server = this.startServer(gridProxyConfiguration, serverPort, resourceConfig);
 
         int actualServerPort = this.getActualServerPort(server);
@@ -131,6 +148,28 @@ public class GridProxy extends BaseServer implements AutoCloseable {
         agentConnectTimeout = gridProxyConfiguration.getAgentConnectTimeout();
         agentReserveTimeout = gridProxyConfiguration.getAgentReserveTimeout();
         agentReleaseTimeout = gridProxyConfiguration.getAgentReleaseTimeout();
+
+        afterStart();
+    }
+
+    protected void beforeServerStart(ResourceConfig resourceConfig) throws Exception {}
+    
+    protected void afterStart() throws Exception {}
+
+    public String getGridUrl() {
+        return gridUrl;
+    }
+
+    public String getGridProxyUrl() {
+        return gridProxyUrl;
+    }
+
+    public String getGridProxyName() {
+        return gridProxyName;
+    }
+
+    public GridProxyConfiguration getConfiguration() {
+        return configuration;
     }
 
     //Allow override for junits
@@ -142,6 +181,10 @@ public class GridProxy extends BaseServer implements AutoCloseable {
         String agentUrl = message.getAgentRef().getAgentUrl();
         // replace by proxyfied url (proxy base url + context root) and maintain the mapping
         message.getAgentRef().setAgentUrl(gridProxyUrl + "/" + getContextRoot(agentUrl));
+        message.getAgentRef().setLocalAgentUrl(agentUrl);
+        // adding the name of the proxy to the token attributes in order to allow token selection by proxy name
+        Optional.ofNullable(message.getTokens()).ifPresent(tokens -> tokens.forEach(token ->
+                Optional.ofNullable(token.getAttributes()).ifPresent(attributes -> attributes.put(TOKEN_ATTRIBUTE_GRID_PROXY_NAME, gridProxyName))));
         //Forward registration message to grid server
         try (Response r = client.target(gridUrl + "/grid/register").request().property(ClientProperties.READ_TIMEOUT, gridReadTimeout)
                     .property(ClientProperties.CONNECT_TIMEOUT, gridConnectTimeout).post(Entity.entity(message, MediaType.APPLICATION_JSON))) {

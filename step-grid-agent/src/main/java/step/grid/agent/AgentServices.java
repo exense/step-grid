@@ -37,6 +37,7 @@ import step.grid.contextbuilder.ApplicationContextBuilderException;
 import step.grid.filemanager.ControllerCallTimeout;
 import step.grid.filemanager.FileManagerException;
 import step.grid.io.*;
+import step.grid.security.Secured;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -78,7 +79,7 @@ public class AgentServices extends AbstractGridServices {
 		protected Thread t;
 	}
 
-
+	@Secured
 	@POST
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
@@ -192,6 +193,7 @@ public class AgentServices extends AbstractGridServices {
 		return allProperties;
 	}
 
+	@Secured
 	@POST
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
@@ -222,6 +224,7 @@ public class AgentServices extends AbstractGridServices {
 		}
 	}
 
+	@Secured
 	@GET
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Path("/token/{id}/reserve")
@@ -233,6 +236,7 @@ public class AgentServices extends AbstractGridServices {
 	}
 
 
+	@Secured
 	@GET
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Path("/token/{id}/release")
@@ -269,13 +273,15 @@ public class AgentServices extends AbstractGridServices {
 		return output;
 	}
 
+	@Secured
 	@GET
 	@Produces(MediaType.APPLICATION_JSON)
 	@Path("/token/list")
 	public List<Token> listTokens() {
 		return agent.getTokens();
 	}
-	
+
+	@Secured
 	@POST
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Path("/shutdown")
@@ -293,6 +299,7 @@ public class AgentServices extends AbstractGridServices {
 		}.start();;
 	}
 
+	@Secured
 	@GET
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Path("/pre-stop")

@@ -5,6 +5,7 @@ import step.grid.*;
 import step.grid.filemanager.FileManagerException;
 import step.grid.filemanager.FileVersion;
 import step.grid.filemanager.FileVersionId;
+import step.grid.security.SymmetricSecurityConfiguration;
 import step.grid.tokenpool.Interest;
 
 import java.io.File;
@@ -133,6 +134,11 @@ public class AbstractGridClientImplTest {
             @Override
             public void cleanupFileManagerCache() {
 
+            }
+
+            @Override
+            public SymmetricSecurityConfiguration getSecurityConfiguration() {
+                return null;
             }
         };
     }

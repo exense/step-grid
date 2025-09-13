@@ -18,6 +18,23 @@
  ******************************************************************************/
 package step.grid.agent;
 
+import ch.exense.commons.io.FileHelper;
+import jakarta.ws.rs.ProcessingException;
+import jakarta.ws.rs.client.Client;
+import jakarta.ws.rs.client.ClientBuilder;
+import jakarta.ws.rs.client.Entity;
+import jakarta.ws.rs.client.Invocation;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import org.glassfish.jersey.client.ClientProperties;
+import org.glassfish.jersey.jackson.internal.jackson.jaxrs.json.JacksonJsonProvider;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import step.grid.Token;
+import step.grid.client.security.JwtTokenGenerator;
+import step.grid.filemanager.*;
+import step.grid.security.SymmetricSecurityConfiguration;
+
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -27,33 +44,13 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import jakarta.ws.rs.ProcessingException;
-import jakarta.ws.rs.client.Client;
-import jakarta.ws.rs.client.ClientBuilder;
-import jakarta.ws.rs.client.Entity;
-import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
-
-import org.glassfish.jersey.client.ClientProperties;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import org.glassfish.jersey.jackson.internal.jackson.jaxrs.json.JacksonJsonProvider;
-
-import ch.exense.commons.io.FileHelper;
-import step.grid.Token;
-import step.grid.filemanager.ControllerCallException;
-import step.grid.filemanager.ControllerCallTimeout;
-import step.grid.filemanager.FileManagerException;
-import step.grid.filemanager.FileVersion;
-import step.grid.filemanager.FileVersionId;
-import step.grid.filemanager.FileVersionProvider;
 
 public class RegistrationClient implements FileVersionProvider {
 	
 	private final String registrationServer;
 	private final String fileServer;
-	
+	private final JwtTokenGenerator jwtTokenGenerator;
+
 	private Client client;
 	
 	private static final Logger logger = LoggerFactory.getLogger(RegistrationClient.class);
@@ -61,7 +58,7 @@ public class RegistrationClient implements FileVersionProvider {
 	int connectionTimeout;
 	int callTimeout;
 
-	public RegistrationClient(String registrationServer, String fileServer, int connectionTimeout, int callTimeout) {
+	public RegistrationClient(String registrationServer, String fileServer, int connectionTimeout, int callTimeout, SymmetricSecurityConfiguration gridSecurityConfiguration) {
 		super();
 		this.registrationServer = registrationServer;
 		this.fileServer = fileServer;
@@ -70,11 +67,13 @@ public class RegistrationClient implements FileVersionProvider {
 		this.client.register(JacksonJsonProvider.class);
 		this.callTimeout = callTimeout;
 		this.connectionTimeout = connectionTimeout;
+
+		jwtTokenGenerator = JwtTokenGenerator.initializeJwtTokenGenerator(gridSecurityConfiguration, "registration client");
 	}
 	
 	public boolean sendRegistrationMessage(RegistrationMessage message) {
 		try {
-			Response r = client.target(registrationServer + "/grid/register").request().property(ClientProperties.READ_TIMEOUT, callTimeout)
+			Response r = withAuthentication(client.target(registrationServer + "/grid/register").request()).property(ClientProperties.READ_TIMEOUT, callTimeout)
 					.property(ClientProperties.CONNECT_TIMEOUT, connectionTimeout).post(Entity.entity(message, MediaType.APPLICATION_JSON));
 			
 			r.readEntity(String.class);
@@ -89,6 +88,10 @@ public class RegistrationClient implements FileVersionProvider {
 		}
 	}
 
+	public Invocation.Builder withAuthentication(Invocation.Builder requestBuilder) {
+		return JwtTokenGenerator.withAuthentication(jwtTokenGenerator, requestBuilder);
+	}
+
 	public void close() {
 		client.close();
 	}
@@ -98,7 +101,7 @@ public class RegistrationClient implements FileVersionProvider {
 		try {
 			Response response;
 			try {
-				response = client.target(fileServer + "/grid/file/"+fileVersionId.getFileId()+"/"+fileVersionId.getVersion()).request().property(ClientProperties.READ_TIMEOUT, callTimeout)
+				response = withAuthentication(client.target(fileServer + "/grid/file/"+fileVersionId.getFileId()+"/"+fileVersionId.getVersion()).request()).property(ClientProperties.READ_TIMEOUT, callTimeout)
 						.property(ClientProperties.CONNECT_TIMEOUT, connectionTimeout).get();
 			} catch (ProcessingException e) {
 				Throwable cause = e.getCause();
@@ -150,7 +153,7 @@ public class RegistrationClient implements FileVersionProvider {
 	public void switchTokensToMaintenanceMode(List<Token> tokens) {
 		tokens.forEach(token -> {
 			try {
-				client.target(registrationServer + "/grid/token/" + token.getId() + "/maintenance").request().property(ClientProperties.READ_TIMEOUT, callTimeout)
+				withAuthentication(client.target(registrationServer + "/grid/token/" + token.getId() + "/maintenance").request()).property(ClientProperties.READ_TIMEOUT, callTimeout)
 						.property(ClientProperties.CONNECT_TIMEOUT, connectionTimeout).post(Entity.entity(null, MediaType.APPLICATION_JSON));
 			} catch (ProcessingException e) {
 				logger.error("Error while unregistering token " + token.getId() + " from grid", e);

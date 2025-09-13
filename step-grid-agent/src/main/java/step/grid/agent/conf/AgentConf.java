@@ -21,6 +21,7 @@ package step.grid.agent.conf;
 import step.grid.app.configuration.AppConfiguration;
 import step.grid.contextbuilder.ExecutionContextCacheConfiguration;
 import step.grid.filemanager.FileManagerConfiguration;
+import step.grid.security.SymmetricSecurityConfiguration;
 
 import java.util.List;
 import java.util.Map;
@@ -55,6 +56,8 @@ public class AgentConf extends AppConfiguration {
 	boolean exposeAgentControlServices = false;
 
 	AgentForkerConfiguration agentForker;
+
+	SymmetricSecurityConfiguration gridSecurity;
 
 	public AgentConf() {
 		super();
@@ -202,4 +205,13 @@ public class AgentConf extends AppConfiguration {
 	public void setAgentForker(AgentForkerConfiguration isolatedExecutionConfiguration) {
 		this.agentForker = isolatedExecutionConfiguration;
 	}
+
+	public SymmetricSecurityConfiguration getGridSecurity() {
+		return gridSecurity;
+	}
+
+	public void setGridSecurity(SymmetricSecurityConfiguration gridSecurity) {
+		this.gridSecurity = gridSecurity;
+	}
+
 }

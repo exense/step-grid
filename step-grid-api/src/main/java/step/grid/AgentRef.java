@@ -23,6 +23,12 @@ public class AgentRef {
 	private String agentId;
 	
 	private String agentUrl;
+
+	/**
+	 * For agents that are joining the grid via grid proxy, this corresponds to the url of the agent
+	 * as seen by the proxy i.e. the one that the proxy can use to call the agent
+	 */
+	private String localAgentUrl;
 	
 	private String agentType;
 
@@ -53,6 +59,14 @@ public class AgentRef {
 		this.agentUrl = agentUrl;
 	}
 
+	public String getLocalAgentUrl() {
+		return localAgentUrl;
+	}
+
+	public void setLocalAgentUrl(String localAgentUrl) {
+		this.localAgentUrl = localAgentUrl;
+	}
+
 	public String getAgentType() {
 		return agentType;
 	}
@@ -63,7 +77,10 @@ public class AgentRef {
 
 	@Override
 	public String toString() {
-		return "AgentRef [agentId=" + agentId + ", agentUrl=" + agentUrl + "]";
+		return "AgentRef{" +
+				"agentId='" + agentId + '\'' +
+				", agentUrl='" + agentUrl + '\'' +
+				", localAgentUrl='" + localAgentUrl + '\'' +
+				'}';
 	}
-
 }

@@ -29,7 +29,7 @@ import step.grid.agent.conf.AgentConf;
 import step.grid.agent.conf.AgentForkerConfiguration;
 import step.grid.agent.conf.TokenConf;
 import step.grid.agent.conf.TokenGroupConf;
-import step.grid.agent.forker.*;
+import step.grid.agent.forker.AgentForker;
 import step.grid.agent.tokenpool.AgentTokenPool;
 import step.grid.agent.tokenpool.AgentTokenWrapper;
 import step.grid.agent.tokenpool.TokenReservationSession;
@@ -52,6 +52,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
+
+import static step.grid.security.JwtAuthenticationFilter.registerSecurityFilterIfAuthenticationIsEnabled;
 
 public class Agent extends BaseServer implements AutoCloseable {
 	
@@ -145,7 +147,7 @@ public class Agent extends BaseServer implements AutoCloseable {
 		String fileServerHost = Optional.ofNullable(agentConf.getFileServerHost()).orElse(gridUrl);
 
 		registrationClient = new RegistrationClient(gridUrl, fileServerHost,
-				agentConf.getGridConnectTimeout(), agentConf.getGridReadTimeout());
+				agentConf.getGridConnectTimeout(), agentConf.getGridReadTimeout(), agentConf.getGridSecurity());
 
 
 		fileManagerClient = initFileManager(registrationClient, agentConf.getWorkingDir(), agentConf.getFileManagerConfiguration());
@@ -229,6 +231,7 @@ public class Agent extends BaseServer implements AutoCloseable {
 		ResourceConfig resourceConfig = new ResourceConfig();
 		resourceConfig.packages(AgentServices.class.getPackage().getName());
 		resourceConfig.register(ObjectMapperResolver.class);
+		registerSecurityFilterIfAuthenticationIsEnabled(agentConf.getGridSecurity(), resourceConfig, "agent");
 		final Agent agent = this;
 		resourceConfig.register(new AbstractBinder() {
 			@Override

@@ -23,7 +23,7 @@ public class GridProxyTest {
             throw new ProxyTestException(invocationOnMock.getArgument( 0 ));
         });
         String[] args = {"-config=src/test/resources/GridProxyConf.yaml"};
-        GridProxy gridProxy = GridProxy.newInstanceFromArgs(args);
+        GridProxy gridProxy = new GridProxy(args);
         gridProxy.overrideRestClient(mock);
         //Prepare and send registration message
         RegistrationMessage registrationMessage = new RegistrationMessage();
