@@ -54,7 +54,7 @@ public class AgentTest extends AbstractGridTest {
 		GridClientConfiguration gridClientConfiguration = new GridClientConfiguration();
 		// For the ForkedAgentTest we have to increase the offset as the default offset of 3s seems to be to low to
 		// let the forked agent start
-		gridClientConfiguration.setReadTimeoutOffset(5000);
+		gridClientConfiguration.setReadTimeoutOffset(10000);
 		client = new LocalGridClientImpl(gridClientConfiguration, grid);
 	}
 
