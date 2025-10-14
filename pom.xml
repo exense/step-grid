@@ -59,7 +59,7 @@
 		<!-- internal dependencies -->
 		<dependencies.version>2025.6.25</dependencies.version>
 		<exense-commons.version>2025.7.28-688790164e318f3fad9e6aad</exense-commons.version>
-		<step-api.version>2025.10.2-68de27108e322422c136a374</step-api.version>
+		<step-api.version>2025.10.14-68ee00942c8af165043b8ef0</step-api.version>
 
 		<!-- maven build dependencies -->
 		<dep.mvn.jacoco.version>0.8.12</dep.mvn.jacoco.version>
