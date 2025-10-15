@@ -4,7 +4,7 @@
     <module name="step-grid-agent" />
     <option name="PROGRAM_PARAMETERS" value="-config=src/test/resources/AgentConf.yaml " />
     <option name="VM_PARAMETERS" value="-Dlogback.configurationFile=logback-local-run.xml" />
-    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/step-grid-agent" />
+    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/step-grid/step-grid-agent" />
     <extension name="coverage">
       <pattern>
         <option name="PATTERN" value="step.grid.agent.*" />

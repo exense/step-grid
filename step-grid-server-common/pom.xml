@@ -11,6 +11,11 @@
 
     <dependencies>
         <dependency>
+            <groupId>ch.exense.step</groupId>
+            <artifactId>step-grid-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
             <groupId>ch.exense.commons</groupId>
             <artifactId>exense-basic-commons</artifactId>
         </dependency>
@@ -73,6 +78,15 @@
         <dependency>
             <groupId>io.prometheus</groupId>
             <artifactId>simpleclient_servlet_jakarta</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.glassfish.jaxb</groupId>
+            <artifactId>jaxb-runtime</artifactId>
         </dependency>
     </dependencies>
 

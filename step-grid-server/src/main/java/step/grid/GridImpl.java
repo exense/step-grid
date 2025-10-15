@@ -34,7 +34,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import step.grid.agent.RegistrationMessage;
 import step.grid.filemanager.*;
-import step.grid.filemanager.FileManagerImplConfig;
+import step.grid.security.SymmetricSecurityConfiguration;
 import step.grid.tokenpool.*;
 import step.grid.tokenpool.affinityevaluator.TokenPoolAware;
 import step.grid.tokenpool.affinityevaluator.TokenWrapperAffinityEvaluatorImpl;
@@ -42,9 +42,13 @@ import step.grid.tokenpool.affinityevaluator.TokenWrapperAffinityEvaluatorImpl;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeoutException;
+
+import static step.grid.security.JwtAuthenticationFilter.registerSecurityFilterIfAuthenticationIsEnabled;
 
 public class GridImpl implements Grid {
 
@@ -97,7 +101,9 @@ public class GridImpl implements Grid {
 		String tokenAffinityEvaluatorClass;
 		
 		Map<String, String> tokenAffinityEvaluatorProperties;
-		
+
+		SymmetricSecurityConfiguration security;
+
 		public GridImplConfig() {
 			super();
 		}
@@ -145,6 +151,14 @@ public class GridImpl implements Grid {
 
 		public void setDeferAcceptingRegistrationMessages(boolean deferAcceptingRegistrationMessages) {
 			this.deferAcceptingRegistrationMessages = deferAcceptingRegistrationMessages;
+		}
+
+		public SymmetricSecurityConfiguration getSecurity() {
+			return security;
+		}
+
+		public void setSecurity(SymmetricSecurityConfiguration security) {
+			this.security = security;
 		}
 	}
 
@@ -230,6 +244,9 @@ public class GridImpl implements Grid {
 		resourceConfig.packages(GridServices.class.getPackage().getName());
 		resourceConfig.register(JacksonJaxbJsonProvider.class);
 		resourceConfig.register(MultiPartFeature.class);
+
+		registerSecurityFilterIfAuthenticationIsEnabled(gridConfig.security, resourceConfig, "grid");
+
 		final GridImpl grid = this;
 		
 		resourceConfig.register(new AbstractBinder() {	
@@ -400,5 +417,10 @@ public class GridImpl implements Grid {
 	@Override
 	public void unregisterFile(FileVersionId fileVersionId) {
 		fileManager.unregisterFileVersion(fileVersionId);
+	}
+
+	@Override
+	public SymmetricSecurityConfiguration getSecurityConfiguration() {
+		return gridConfig.getSecurity();
 	}
 }

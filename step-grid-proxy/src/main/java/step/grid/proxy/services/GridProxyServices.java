@@ -32,6 +32,7 @@ import step.grid.io.AbstractGridServices;
 import step.grid.io.InputMessage;
 import step.grid.io.OutputMessage;
 import step.grid.proxy.GridProxy;
+import step.grid.security.Secured;
 
 @Singleton
 @Path("/")
@@ -42,6 +43,7 @@ public class GridProxyServices extends AbstractGridServices {
     @Inject
     private GridProxy gridProxy;
 
+    @Secured
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
     @Path("/grid/register")
@@ -59,6 +61,7 @@ public class GridProxyServices extends AbstractGridServices {
         }
     }
 
+    @Secured
     @GET
     @Path("/grid/file/{id}/{version}")
     public Response getFile(@PathParam("id") String id, @PathParam("version") String version) throws GridProxyException {
@@ -69,6 +72,7 @@ public class GridProxyServices extends AbstractGridServices {
         }
     }
 
+    @Secured
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
@@ -81,6 +85,7 @@ public class GridProxyServices extends AbstractGridServices {
         }
     }
 
+    @Secured
     @GET
     @Consumes(MediaType.APPLICATION_JSON)
     @Path("{agentContext}/token/{id}/reserve")
@@ -92,6 +97,7 @@ public class GridProxyServices extends AbstractGridServices {
         }
     }
 
+    @Secured
     @GET
     @Consumes(MediaType.APPLICATION_JSON)
     @Path("{agentContext}/token/{id}/release")
@@ -114,6 +120,7 @@ public class GridProxyServices extends AbstractGridServices {
         }
     }
 
+    @Secured
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
     @Path("/stop")

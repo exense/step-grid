@@ -61,6 +61,7 @@
 		<exense-commons.version>2025.7.28-688790164e318f3fad9e6aad</exense-commons.version>
 		<step-api.version>2025.10.15-68ef62ad2c8af16504f37e13</step-api.version>
 
+
 		<!-- maven build dependencies -->
 		<dep.mvn.jacoco.version>0.8.12</dep.mvn.jacoco.version>
 		<dep.mvn.deploy.version>3.0.0-M1</dep.mvn.deploy.version>
@@ -208,6 +209,16 @@
 				<version>${project.version}</version>
 			</dependency>
 
+			<dependency>
+				<groupId>io.jsonwebtoken</groupId>
+				<artifactId>jjwt</artifactId>
+				<version>0.9.1</version>
+			</dependency>
+			<dependency>
+				<groupId>org.glassfish.jaxb</groupId>
+				<artifactId>jaxb-runtime</artifactId>
+				<version>2.3.1</version>
+			</dependency>
 		</dependencies>
 	</dependencyManagement>
 

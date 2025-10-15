@@ -18,18 +18,11 @@
  ******************************************************************************/
 package step.grid.agent;
 
-import java.io.File;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.regex.Pattern;
-
-import org.junit.After;
-
+import ch.exense.commons.io.FileHelper;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-
-import ch.exense.commons.io.FileHelper;
+import org.junit.After;
 import step.grid.GridImpl;
 import step.grid.GridImpl.GridImplConfig;
 import step.grid.TokenWrapper;
@@ -42,14 +35,22 @@ import step.grid.filemanager.FileManagerConfiguration;
 import step.grid.filemanager.FileManagerImplConfig;
 import step.grid.io.AgentErrorCode;
 import step.grid.io.OutputMessage;
+import step.grid.security.SymmetricSecurityConfiguration;
 import step.grid.tokenpool.Interest;
+
+import java.io.File;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.regex.Pattern;
 
 public abstract class AbstractGridTest {
 
+	public static final String GRID_SECRET = "SlILlEGSIvLKy3JWg7ny8aYoe2D9LNNafQ6OJFKFF8c=";
 	protected Agent agent;
 	
 	protected GridImpl grid;
-	
+	protected boolean secureGrid = false;
+
 	protected GridClient client;
 	
 	protected int nTokens = 1;
@@ -66,6 +67,10 @@ public abstract class AbstractGridTest {
 		File fileManagerFolder = FileHelper.createTempFolder();
 		
 		GridImplConfig gridConfig = new GridImplConfig();
+		if (secureGrid) {
+			SymmetricSecurityConfiguration securityConfiguration = new SymmetricSecurityConfiguration(GRID_SECRET);
+			gridConfig.setSecurity(securityConfiguration);
+		}
 		// disable last modification cache
 		FileManagerImplConfig fileManagerImplConfig = new FileManagerImplConfig();
 		fileManagerImplConfig.setFileLastModificationCacheExpireAfter(0);
@@ -80,6 +85,10 @@ public abstract class AbstractGridTest {
 		agentConf.setGracefulShutdownTimeout(100l);
 		configureAgent(agentConf);
 		agentConf.setFileManagerConfiguration(new FileManagerConfiguration());
+		if (secureGrid) {
+			agentConf.setGridSecurity(new SymmetricSecurityConfiguration(GRID_SECRET));
+		}
+
 		agent = new Agent(agentConf);
 		Map<String, String> attributes = new HashMap<String, String>();
 		attributes.put("att1", "val1");

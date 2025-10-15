@@ -19,6 +19,7 @@
 package step.grid.client;
 
 import step.grid.contextbuilder.ExecutionContextCacheConfiguration;
+import step.grid.security.SymmetricSecurityConfiguration;
 
 public class GridClientConfiguration {
 
@@ -37,8 +38,12 @@ public class GridClientConfiguration {
 
 	private int maxStringLength = 50000000;
 
+	private boolean useLocalAgentUrlIfAvailable = false;
+
 	private ExecutionContextCacheConfiguration localTokenExecutionContextCacheConfiguration = new ExecutionContextCacheConfiguration();
-	
+
+	private SymmetricSecurityConfiguration gridSecurity;
+
 	public long getNoMatchExistsTimeout() {
 		return noMatchExistsTimeout;
 	}
@@ -125,5 +130,21 @@ public class GridClientConfiguration {
 
 	public void setLocalTokenExecutionContextCacheConfiguration(ExecutionContextCacheConfiguration localTokenExecutionContextCacheConfiguration) {
 		this.localTokenExecutionContextCacheConfiguration = localTokenExecutionContextCacheConfiguration;
+	}
+
+	public boolean isUseLocalAgentUrlIfAvailable() {
+		return useLocalAgentUrlIfAvailable;
+	}
+
+	public void setUseLocalAgentUrlIfAvailable(boolean useLocalAgentUrlIfAvailable) {
+		this.useLocalAgentUrlIfAvailable = useLocalAgentUrlIfAvailable;
+	}
+
+	public SymmetricSecurityConfiguration getGridSecurity() {
+		return gridSecurity;
+	}
+
+	public void setGridSecurity(SymmetricSecurityConfiguration gridSecurity) {
+		this.gridSecurity = gridSecurity;
 	}
 }

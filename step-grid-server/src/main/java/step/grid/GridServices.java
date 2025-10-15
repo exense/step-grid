@@ -32,6 +32,7 @@ import step.grid.filemanager.FileManager;
 import step.grid.filemanager.FileManagerException;
 import step.grid.filemanager.FileVersion;
 import step.grid.filemanager.FileVersionId;
+import step.grid.security.Secured;
 
 import java.io.*;
 import java.nio.file.Files;
@@ -48,13 +49,15 @@ public class GridServices {
 	@Inject
 	FileManager fileManager;
 
+	@Secured
 	@POST
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Path("/register")
 	public void register(RegistrationMessage message) {
 		grid.handleRegistrationMessage(message);
 	}
-	
+
+	@Secured
 	@GET
     @Path("/file/{id}/{version}")
 	public Response getFile(@PathParam("id") String id, @PathParam("version") String version) throws IOException, FileManagerException {
@@ -89,60 +92,70 @@ public class GridServices {
 		}
 	}
 
+	@Secured
 	@GET
 	@Path("/agent/list")
 	public List<AgentRef> getAgents() {
 		return grid.getAgents();
 	}
-	
+
+	@Secured
 	@POST
     @Path("/token/select")
 	public TokenWrapper selectToken(SelectTokenArgument argument) throws TimeoutException, InterruptedException {
 		return grid.selectToken(argument.attributes, argument.interests, argument.matchTimeout, argument.noMatchTimeout, argument.tokenOwner);
 	}
 
+	@Secured
 	@POST
     @Path("/token/return")
 	public void returnToken(String id) {
 		grid.returnToken(id);
 	}
 
+	@Secured
 	@POST
 	@Path("/token/invalidate")
 	public void invalidateToken(String id) {
 		grid.invalidateToken(id);
 	}
 
+	@Secured
 	@GET
     @Path("/token/list")
 	public List<TokenWrapper> getTokens() {
 		return grid.getTokens();
 	}
 
+	@Secured
 	@POST
     @Path("/token/{id}/error/add")
 	public void markTokenAsFailing(@PathParam("id") String tokenId, String errorMessage) {
 		grid.markTokenAsFailing(tokenId, errorMessage, null);
 	}
 
+	@Secured
 	@DELETE
 	@Path("/token/{id}/error")
 	public void removeTokenError(@PathParam("id") String tokenId) {
 		grid.removeTokenError(tokenId);
 	}
 
+	@Secured
 	@POST
 	@Path("/token/{id}/maintenance")
 	public void startTokenMaintenance(@PathParam("id") String tokenId) {
 		grid.startTokenMaintenance(tokenId);
 	}
 
+	@Secured
 	@DELETE
 	@Path("/token/{id}/maintenance")
 	public void stopTokenMaintenance(@PathParam("id") String tokenId) {
 		grid.stopTokenMaintenance(tokenId);
 	}
 
+	@Secured
 	@POST
 	@Path("/file/register")
 	@Consumes(MediaType.MULTIPART_FORM_DATA)
@@ -157,13 +170,15 @@ public class GridServices {
 				Boolean.parseBoolean(cleanable));
 	}
 
+	@Secured
 	@POST
 	@Path("/file/release")
 	@Consumes(MediaType.MULTIPART_FORM_DATA)
 	public void releaseFile(FileVersion fileVersion) throws FileManagerException {
 		grid.releaseFile(fileVersion);
 	}
-	
+
+	@Secured
 	@POST
 	@Path("/file/content")
 	@Consumes(MediaType.APPLICATION_JSON)
@@ -183,6 +198,7 @@ public class GridServices {
 		return Response.ok(fileStream, mimeType).header("content-disposition", headerValue).build();
 	}
 
+	@Secured
 	@POST
 	@Path("/file/unregister")
 	@Consumes(MediaType.APPLICATION_JSON)
