@@ -18,6 +18,8 @@
  ******************************************************************************/
 package step.grid;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+
 public class AgentRef {
 	
 	private String agentId;
@@ -59,6 +61,8 @@ public class AgentRef {
 		this.agentUrl = agentUrl;
 	}
 
+	// For compatibility reasons with prior versions not knowing this field, we ensure the field is not set if null
+	@JsonInclude(JsonInclude.Include.NON_NULL)
 	public String getLocalAgentUrl() {
 		return localAgentUrl;
 	}

@@ -75,14 +75,20 @@ public class RegistrationClient implements FileVersionProvider {
 		try {
 			Response r = withAuthentication(client.target(registrationServer + "/grid/register").request()).property(ClientProperties.READ_TIMEOUT, callTimeout)
 					.property(ClientProperties.CONNECT_TIMEOUT, connectionTimeout).post(Entity.entity(message, MediaType.APPLICATION_JSON));
-			
-			r.readEntity(String.class);
-			return true;
+
+			int status = r.getStatus();
+			if (status != 204) {
+				String payload = r.readEntity(String.class);
+				logger.warn("Agent registration failed. The grid service {} responded with HTTP {}. Payload: {}.", registrationServer, status, payload);
+				return false;
+			} else {
+				return true;
+			}
 		} catch (ProcessingException e) {
 			if(e.getCause() instanceof java.net.ConnectException) {
-				logger.error("Unable to reach " + registrationServer + " for agent registration (java.net.ConnectException: "+e.getCause().getMessage()+")");				
+				logger.error("Agent registration failed. Unable to reach " + registrationServer + " (java.net.ConnectException: "+e.getCause().getMessage()+")");
 			} else {
-				logger.error("while registering tokens to " + registrationServer, e);				
+				logger.error("Agent registration failed. Error while processing HTTP request to " + registrationServer, e);
 			}
 			return false;
 		}
