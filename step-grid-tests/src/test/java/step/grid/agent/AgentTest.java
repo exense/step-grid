@@ -158,15 +158,15 @@ public class AgentTest extends AbstractGridTest {
 
 	private void testInterruption(boolean createSession) throws Exception {
 		TokenWrapper token = client.getTokenHandle(null, Map.of(), createSession);
-		// Interrupt the execution in 4s. We have to wait that long because the start of the execution may take some time with the forked agent
-		CompletableFuture.delayedExecutor(4000, TimeUnit.MILLISECONDS).execute(() -> {
+		// Interrupt the execution in 7s. We have to wait that long because the start of the execution may take some time with the forked agent
+		CompletableFuture.delayedExecutor(7000, TimeUnit.MILLISECONDS).execute(() -> {
 			try {
 				client.interruptTokenExecution(token.getID());
 			} catch (GridClientException | AbstractGridClientImpl.AgentCommunicationException e) {
 				throw new RuntimeException(e);
 			}
 		});
-		JsonNode o = new ObjectMapper().createObjectNode().put("delay", 5000);
+		JsonNode o = new ObjectMapper().createObjectNode().put("delay", 10000);
 		try {
 			OutputMessage outputMessage = client.call(token.getID(), o, TestTokenHandler.class.getName(), null, null, 10_000);
 			Assert.assertEquals("{\"status\":\"interrupted\"}", outputMessage.getPayload().toString());
