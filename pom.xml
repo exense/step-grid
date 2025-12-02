@@ -57,9 +57,9 @@
 		<maven.compiler.release>11</maven.compiler.release>
 
 		<!-- internal dependencies -->
-		<dependencies.version>2025.11.28-6929b52211ea7b7be588e49c</dependencies.version>
-		<exense-commons.version>2025.11.28-6929b8e411ea7b7be59016b8</exense-commons.version>
-		<step-api.version>2025.11.28-6929b94511ea7b7be590d685</step-api.version>
+		<dependencies.version>2025.11.28-6929c90d11ea7b7be5b14369</dependencies.version>
+		<exense-commons.version>2025.12.2-692eafc711ea7b7be5aeb998</exense-commons.version>
+		<step-api.version>2025.12.2-692eb36d11ea7b7be5bb841e</step-api.version>
 
 		<!-- maven build dependencies -->
 		<dep.mvn.jacoco.version>0.8.12</dep.mvn.jacoco.version>
