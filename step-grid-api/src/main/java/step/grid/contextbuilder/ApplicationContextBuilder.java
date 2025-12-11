@@ -323,7 +323,7 @@ public class ApplicationContextBuilder implements AutoCloseable {
 				}
 				return childAppContextEntry.getValue().cleanup(cleanupTime);
 			});
-			if (childContexts.isEmpty() && usage.get() == 0 && (cleanupTTLMilliseconds == 0 || (cleanupTime - lastUsage) > cleanupTTLMilliseconds)) {
+			if (childContexts.isEmpty() && usage.get() == 0 && (cleanupTTLMilliseconds == 0 || (cleanupTime - lastUsage) > cleanupTTLMilliseconds) && cleanable) {
 				return _close();
 			} else {
 				return false;
