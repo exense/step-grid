@@ -5,7 +5,7 @@
 	"PARAMETERS": [
 		{
 			"NAME": "ALL",
-			"URL": "nexus-staging::https://nexus-enterprise-staging-new.exense.ch/repository/staging-maven/",
+			"URL": "nexus-staging::https://nexus-enterprise-staging.stepcloud-test.ch/repository/staging-maven/",
 			"CONFIG": "Default"
 		},
 		{
