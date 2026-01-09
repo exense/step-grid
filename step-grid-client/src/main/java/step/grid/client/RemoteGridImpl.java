@@ -36,9 +36,11 @@ import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.media.multipart.file.FileDataBodyPart;
 import org.glassfish.jersey.media.multipart.file.StreamDataBodyPart;
 import step.grid.*;
+import step.grid.client.security.JwtTokenGenerator;
 import step.grid.filemanager.FileManagerException;
 import step.grid.filemanager.FileVersion;
 import step.grid.filemanager.FileVersionId;
+import step.grid.security.SymmetricSecurityConfiguration;
 import step.grid.tokenpool.Interest;
 
 import java.io.File;
@@ -53,6 +55,8 @@ import java.util.function.Supplier;
 
 public class RemoteGridImpl implements Grid {
 
+	private final JwtTokenGenerator jwtTokenGenerator;
+	private final SymmetricSecurityConfiguration gridSecurityConfiguration;
 	protected String gridHost;
 	
 	private Client client;
@@ -61,13 +65,16 @@ public class RemoteGridImpl implements Grid {
 	
 	int connectionTimeout;
 	
-	protected RemoteGridImpl(String gridHost) {
+	protected RemoteGridImpl(String gridHost, SymmetricSecurityConfiguration gridSecurityConfiguration) {
 		this.gridHost = gridHost;
+		this.gridSecurityConfiguration = gridSecurityConfiguration;
 		
 		client = ClientBuilder.newClient();
 		client.register(GridObjectMapperResolver.class);
 		client.register(JacksonJsonProvider.class);
 		client.register(MultiPartFeature.class);
+
+		jwtTokenGenerator = JwtTokenGenerator.initializeJwtTokenGenerator(gridSecurityConfiguration, "remote grid client");
 	}
 	
 	protected Builder requestBuilder(String path) {
@@ -81,7 +88,7 @@ public class RemoteGridImpl implements Grid {
 				target=target.queryParam(key, queryParams.get(key));
 			}
 		}
-		Builder b = target.request();
+		Builder b = JwtTokenGenerator.withAuthentication(jwtTokenGenerator, target.request());
 		b.accept(MediaType.APPLICATION_JSON);
 		if(cookies!=null) {
 			for(NewCookie c:cookies.values()) {
@@ -232,4 +239,8 @@ public class RemoteGridImpl implements Grid {
 		return registerFile(bodyPart, isDirectory, cleanable);
 	}
 
+	@Override
+	public SymmetricSecurityConfiguration getSecurityConfiguration() {
+		return gridSecurityConfiguration;
+	}
 }
