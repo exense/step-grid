@@ -114,8 +114,8 @@ public class RegistrationClient implements FileVersionProvider {
 		try {
 			return RetryHelper.executeWithRetryOnExceptions(
 					() -> downloadAndSaveFileVersion(fileVersionId, container),
-					maxRetries,  // maxRetries
-					retryDelayMs,  // retryDelayMs
+					maxRetries,
+					retryDelayMs,
 					RETRY_FOR_EXCEPTIONS,
 					"Download file " + fileVersionId
 			);
@@ -147,27 +147,32 @@ public class RegistrationClient implements FileVersionProvider {
 			throw new RuntimeException("Unexpected server error: "+error);
 		} else {
 			InputStream in = (InputStream) response.getEntity();
-			boolean isDirectory = response.getHeaderString("content-disposition").contains("type = dir");
-			Matcher m = Pattern.compile(".*filename = (.+?);.*").matcher(response.getHeaderString("content-disposition"));
-			if(m.find()) {
-				String filename = m.group(1);
+			String contentDisposition = response.getHeaderString("content-disposition");
+			if (contentDisposition != null) {
+				boolean isDirectory = contentDisposition.contains("type = dir");
+				Matcher m = Pattern.compile(".*filename = (.+?);.*").matcher(contentDisposition);
+				if (m.find()) {
+					String filename = m.group(1);
 
-				long t2 = System.currentTimeMillis();
-				File file = new File(container+"/"+filename);
-				if(isDirectory) {
-					FileHelper.unzip(in, file);
-				} else {
-					try(BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(file))) {
-						FileHelper.copy(in, bos, 1024);
+					long t2 = System.currentTimeMillis();
+					File file = new File(container + "/" + filename);
+					if (isDirectory) {
+						FileHelper.unzip(in, file);
+					} else {
+						try (BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(file))) {
+							FileHelper.copy(in, bos, 1024);
+						}
 					}
-				}
-				if(logger.isDebugEnabled()) {
-					logger.debug("Uncompressed file "+ fileVersionId +" in "+(System.currentTimeMillis()-t2)+"ms to "+file.getAbsoluteFile());
-				}
+					if (logger.isDebugEnabled()) {
+						logger.debug("Uncompressed file " + fileVersionId + " in " + (System.currentTimeMillis() - t2) + "ms to " + file.getAbsoluteFile());
+					}
 
-                return new FileVersion(file, fileVersionId, isDirectory);
+					return new FileVersion(file, fileVersionId, isDirectory);
+				} else {
+					throw new RuntimeException("Unable to find filename in header: " + contentDisposition);
+				}
 			} else {
-				throw new RuntimeException("Unable to find filename in header: "+response.getHeaderString("content-disposition"));
+				throw new RuntimeException("No content-disposition header found in the HTTP response");
 			}
 		}
 	}

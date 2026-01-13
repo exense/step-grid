@@ -350,6 +350,7 @@ public class AgentForker implements AutoCloseable {
 
         private void deleteTempDir() {
             logger.info("Deleting forked agent execution directory {}...", tempDirectory);
+            int nRetries = 5;
             try {
                 RetryHelper.executeWithRetryOnExceptions(
                         () -> {
@@ -357,13 +358,13 @@ public class AgentForker implements AutoCloseable {
                             logger.info("Deleted forked agent execution directory {}.", tempDirectory);
                             return null;
                         },
-                        5,  // maxRetries
+                        nRetries,
                         configuration.tempDirectoryDeletionRetryWait,
                         List.of(IOException.class),
                         "Delete forked agent execution directory " + tempDirectory
                 );
             } catch (Exception e) {
-                logger.warn("Failed to delete forked agent execution directory {} after retries.", tempDirectory, e);
+                logger.warn("Failed to delete forked agent execution directory {} after {} retries.", tempDirectory, nRetries, e);
             }
         }
     }
