@@ -58,7 +58,7 @@
 
 		<!-- internal dependencies -->
 		<dependencies.version>2025.6.25</dependencies.version>
-		<exense-commons.version>2.1.0</exense-commons.version>
+		<exense-commons.version>0.0.0-MASTER-SNAPSHOT</exense-commons.version>
 		<step-api.version>1.5.0</step-api.version>
 
 		<!-- maven build dependencies -->
