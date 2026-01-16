@@ -57,9 +57,9 @@
 		<maven.compiler.release>11</maven.compiler.release>
 
 		<!-- internal dependencies -->
-		<dependencies.version>2025.6.25</dependencies.version>
-		<exense-commons.version>2.1.0</exense-commons.version>
-		<step-api.version>1.5.0</step-api.version>
+		<dependencies.version>2025.11.28-6929c90d11ea7b7be5b14369</dependencies.version>
+		<exense-commons.version>2025.12.2-692eafc711ea7b7be5aeb998</exense-commons.version>
+		<step-api.version>2025.12.2-692eb36d11ea7b7be5bb841e</step-api.version>
 
 		<!-- maven build dependencies -->
 		<dep.mvn.jacoco.version>0.8.12</dep.mvn.jacoco.version>
@@ -69,6 +69,7 @@
 		<dep.mvn.surefire.version>2.19.1</dep.mvn.surefire.version>
 		<dep.mvn.source.version>3.0.1</dep.mvn.source.version>
 		<dep.mvn.gpg.version>1.6</dep.mvn.gpg.version>
+		<dep.mvn.enforcer.version>3.1.0</dep.mvn.enforcer.version>
 		<dep.mvn.dependency-check.version>9.2.0</dep.mvn.dependency-check.version>
 
 	</properties>
@@ -114,7 +115,7 @@
 
 			<dependency>
 				<groupId>ch.exense.dependencies</groupId>
-				<artifactId>dependencies-guava</artifactId>
+				<artifactId>dependencies-google</artifactId>
 				<version>${dependencies.version}</version>
 				<type>pom</type>
 				<scope>import</scope>
@@ -285,6 +286,11 @@
 					<version>${dep.mvn.jacoco.version}</version>
 				</plugin>
 				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-enforcer-plugin</artifactId>
+					<version>${dep.mvn.enforcer.version}</version>
+				</plugin>
+				<plugin>
 					<groupId>org.owasp</groupId>
 					<artifactId>dependency-check-maven</artifactId>
 					<version>${dep.mvn.dependency-check.version}</version>
@@ -292,6 +298,28 @@
 			</plugins>
 		</pluginManagement>
 		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-enforcer-plugin</artifactId>
+				<executions>
+					<execution>
+						<id>enforce-policies</id>
+						<goals>
+							<goal>enforce</goal>
+						</goals>
+						<configuration>
+							<rules>
+								<requireUpperBoundDeps>
+									<excludes>
+										<exclude>jakarta.xml.bind:jakarta.xml.bind-api</exclude>
+									</excludes>
+								</requireUpperBoundDeps>
+							</rules>
+							<fail>true</fail>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
 			<plugin>
 				<groupId>org.jacoco</groupId>
 				<artifactId>jacoco-maven-plugin</artifactId>
@@ -373,6 +401,17 @@
 			</activation>
 			<!-- Local compilation - no signature -->
 		</profile>
+
+		<profile>
+			<id>SkipJavadoc</id>
+			<activation>
+				<activeByDefault>true</activeByDefault>
+			</activation>
+			<properties>
+				<maven.javadoc.skip>true</maven.javadoc.skip>
+			</properties>
+		</profile>
+
 		<profile>
 			<id>DependencyCheck</id>
 			<activation>
