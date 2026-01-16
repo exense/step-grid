@@ -2,6 +2,7 @@ package step.grid.agent.forker;
 
 import ch.exense.commons.io.FileHelper;
 import ch.exense.commons.processes.ForkedJvmBuilder;
+import ch.exense.commons.resilience.RetryHelper;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -349,26 +350,21 @@ public class AgentForker implements AutoCloseable {
 
         private void deleteTempDir() {
             logger.info("Deleting forked agent execution directory {}...", tempDirectory);
-            boolean deleted = false;
             int nRetries = 5;
-            for (int i = 0; i <= nRetries; i++) {
-                try {
-                    FileUtils.deleteDirectory(tempDirectory.toFile());
-                    logger.info("Deleted forked agent execution directory {}.", tempDirectory);
-                    deleted = true;
-                    break;
-                } catch (IOException e) {
-                    logger.debug("Failed to delete forked agent execution directory {} after {} retries.", tempDirectory, i, e);
-                    try {
-                        Thread.sleep(configuration.tempDirectoryDeletionRetryWait);
-                    } catch (InterruptedException e2) {
-                        logger.error("Thread interrupted while waiting before retrying to delete the forked agent execution directory {}.", tempDirectory, e2);
-                        Thread.currentThread().interrupt();
-                    }
-                }
-            }
-            if (!deleted) {
-                logger.warn("Failed to delete forked agent execution directory {} after {} retries.", tempDirectory, nRetries);
+            try {
+                RetryHelper.executeWithRetryOnExceptions(
+                        () -> {
+                            FileUtils.deleteDirectory(tempDirectory.toFile());
+                            logger.info("Deleted forked agent execution directory {}.", tempDirectory);
+                            return null;
+                        },
+                        nRetries,
+                        configuration.tempDirectoryDeletionRetryWait,
+                        List.of(IOException.class),
+                        "Delete forked agent execution directory " + tempDirectory
+                );
+            } catch (Exception e) {
+                logger.warn("Failed to delete forked agent execution directory {} after {} retries.", tempDirectory, nRetries, e);
             }
         }
     }
