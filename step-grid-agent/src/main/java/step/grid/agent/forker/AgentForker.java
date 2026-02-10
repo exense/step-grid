@@ -262,7 +262,11 @@ public class AgentForker implements AutoCloseable {
             }
 
             logger.info("Calling forked agent {}...", id);
-            return gridClient.call(tokenHandle.getID(), message.getPayload(), message.getHandler(), message.getHandlerPackage(), message.getProperties(), callTimeout);
+            try {
+                return gridClient.call(tokenHandle.getID(), message.getPayload(), message.getHandler(), message.getHandlerPackage(), message.getProperties(), callTimeout);
+            } catch (AbstractGridClientImpl.AgentCommunicationException e) {
+                throw new AbstractGridClientImpl.AgentCommunicationException("Communication with the forked agent failed.", e);
+            }
         }
 
         public void interruptExecution() {
