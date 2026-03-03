@@ -41,7 +41,7 @@
 		<!-- staging nexus -->
 		<repository>
 			<id>nexus-staging</id>
-			<url>https://nexus-enterprise-staging.exense.ch/repository/staging-maven/</url>
+			<url>https://nexus-enterprise-staging.stepcloud-test.ch/repository/staging-maven/</url>
 		</repository>
 		<!-- private nexus -->
 		<repository>
@@ -57,9 +57,9 @@
 		<maven.compiler.release>11</maven.compiler.release>
 
 		<!-- internal dependencies -->
-		<dependencies.version>2025.11.28-6929c90d11ea7b7be5b14369</dependencies.version>
-		<exense-commons.version>2025.12.2-692eafc711ea7b7be5aeb998</exense-commons.version>
-		<step-api.version>2025.12.2-692eb36d11ea7b7be5bb841e</step-api.version>
+		<dependencies.version>0.0.0-SED-4408-SNAPSHOT</dependencies.version>
+		<exense-commons.version>0.0.0-SED-4408-SNAPSHOT</exense-commons.version>
+		<step-api.version>0.0.0-SED-4408-SNAPSHOT</step-api.version>
 
 		<!-- maven build dependencies -->
 		<dep.mvn.jacoco.version>0.8.12</dep.mvn.jacoco.version>

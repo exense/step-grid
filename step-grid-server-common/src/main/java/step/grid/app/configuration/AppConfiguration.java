@@ -26,6 +26,8 @@ public class AppConfiguration {
     private boolean exposeMetrics = false;
     private Integer gridReadTimeout = 3000;
     private Integer gridConnectTimeout = 3000;
+    private Integer gridMaxRetries = 3;
+    private Integer gridRetryDelayMs = 1000;
 
     public AppConfiguration() {
     }
@@ -84,5 +86,21 @@ public class AppConfiguration {
 
     public void setGridConnectTimeout(Integer gridConnectTimeout) {
         this.gridConnectTimeout = gridConnectTimeout;
+    }
+
+    public Integer getGridMaxRetries() {
+        return gridMaxRetries;
+    }
+
+    public void setGridMaxRetries(Integer gridMaxRetries) {
+        this.gridMaxRetries = gridMaxRetries;
+    }
+
+    public Integer getGridRetryDelayMs() {
+        return gridRetryDelayMs;
+    }
+
+    public void setGridRetryDelayMs(Integer gridRetryDelayMs) {
+        this.gridRetryDelayMs = gridRetryDelayMs;
     }
 }
