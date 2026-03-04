@@ -28,8 +28,8 @@ public class NamedThreadFactory implements ThreadFactory {
     @Override
     public Thread newThread(Runnable r) {
         Thread t = new Thread(r, baseName + "-" +
-                countByName.computeIfAbsent(baseName, n -> new AtomicInteger(0)).getAndIncrement() + "-"
-                + count.getAndIncrement());
+            countByName.computeIfAbsent(baseName, n -> new AtomicInteger(0)).getAndIncrement() + "-"
+            + count.getAndIncrement());
         t.setDaemon(daemon);
         return t;
     }

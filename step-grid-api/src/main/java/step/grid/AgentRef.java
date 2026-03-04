@@ -1,86 +1,86 @@
 /*******************************************************************************
  * Copyright (C) 2020, exense GmbH
- *  
+ *
  * This file is part of STEP
- *  
+ *
  * STEP is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- *  
+ *
  * STEP is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
- *  
+ *
  * You should have received a copy of the GNU Affero General Public License
  * along with STEP.  If not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************/
 package step.grid;
 
 public class AgentRef {
-	
-	private String agentId;
-	
-	private String agentUrl;
 
-	/**
-	 * For agents that are joining the grid via grid proxy, this corresponds to the url of the agent
-	 * as seen by the proxy i.e. the one that the proxy can use to call the agent
-	 */
-	private String localAgentUrl;
-	
-	private String agentType;
+    private String agentId;
 
-	public AgentRef() {
-		super();
-	}
+    private String agentUrl;
 
-	public AgentRef(String agentId, String agentUrl, String agentType) {
-		super();
-		this.agentId = agentId;
-		this.agentUrl = agentUrl;
-		this.agentType = agentType;
-	}
+    /**
+     * For agents that are joining the grid via grid proxy, this corresponds to the url of the agent
+     * as seen by the proxy i.e. the one that the proxy can use to call the agent
+     */
+    private String localAgentUrl;
 
-	public String getAgentId() {
-		return agentId;
-	}
+    private String agentType;
 
-	public void setAgentId(String agentId) {
-		this.agentId = agentId;
-	}
+    public AgentRef() {
+        super();
+    }
 
-	public String getAgentUrl() {
-		return agentUrl;
-	}
+    public AgentRef(String agentId, String agentUrl, String agentType) {
+        super();
+        this.agentId = agentId;
+        this.agentUrl = agentUrl;
+        this.agentType = agentType;
+    }
 
-	public void setAgentUrl(String agentUrl) {
-		this.agentUrl = agentUrl;
-	}
+    public String getAgentId() {
+        return agentId;
+    }
 
-	public String getLocalAgentUrl() {
-		return localAgentUrl;
-	}
+    public void setAgentId(String agentId) {
+        this.agentId = agentId;
+    }
 
-	public void setLocalAgentUrl(String localAgentUrl) {
-		this.localAgentUrl = localAgentUrl;
-	}
+    public String getAgentUrl() {
+        return agentUrl;
+    }
 
-	public String getAgentType() {
-		return agentType;
-	}
+    public void setAgentUrl(String agentUrl) {
+        this.agentUrl = agentUrl;
+    }
 
-	public void setAgentType(String agentType) {
-		this.agentType = agentType;
-	}
+    public String getLocalAgentUrl() {
+        return localAgentUrl;
+    }
 
-	@Override
-	public String toString() {
-		return "AgentRef{" +
-				"agentId='" + agentId + '\'' +
-				", agentUrl='" + agentUrl + '\'' +
-				", localAgentUrl='" + localAgentUrl + '\'' +
-				'}';
-	}
+    public void setLocalAgentUrl(String localAgentUrl) {
+        this.localAgentUrl = localAgentUrl;
+    }
+
+    public String getAgentType() {
+        return agentType;
+    }
+
+    public void setAgentType(String agentType) {
+        this.agentType = agentType;
+    }
+
+    @Override
+    public String toString() {
+        return "AgentRef{" +
+            "agentId='" + agentId + '\'' +
+            ", agentUrl='" + agentUrl + '\'' +
+            ", localAgentUrl='" + localAgentUrl + '\'' +
+            '}';
+    }
 }

@@ -1,18 +1,18 @@
 /*******************************************************************************
  * Copyright (C) 2020, exense GmbH
- *  
+ *
  * This file is part of STEP
- *  
+ *
  * STEP is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- *  
+ *
  * STEP is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
- *  
+ *
  * You should have received a copy of the GNU Affero General Public License
  * along with STEP.  If not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************/
@@ -29,66 +29,66 @@ import step.grid.agent.AgentTokenServices;
 
 public class MessageHandlerPool implements AutoCloseable {
 
-	private static final Logger logger = LoggerFactory.getLogger(MessageHandlerPool.class);
-	
-	private final AgentTokenServices tokenServices;
-	
-	private Map<String, MessageHandler> pool = new HashMap<>();
-	
-	public MessageHandlerPool(AgentTokenServices tokenServices) {
-		super();
-		this.tokenServices = tokenServices;
-	}
+    private static final Logger logger = LoggerFactory.getLogger(MessageHandlerPool.class);
 
-	public MessageHandler get(String handlerClassname) throws Exception {
-		return get(handlerClassname, Thread.currentThread().getContextClassLoader());			
-	}
-	
-	public synchronized MessageHandler get(String handlerClassname, ClassLoader classLoader) throws Exception {
-		MessageHandler handler = pool.get(handlerClassname); 
-		
-		if(handler==null) {
-			handler = createHandler(handlerClassname, classLoader);
-			pool.put(handlerClassname, handler);
-		}
-		
-		return handler;			
-	}
+    private final AgentTokenServices tokenServices;
 
-	private MessageHandler createHandler(String handlerClassname, ClassLoader classLoader) throws ReflectiveOperationException, MalformedURLException,
-			ClassNotFoundException, InstantiationException, IllegalAccessException {
-		MessageHandler handler;
-		try {
-			Class<?> class_ = classLoader.loadClass(handlerClassname);
-			handler = newInstance(class_);
-		} catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
-			throw e;
-		}		
-		
-		if (handler instanceof AgentContextAware && tokenServices!=null) {
-			((AgentContextAware)handler).init(tokenServices);
-		} 
-		return handler;
-	}
+    private Map<String, MessageHandler> pool = new HashMap<>();
 
-	private MessageHandler newInstance(Class<?> class_)
-			throws InstantiationException, IllegalAccessException {
-		Object o = class_.newInstance();
-		if(o!=null && o instanceof MessageHandler) {
-			return (MessageHandler)o;
-		} else {
-			throw new RuntimeException("The class '"+class_.getName()+"' doesn't extend "+MessageHandler.class);
-		}
-	}
+    public MessageHandlerPool(AgentTokenServices tokenServices) {
+        super();
+        this.tokenServices = tokenServices;
+    }
 
-	@Override
-	public void close() throws Exception {
-		pool.forEach((k,v) -> {
-			try {
-				v.close();
-			} catch (Exception e) {
-				logger.error("Unable to close the message handler {}", k, e);
-			}
-		});
-	}
+    public MessageHandler get(String handlerClassname) throws Exception {
+        return get(handlerClassname, Thread.currentThread().getContextClassLoader());
+    }
+
+    public synchronized MessageHandler get(String handlerClassname, ClassLoader classLoader) throws Exception {
+        MessageHandler handler = pool.get(handlerClassname);
+
+        if (handler == null) {
+            handler = createHandler(handlerClassname, classLoader);
+            pool.put(handlerClassname, handler);
+        }
+
+        return handler;
+    }
+
+    private MessageHandler createHandler(String handlerClassname, ClassLoader classLoader) throws ReflectiveOperationException, MalformedURLException,
+        ClassNotFoundException, InstantiationException, IllegalAccessException {
+        MessageHandler handler;
+        try {
+            Class<?> class_ = classLoader.loadClass(handlerClassname);
+            handler = newInstance(class_);
+        } catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
+            throw e;
+        }
+
+        if (handler instanceof AgentContextAware && tokenServices != null) {
+            ((AgentContextAware) handler).init(tokenServices);
+        }
+        return handler;
+    }
+
+    private MessageHandler newInstance(Class<?> class_)
+        throws InstantiationException, IllegalAccessException {
+        Object o = class_.newInstance();
+        if (o != null && o instanceof MessageHandler) {
+            return (MessageHandler) o;
+        } else {
+            throw new RuntimeException("The class '" + class_.getName() + "' doesn't extend " + MessageHandler.class);
+        }
+    }
+
+    @Override
+    public void close() throws Exception {
+        pool.forEach((k, v) -> {
+            try {
+                v.close();
+            } catch (Exception e) {
+                logger.error("Unable to close the message handler {}", k, e);
+            }
+        });
+    }
 }

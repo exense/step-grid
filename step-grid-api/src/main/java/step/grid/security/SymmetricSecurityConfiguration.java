@@ -22,12 +22,12 @@ package step.grid.security;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 public class SymmetricSecurityConfiguration {
-    
+
     public String jwtSecretKey;
 
     public SymmetricSecurityConfiguration() {
     }
-    
+
     public SymmetricSecurityConfiguration(String jwtSecretKey) {
         this.jwtSecretKey = jwtSecretKey;
     }

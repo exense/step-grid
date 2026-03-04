@@ -1,18 +1,18 @@
 /*******************************************************************************
  * Copyright (C) 2020, exense GmbH
- *  
+ *
  * This file is part of STEP
- *  
+ *
  * STEP is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- *  
+ *
  * STEP is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
- *  
+ *
  * You should have received a copy of the GNU Affero General Public License
  * along with STEP.  If not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************/
@@ -27,191 +27,191 @@ import java.util.List;
 import java.util.Map;
 
 public class AgentConf extends AppConfiguration {
-	
-	String gridHost;
 
-	String fileServerHost;
-	
-	Integer agentPort;
-	
-	String agentHost;
-	
-	String agentUrl;
-	
-	String workingDir;
-	
-	Integer registrationPeriod = 10000;
+    String gridHost;
 
-	Integer registrationOffset = 0;
-	List<TokenGroupConf> tokenGroups;
-	
-	Map<String, String> properties;
-	
-	Long gracefulShutdownTimeout;
+    String fileServerHost;
 
-	FileManagerConfiguration fileManagerConfiguration = new FileManagerConfiguration();
+    Integer agentPort;
 
-	ExecutionContextCacheConfiguration executionContextCacheConfiguration = new ExecutionContextCacheConfiguration();
+    String agentHost;
 
-	boolean exposeAgentControlServices = false;
+    String agentUrl;
 
-	AgentForkerConfiguration agentForker;
+    String workingDir;
 
-	SymmetricSecurityConfiguration gridSecurity;
+    Integer registrationPeriod = 10000;
 
-	public AgentConf() {
-		super();
-	}
+    Integer registrationOffset = 0;
+    List<TokenGroupConf> tokenGroups;
 
-	public AgentConf(String gridHost, Integer agentPort, String agentUrl) {
-		super();
-		this.agentPort = agentPort;
-		this.agentUrl = agentUrl;
-		setGridHost(gridHost);
-	}
-	
-	public AgentConf(String gridHost, String agentHost) {
-		super();
-		this.agentHost = agentHost;
-		setGridHost(gridHost);
-	}
+    Map<String, String> properties;
 
-	public AgentConf(String gridHost, Integer agentPort, String agentUrl, Integer registrationPeriod) {
-		super();
-		this.agentPort = agentPort;
-		this.agentUrl = agentUrl;
-		this.registrationPeriod = registrationPeriod;
-		setGridHost(gridHost);
-	}
+    Long gracefulShutdownTimeout;
 
-	public String getGridHost() {
-		return gridHost;
-	}
+    FileManagerConfiguration fileManagerConfiguration = new FileManagerConfiguration();
 
-	public void setGridHost(String gridHost) {
-		this.gridHost = gridHost.endsWith("/") ?
-				gridHost.substring(0,gridHost.length()-1) :
-				gridHost;
-	}
+    ExecutionContextCacheConfiguration executionContextCacheConfiguration = new ExecutionContextCacheConfiguration();
 
-	public String getFileServerHost() {
-		return fileServerHost;
-	}
+    boolean exposeAgentControlServices = false;
 
-	public void setFileServerHost(String fileServerHost) {
-		this.fileServerHost = fileServerHost;
-	}
+    AgentForkerConfiguration agentForker;
 
-	public Integer getAgentPort() {
-		return agentPort;
-	}
+    SymmetricSecurityConfiguration gridSecurity;
 
-	public void setAgentPort(Integer agentPort) {
-		this.agentPort = agentPort;
-	}
-	
-	public String getAgentHost() {
-		return agentHost;
-	}
-	
-	public void setAgentHost(String agentHost) {
-		this.agentHost = agentHost;
-	}
+    public AgentConf() {
+        super();
+    }
 
-	public String getAgentUrl() {
-		return agentUrl;
-	}
+    public AgentConf(String gridHost, Integer agentPort, String agentUrl) {
+        super();
+        this.agentPort = agentPort;
+        this.agentUrl = agentUrl;
+        setGridHost(gridHost);
+    }
 
-	public void setAgentUrl(String agentUrl) {
-		this.agentUrl = agentUrl;
-	}
+    public AgentConf(String gridHost, String agentHost) {
+        super();
+        this.agentHost = agentHost;
+        setGridHost(gridHost);
+    }
 
-	public List<TokenGroupConf> getTokenGroups() {
-		return tokenGroups;
-	}
+    public AgentConf(String gridHost, Integer agentPort, String agentUrl, Integer registrationPeriod) {
+        super();
+        this.agentPort = agentPort;
+        this.agentUrl = agentUrl;
+        this.registrationPeriod = registrationPeriod;
+        setGridHost(gridHost);
+    }
 
-	public void setTokenGroups(List<TokenGroupConf> tokenGroups) {
-		this.tokenGroups = tokenGroups;
-	}
+    public String getGridHost() {
+        return gridHost;
+    }
 
-	public Integer getRegistrationPeriod() {
-		return registrationPeriod;
-	}
+    public void setGridHost(String gridHost) {
+        this.gridHost = gridHost.endsWith("/") ?
+            gridHost.substring(0, gridHost.length() - 1) :
+            gridHost;
+    }
 
-	public void setRegistrationPeriod(Integer registrationPeriod) {
-		this.registrationPeriod = registrationPeriod;
-	}
+    public String getFileServerHost() {
+        return fileServerHost;
+    }
 
-	public Integer getRegistrationOffset() {
-		return registrationOffset;
-	}
+    public void setFileServerHost(String fileServerHost) {
+        this.fileServerHost = fileServerHost;
+    }
 
-	public void setRegistrationOffset(Integer registrationOffset) {
-		this.registrationOffset = registrationOffset;
-	}
+    public Integer getAgentPort() {
+        return agentPort;
+    }
 
-	public String getWorkingDir() {
-		return workingDir;
-	}
+    public void setAgentPort(Integer agentPort) {
+        this.agentPort = agentPort;
+    }
 
-	public void setWorkingDir(String workingDir) {
-		this.workingDir = workingDir;
-	}
+    public String getAgentHost() {
+        return agentHost;
+    }
 
-	public Map<String, String> getProperties() {
-		return properties;
-	}
+    public void setAgentHost(String agentHost) {
+        this.agentHost = agentHost;
+    }
 
-	public void setProperties(Map<String, String> properties) {
-		this.properties = properties;
-	}
+    public String getAgentUrl() {
+        return agentUrl;
+    }
 
-	public Long getGracefulShutdownTimeout() {
-		return gracefulShutdownTimeout;
-	}
+    public void setAgentUrl(String agentUrl) {
+        this.agentUrl = agentUrl;
+    }
 
-	public void setGracefulShutdownTimeout(Long gracefulShutdownTimeout) {
-		this.gracefulShutdownTimeout = gracefulShutdownTimeout;
-	}
+    public List<TokenGroupConf> getTokenGroups() {
+        return tokenGroups;
+    }
 
-	public FileManagerConfiguration getFileManagerConfiguration() {
-		return fileManagerConfiguration;
-	}
+    public void setTokenGroups(List<TokenGroupConf> tokenGroups) {
+        this.tokenGroups = tokenGroups;
+    }
 
-	public void setFileManagerConfiguration(FileManagerConfiguration fileManagerConfiguration) {
-		this.fileManagerConfiguration = fileManagerConfiguration;
-	}
+    public Integer getRegistrationPeriod() {
+        return registrationPeriod;
+    }
 
-	public ExecutionContextCacheConfiguration getExecutionContextCacheConfiguration() {
-		return executionContextCacheConfiguration;
-	}
+    public void setRegistrationPeriod(Integer registrationPeriod) {
+        this.registrationPeriod = registrationPeriod;
+    }
 
-	public void setExecutionContextCacheConfiguration(ExecutionContextCacheConfiguration executionContextCacheConfiguration) {
-		this.executionContextCacheConfiguration = executionContextCacheConfiguration;
-	}
+    public Integer getRegistrationOffset() {
+        return registrationOffset;
+    }
 
-	public boolean isExposeAgentControlServices() {
-		return exposeAgentControlServices;
-	}
+    public void setRegistrationOffset(Integer registrationOffset) {
+        this.registrationOffset = registrationOffset;
+    }
 
-	public void setExposeAgentControlServices(boolean exposeAgentControlServices) {
-		this.exposeAgentControlServices = exposeAgentControlServices;
-	}
+    public String getWorkingDir() {
+        return workingDir;
+    }
 
-	public AgentForkerConfiguration getAgentForker() {
-		return agentForker;
-	}
+    public void setWorkingDir(String workingDir) {
+        this.workingDir = workingDir;
+    }
 
-	public void setAgentForker(AgentForkerConfiguration isolatedExecutionConfiguration) {
-		this.agentForker = isolatedExecutionConfiguration;
-	}
+    public Map<String, String> getProperties() {
+        return properties;
+    }
 
-	public SymmetricSecurityConfiguration getGridSecurity() {
-		return gridSecurity;
-	}
+    public void setProperties(Map<String, String> properties) {
+        this.properties = properties;
+    }
 
-	public void setGridSecurity(SymmetricSecurityConfiguration gridSecurity) {
-		this.gridSecurity = gridSecurity;
-	}
+    public Long getGracefulShutdownTimeout() {
+        return gracefulShutdownTimeout;
+    }
+
+    public void setGracefulShutdownTimeout(Long gracefulShutdownTimeout) {
+        this.gracefulShutdownTimeout = gracefulShutdownTimeout;
+    }
+
+    public FileManagerConfiguration getFileManagerConfiguration() {
+        return fileManagerConfiguration;
+    }
+
+    public void setFileManagerConfiguration(FileManagerConfiguration fileManagerConfiguration) {
+        this.fileManagerConfiguration = fileManagerConfiguration;
+    }
+
+    public ExecutionContextCacheConfiguration getExecutionContextCacheConfiguration() {
+        return executionContextCacheConfiguration;
+    }
+
+    public void setExecutionContextCacheConfiguration(ExecutionContextCacheConfiguration executionContextCacheConfiguration) {
+        this.executionContextCacheConfiguration = executionContextCacheConfiguration;
+    }
+
+    public boolean isExposeAgentControlServices() {
+        return exposeAgentControlServices;
+    }
+
+    public void setExposeAgentControlServices(boolean exposeAgentControlServices) {
+        this.exposeAgentControlServices = exposeAgentControlServices;
+    }
+
+    public AgentForkerConfiguration getAgentForker() {
+        return agentForker;
+    }
+
+    public void setAgentForker(AgentForkerConfiguration isolatedExecutionConfiguration) {
+        this.agentForker = isolatedExecutionConfiguration;
+    }
+
+    public SymmetricSecurityConfiguration getGridSecurity() {
+        return gridSecurity;
+    }
+
+    public void setGridSecurity(SymmetricSecurityConfiguration gridSecurity) {
+        this.gridSecurity = gridSecurity;
+    }
 
 }

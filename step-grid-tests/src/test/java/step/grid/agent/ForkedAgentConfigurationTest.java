@@ -41,7 +41,7 @@ public class ForkedAgentConfigurationTest extends AbstractGridTest {
         // Call the agent with more threads than the configured agent port range size
         ExecutorService executorService = Executors.newFixedThreadPool(5);
         executorService.execute(() -> {
-            for(int i = 0; i < 10; i++) {
+            for (int i = 0; i < 10; i++) {
                 try {
                     callToken();
                 } catch (Exception e) {
@@ -53,7 +53,7 @@ public class ForkedAgentConfigurationTest extends AbstractGridTest {
         });
         executorService.shutdown();
         executorService.awaitTermination(1, TimeUnit.MINUTES);
-        if(!exceptions.isEmpty()) {
+        if (!exceptions.isEmpty()) {
             throw new Exception("Multiple exceptions occurred");
         }
     }

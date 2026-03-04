@@ -41,6 +41,7 @@ import java.net.UnknownHostException;
 public class BaseServer {
 
     private static final Logger logger = LoggerFactory.getLogger(BaseServer.class);
+
     protected Server startServer(AppConfiguration appConfiguration, int port, ResourceConfig resourceConfig) throws Exception {
         resourceConfig.register(JacksonJsonProvider.class);
         resourceConfig.register(JacksonFeature.class);
@@ -71,7 +72,7 @@ public class BaseServer {
             sslContextFactory.setKeyManagerPassword(keyManagerPassword);
 
             connector = new ServerConnector(server, new SslConnectionFactory(sslContextFactory, "http/1.1"),
-                    new HttpConnectionFactory(https));
+                new HttpConnectionFactory(https));
         } else {
             HttpConfiguration http = new HttpConfiguration();
             http.addCustomizer(new SecureRequestCustomizer());
@@ -126,7 +127,7 @@ public class BaseServer {
     }
 
     protected String getOrBuildActualUrl(String serverHost, String serverUrl, int localPort, boolean ssl)
-            throws UnknownHostException {
+        throws UnknownHostException {
         String actualAgentUrl;
         if (serverUrl == null) {
             // agentUrl not set. generate it

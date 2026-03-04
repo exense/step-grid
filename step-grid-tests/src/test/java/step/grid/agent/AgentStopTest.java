@@ -65,7 +65,7 @@ public class AgentStopTest extends AbstractGridTest {
 
         // Select all tokens to wait for them to appear in the grid
         ArrayList<TokenWrapper> tokens = new ArrayList<>();
-        for(int i = 0; i<10; i++) {
+        for (int i = 0; i < 10; i++) {
             tokens.add(selectToken());
         }
 

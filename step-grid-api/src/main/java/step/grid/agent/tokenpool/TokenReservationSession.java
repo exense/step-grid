@@ -53,7 +53,7 @@ public class TokenReservationSession extends AbstractSession {
      * This method also supports fake sessions using the UnusableTokenReservationSession class.
      * It is intended for storing technical objects (such as application context or file versions)
      * that follow the session lifecycle.
-     *
+     * <p>
      * When keywords are executed outside a session context, the UnusableTokenReservationSession is used
      * and closed from the AgentTokenPool.afterTokenExecution hook.
      *

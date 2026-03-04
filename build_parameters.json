@@ -1,17 +1,17 @@
 {
-	"ACTION": "COMPILE",
-	"TYPE": "POM",
-	"FOLDER": ".",
-	"PARAMETERS": [
-		{
-			"NAME": "ALL",
-			"URL": "nexus-staging::https://nexus-enterprise-staging.stepcloud-test.ch/repository/staging-maven/",
-			"CONFIG": "Default"
-		},
-		{
-			"NAME": "PRODUCTION",
-			"URL": "sonatype::https://unused",
-			"CONFIG": "SignedBuild"
-		}
-	]
+  "ACTION": "COMPILE",
+  "TYPE": "POM",
+  "FOLDER": ".",
+  "PARAMETERS": [
+    {
+      "NAME": "ALL",
+      "URL": "nexus-staging::https://nexus-enterprise-staging.stepcloud-test.ch/repository/staging-maven/",
+      "CONFIG": "Default"
+    },
+    {
+      "NAME": "PRODUCTION",
+      "URL": "sonatype::https://unused",
+      "CONFIG": "SignedBuild"
+    }
+  ]
 }

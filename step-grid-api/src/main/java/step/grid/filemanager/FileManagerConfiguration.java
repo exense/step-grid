@@ -22,59 +22,60 @@ import java.util.concurrent.TimeUnit;
 
 public class FileManagerConfiguration {
 
-	private TimeUnit configurationTimeUnit = TimeUnit.MINUTES;
+    private TimeUnit configurationTimeUnit = TimeUnit.MINUTES;
 
-	private long cleanupTimeToLiveMinutes = 1440;
+    private long cleanupTimeToLiveMinutes = 1440;
 
-	private boolean enableCleanup = true;
+    private boolean enableCleanup = true;
 
-	private long cleanupFrequencyMinutes = 60;
+    private long cleanupFrequencyMinutes = 60;
 
-	public FileManagerConfiguration() {
-	}
+    public FileManagerConfiguration() {
+    }
 
-	/**
-	 * @return the period of time in minutes since the last access of a cached file before it becomes eligible for cleanup. Refer to the cleanup job for details {@link AbstractFileManager#scheduleCleanupJob() }
-	 */
-	public long getCleanupTimeToLiveMinutes() {
-		return cleanupTimeToLiveMinutes;
-	}
+    /**
+     * @return the period of time in minutes since the last access of a cached file before it becomes eligible for cleanup. Refer to the cleanup job for details {@link AbstractFileManager#scheduleCleanupJob() }
+     */
+    public long getCleanupTimeToLiveMinutes() {
+        return cleanupTimeToLiveMinutes;
+    }
 
-	public void setCleanupTimeToLiveMinutes(long cleanupTimeToLiveMinutes) {
-		this.cleanupTimeToLiveMinutes = cleanupTimeToLiveMinutes;
-	}
+    public void setCleanupTimeToLiveMinutes(long cleanupTimeToLiveMinutes) {
+        this.cleanupTimeToLiveMinutes = cleanupTimeToLiveMinutes;
+    }
 
-	/**
-	 * @return whether the {@link AbstractFileManager#scheduleCleanupJob() cleanup job} should be enabled
-	 */
-	public boolean isEnableCleanup() {
-		return enableCleanup;
-	}
+    /**
+     * @return whether the {@link AbstractFileManager#scheduleCleanupJob() cleanup job} should be enabled
+     */
+    public boolean isEnableCleanup() {
+        return enableCleanup;
+    }
 
-	public void setEnableCleanup(boolean enableCleanup) {
-		this.enableCleanup = enableCleanup;
-	}
+    public void setEnableCleanup(boolean enableCleanup) {
+        this.enableCleanup = enableCleanup;
+    }
 
-	/**
-	 * @return the frequency of cleanup job in minutes. Refer to {@link AbstractFileManager#scheduleCleanupJob() } for more details
-	 */
-	public long getCleanupFrequencyMinutes() {
-		return cleanupFrequencyMinutes;
-	}
+    /**
+     * @return the frequency of cleanup job in minutes. Refer to {@link AbstractFileManager#scheduleCleanupJob() } for more details
+     */
+    public long getCleanupFrequencyMinutes() {
+        return cleanupFrequencyMinutes;
+    }
 
-	public void setCleanupFrequencyMinutes(long cleanupFrequencyMinutes) {
-		this.cleanupFrequencyMinutes = cleanupFrequencyMinutes;
-	}
+    public void setCleanupFrequencyMinutes(long cleanupFrequencyMinutes) {
+        this.cleanupFrequencyMinutes = cleanupFrequencyMinutes;
+    }
 
-	public TimeUnit getConfigurationTimeUnit() {
-		return configurationTimeUnit;
-	}
+    public TimeUnit getConfigurationTimeUnit() {
+        return configurationTimeUnit;
+    }
 
-	/**
-	 * Change the time unit used for the cleanup scheduled job for junit tests, default time unit is Minutes
-	 * @param configurationTimeUnit
-	 */
-	protected void setConfigurationTimeUnit(TimeUnit configurationTimeUnit) {
-		this.configurationTimeUnit = configurationTimeUnit;
-	}
+    /**
+     * Change the time unit used for the cleanup scheduled job for junit tests, default time unit is Minutes
+     *
+     * @param configurationTimeUnit
+     */
+    protected void setConfigurationTimeUnit(TimeUnit configurationTimeUnit) {
+        this.configurationTimeUnit = configurationTimeUnit;
+    }
 }

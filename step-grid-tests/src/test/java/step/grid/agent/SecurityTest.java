@@ -45,16 +45,16 @@ public class SecurityTest {
         GridImpl grid = startProtectedGrid();
         String gridHost = "http://127.0.0.1:" + grid.getServerPort();
         // Start an agent without client security configured. This agent shouldn't be able to register to the grid
-        try(Agent agent = startAgentWithoutGridSecurity(gridHost)) {
+        try (Agent agent = startAgentWithoutGridSecurity(gridHost)) {
             // Create a remote grid client without client security. This grid client shouldn't be able to call the grid
-            try(RemoteGridClientImpl gridClient1 = new RemoteGridClientImpl(gridClientConfigurationWithoutSecurity(), gridHost)) {
+            try (RemoteGridClientImpl gridClient1 = new RemoteGridClientImpl(gridClientConfigurationWithoutSecurity(), gridHost)) {
                 RemoteClientException remoteClientException = assertThrows(RemoteClientException.class, () -> gridClient1.getTokenHandle(Map.of(), Map.of(), false));
                 assertTrue(remoteClientException.getMessage().contains("Missing or invalid Authorization header"));
 
             }
 
             // Create a remote grid client with the proper security configuration.
-            try(RemoteGridClientImpl gridClient = new RemoteGridClientImpl(gridClientConfigurationWithoutSecurity(), gridHost, remoteGridClientSecurity())) {
+            try (RemoteGridClientImpl gridClient = new RemoteGridClientImpl(gridClientConfigurationWithoutSecurity(), gridHost, remoteGridClientSecurity())) {
                 Exception exception = assertThrows(Exception.class, () -> gridClient.getTokenHandle(Map.of(), Map.of(), false));
                 // Assert that no token is present i.e. that the agent couldn't register
                 assertTrue(exception.getMessage().contains("Request failed"));
@@ -62,8 +62,8 @@ public class SecurityTest {
         }
 
         // Start the agent with the proper security configuration. This agent should be able to register itself into the grid
-        try(Agent agent = startAgentWithGridSecurity(gridHost)) {
-            try(RemoteGridClientImpl gridClient = new RemoteGridClientImpl(gridClientWithSecurity(), gridHost, remoteGridClientSecurity())) {
+        try (Agent agent = startAgentWithGridSecurity(gridHost)) {
+            try (RemoteGridClientImpl gridClient = new RemoteGridClientImpl(gridClientWithSecurity(), gridHost, remoteGridClientSecurity())) {
                 TokenWrapper tokenHandle = gridClient.getTokenHandle(Map.of(), Map.of(), false);
                 // Ensure that the agent token is available i.e. that the agent registered successfully
                 assertNotNull(tokenHandle);
@@ -74,9 +74,9 @@ public class SecurityTest {
         }
 
         // Start the agent with the proper security configuration. This agent should be able to register itself into the grid
-        try(Agent agent = startAgentWithGridSecurity(gridHost)) {
+        try (Agent agent = startAgentWithGridSecurity(gridHost)) {
             // Create a grid client without security. Calling the agent with this grid client should fail
-            try(RemoteGridClientImpl gridClient = new RemoteGridClientImpl(gridClientConfigurationWithoutSecurity(), gridHost, remoteGridClientSecurity())) {
+            try (RemoteGridClientImpl gridClient = new RemoteGridClientImpl(gridClientConfigurationWithoutSecurity(), gridHost, remoteGridClientSecurity())) {
                 TokenWrapper tokenHandle = gridClient.getTokenHandle(Map.of(), Map.of(), false);
                 // Ensure that the agent token is available i.e. that the agent registered successfully
                 assertNotNull(tokenHandle);
@@ -89,8 +89,8 @@ public class SecurityTest {
             }
         }
 
-        try(Agent agent = startAgentWithGridSecurity(gridHost)) {
-            try(RemoteGridClientImpl gridClient = new RemoteGridClientImpl(gridClientWithSecurity(), gridHost, remoteGridClientSecurity())) {
+        try (Agent agent = startAgentWithGridSecurity(gridHost)) {
+            try (RemoteGridClientImpl gridClient = new RemoteGridClientImpl(gridClientWithSecurity(), gridHost, remoteGridClientSecurity())) {
                 TokenWrapper tokenHandle = gridClient.getTokenHandle(Map.of(), Map.of(), false);
                 // Ensure that the agent token is available i.e. that the agent registered successfully
                 assertNotNull(tokenHandle);

@@ -1,18 +1,18 @@
 /*******************************************************************************
  * Copyright (C) 2020, exense GmbH
- *  
+ *
  * This file is part of STEP
- *  
+ *
  * STEP is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- *  
+ *
  * STEP is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
- *  
+ *
  * You should have received a copy of the GNU Affero General Public License
  * along with STEP.  If not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************/
@@ -56,386 +56,386 @@ import java.util.regex.Pattern;
 import static step.grid.security.JwtAuthenticationFilter.registerSecurityFilterIfAuthenticationIsEnabled;
 
 public class Agent extends BaseServer implements AutoCloseable {
-	
-	private static final Logger logger = LoggerFactory.getLogger(Agent.class);
 
-	private static final String TOKEN_ID = "$tokenid";
-	private static final String AGENT_ID = "$agentid";
-	public static final String PROPERTY_PREFIX = "property.";
+    private static final Logger logger = LoggerFactory.getLogger(Agent.class);
 
-	private final String id = UUID.randomUUID().toString();
-	private final AgentTokenPool tokenPool = new AgentTokenPool();
-	
-	private final Server server;
-	private final Timer timer;
-	private final RegistrationTask registrationTask;
-	private final AgentTokenServices agentTokenServices;
-	
-	private final String agentUrl;
-	private final long gracefulShutdownTimeout;
-	private final RegistrationClient registrationClient;
-	private final FileManagerClient fileManagerClient;
-	private final ApplicationContextBuilder applicationContextBuilder;
-	private final BootstrapManager bootstrapManager;
-	private final ExecutorService executor;
-	private final AgentForker agentForker;
-	private volatile boolean stopped = false;
-	private volatile boolean registered = false;
+    private static final String TOKEN_ID = "$tokenid";
+    private static final String AGENT_ID = "$agentid";
+    public static final String PROPERTY_PREFIX = "property.";
 
-	public static void main(String[] args) throws Exception {
-		newInstanceFromArgs(args);
-	}
-	
-	public static Agent newInstanceFromArgs(String[] args) throws Exception {
-		ArgumentParser arguments = new ArgumentParser(args);
+    private final String id = UUID.randomUUID().toString();
+    private final AgentTokenPool tokenPool = new AgentTokenPool();
 
-		String agentConfStr = arguments.getOption("config");
-		
-		if(agentConfStr!=null) {
-			ConfigurationParser<AgentConf> parser = new ConfigurationParser<AgentConf>();
-			AgentConf agentConf = parser.parse(arguments, new File(agentConfStr), AgentConf.class);
+    private final Server server;
+    private final Timer timer;
+    private final RegistrationTask registrationTask;
+    private final AgentTokenServices agentTokenServices;
 
-			if(arguments.hasOption("gridHost")) {
-				agentConf.setGridHost(arguments.getOption("gridHost"));
-			}
+    private final String agentUrl;
+    private final long gracefulShutdownTimeout;
+    private final RegistrationClient registrationClient;
+    private final FileManagerClient fileManagerClient;
+    private final ApplicationContextBuilder applicationContextBuilder;
+    private final BootstrapManager bootstrapManager;
+    private final ExecutorService executor;
+    private final AgentForker agentForker;
+    private volatile boolean stopped = false;
+    private volatile boolean registered = false;
 
-			if(arguments.hasOption("fileServerHost")) {
-				agentConf.setFileServerHost(arguments.getOption("fileServerHost"));
-			}
-			
-			if(arguments.hasOption("agentPort")) {
-				agentConf.setAgentPort(Integer.decode(arguments.getOption("agentPort")));
-			}
-			
-			if(arguments.hasOption("agentHost")) {
-				agentConf.setAgentHost(arguments.getOption("agentHost"));
-			}
-			
-			if(arguments.hasOption("agentUrl")) {
-				agentConf.setAgentUrl(arguments.getOption("agentUrl"));
-			}
+    public static void main(String[] args) throws Exception {
+        newInstanceFromArgs(args);
+    }
 
-			Map<String, String> options = arguments.getOptions();
-			if(agentConf.getProperties() == null) {
-				agentConf.setProperties(new HashMap<>());
-			}
-			options.forEach((key, value) -> {
-				if (key.startsWith(PROPERTY_PREFIX)) {
-					agentConf.getProperties().put(key.replaceFirst(PROPERTY_PREFIX, ""), value);
-				}
-			});
-			logger.info("Agent properties: {}", agentConf.getProperties());
+    public static Agent newInstanceFromArgs(String[] args) throws Exception {
+        ArgumentParser arguments = new ArgumentParser(args);
 
-			return new Agent(agentConf);
-		} else {
-			throw new RuntimeException("Argument '-config' is missing.");
-		}
-	}
-	
-	public Agent(AgentConf agentConf) throws Exception {
-		super();
+        String agentConfStr = arguments.getOption("config");
 
-		validateConfiguration(agentConf);
+        if (agentConfStr != null) {
+            ConfigurationParser<AgentConf> parser = new ConfigurationParser<AgentConf>();
+            AgentConf agentConf = parser.parse(arguments, new File(agentConfStr), AgentConf.class);
 
-		String agentHost = agentConf.getAgentHost();
-		String agentUrl = agentConf.getAgentUrl();
-		Integer agentPort = agentConf.getAgentPort();
-		Long agentConfGracefulShutdownTimeout = agentConf.getGracefulShutdownTimeout();
-		gracefulShutdownTimeout = agentConfGracefulShutdownTimeout != null ? agentConfGracefulShutdownTimeout : 30000;
+            if (arguments.hasOption("gridHost")) {
+                agentConf.setGridHost(arguments.getOption("gridHost"));
+            }
 
-		String gridUrl = agentConf.getGridHost();
-		String fileServerHost = Optional.ofNullable(agentConf.getFileServerHost()).orElse(gridUrl);
+            if (arguments.hasOption("fileServerHost")) {
+                agentConf.setFileServerHost(arguments.getOption("fileServerHost"));
+            }
 
-		registrationClient = new RegistrationClient(gridUrl, fileServerHost,
-				agentConf.getGridConnectTimeout(), agentConf.getGridReadTimeout(),
-				agentConf.getGridMaxRetries(), agentConf.getGridRetryDelayMs(), agentConf.getGridSecurity());
+            if (arguments.hasOption("agentPort")) {
+                agentConf.setAgentPort(Integer.decode(arguments.getOption("agentPort")));
+            }
 
+            if (arguments.hasOption("agentHost")) {
+                agentConf.setAgentHost(arguments.getOption("agentHost"));
+            }
 
-		fileManagerClient = initFileManager(registrationClient, agentConf.getWorkingDir(), agentConf.getFileManagerConfiguration());
+            if (arguments.hasOption("agentUrl")) {
+                agentConf.setAgentUrl(arguments.getOption("agentUrl"));
+            }
 
-		agentTokenServices = new AgentTokenServices(fileManagerClient);
-		agentTokenServices.setAgentProperties(agentConf.getProperties());
-		//Create and set the application context builder used by agentTokenServices
-		applicationContextBuilder = new ApplicationContextBuilder(agentConf.getExecutionContextCacheConfiguration());
-		agentTokenServices.setApplicationContextBuilder(applicationContextBuilder);
+            Map<String, String> options = arguments.getOptions();
+            if (agentConf.getProperties() == null) {
+                agentConf.setProperties(new HashMap<>());
+            }
+            options.forEach((key, value) -> {
+                if (key.startsWith(PROPERTY_PREFIX)) {
+                    agentConf.getProperties().put(key.replaceFirst(PROPERTY_PREFIX, ""), value);
+                }
+            });
+            logger.info("Agent properties: {}", agentConf.getProperties());
 
-		bootstrapManager = new BootstrapManager(agentTokenServices, true);
+            return new Agent(agentConf);
+        } else {
+            throw new RuntimeException("Argument '-config' is missing.");
+        }
+    }
 
-		buildTokenList(agentConf);
+    public Agent(AgentConf agentConf) throws Exception {
+        super();
 
-		if (agentConf.isExposeAgentControlServices()) {
-			AgentControlServicesImpl agentControlServices = new AgentControlServicesImpl(this);
-			tokenPool.getTokens().forEach(t -> t.getSession().put(AgentControlServices.class.getName(), agentControlServices));
-		}
+        validateConfiguration(agentConf);
 
-		logger.info("Starting token executor...");
-		executor = Executors.newCachedThreadPool(NamedThreadFactory.create("agent-token-executor"));
+        String agentHost = agentConf.getAgentHost();
+        String agentUrl = agentConf.getAgentUrl();
+        Integer agentPort = agentConf.getAgentPort();
+        Long agentConfGracefulShutdownTimeout = agentConf.getGracefulShutdownTimeout();
+        gracefulShutdownTimeout = agentConfGracefulShutdownTimeout != null ? agentConfGracefulShutdownTimeout : 30000;
 
-		AgentForkerConfiguration agentForkerConfiguration = agentConf.getAgentForker();
-		if (agentForkerConfiguration != null && agentForkerConfiguration.enabled) {
-			logger.info("Agent forker is enabled. All token messages will be executed in forked agent processes.");
-			agentForker = new AgentForker(agentForkerConfiguration, fileServerHost);
-		} else {
-			logger.info("Agent forker is disabled. All token messages will be executed within this JVM.");
-			agentForker = null;
-		}
+        String gridUrl = agentConf.getGridHost();
+        String fileServerHost = Optional.ofNullable(agentConf.getFileServerHost()).orElse(gridUrl);
 
-		int serverPort = this.resolveServerPort(agentUrl, agentPort);
-
-		logger.info("Starting server...");
-		server = startServer(agentConf, serverPort);
-
-		int actualServerPort = this.getActualServerPort(server);
-		logger.info("Successfully started server on port " + actualServerPort);
-
-		this.agentUrl = this.getOrBuildActualUrl(agentHost, agentUrl, actualServerPort, agentConf.isSsl());
-
-		logger.info("Starting grid registration task using grid URL " + gridUrl + "...");
-		registrationTask = createGridRegistrationTask(registrationClient);
-		timer = createGridRegistrationTimerAndRegisterTask(agentConf);
+        registrationClient = new RegistrationClient(gridUrl, fileServerHost,
+            agentConf.getGridConnectTimeout(), agentConf.getGridReadTimeout(),
+            agentConf.getGridMaxRetries(), agentConf.getGridRetryDelayMs(), agentConf.getGridSecurity());
 
 
-		logger.info("Agent successfully started on port " + actualServerPort
-				+ ". The agent will publish following URL for incoming connections: " + this.agentUrl);
-	}
+        fileManagerClient = initFileManager(registrationClient, agentConf.getWorkingDir(), agentConf.getFileManagerConfiguration());
 
-	private RegistrationTask createGridRegistrationTask(RegistrationClient registrationClient) {
-		return new RegistrationTask(this, registrationClient);
-	}
+        agentTokenServices = new AgentTokenServices(fileManagerClient);
+        agentTokenServices.setAgentProperties(agentConf.getProperties());
+        //Create and set the application context builder used by agentTokenServices
+        applicationContextBuilder = new ApplicationContextBuilder(agentConf.getExecutionContextCacheConfiguration());
+        agentTokenServices.setApplicationContextBuilder(applicationContextBuilder);
 
-	private Timer createGridRegistrationTimerAndRegisterTask(AgentConf agentConf) {
-		Timer timer = new Timer();
-		timer.schedule(registrationTask, agentConf.getRegistrationOffset(), agentConf.getRegistrationPeriod());
-		return timer;
-	}
+        bootstrapManager = new BootstrapManager(agentTokenServices, true);
 
-	private void buildTokenList(AgentConf agentConf) {
-		List<TokenGroupConf> tokenGroups = agentConf.getTokenGroups();
-		if(tokenGroups!=null) {
-			for(TokenGroupConf group:tokenGroups) {
-				TokenConf tokenConf = group.getTokenConf();
-				if(tokenConf != null) {
-					addTokens(group.getCapacity(), tokenConf.getAttributes(), tokenConf.getSelectionPatterns(), 
-							tokenConf.getProperties());
-				} else {
-					throw new IllegalArgumentException("Missing section 'tokenConf' in agent configuration");
-				}
-			}
-		}
-	}
+        buildTokenList(agentConf);
 
-	public boolean isRunning() {
-		return server.isRunning();
-	}
+        if (agentConf.isExposeAgentControlServices()) {
+            AgentControlServicesImpl agentControlServices = new AgentControlServicesImpl(this);
+            tokenPool.getTokens().forEach(t -> t.getSession().put(AgentControlServices.class.getName(), agentControlServices));
+        }
 
-	private Server startServer(AgentConf agentConf, int port) throws Exception {
-		ResourceConfig resourceConfig = new ResourceConfig();
-		resourceConfig.packages(AgentServices.class.getPackage().getName());
-		resourceConfig.register(ObjectMapperResolver.class);
-		registerSecurityFilterIfAuthenticationIsEnabled(agentConf.getGridSecurity(), resourceConfig, "agent");
-		final Agent agent = this;
-		resourceConfig.register(new AbstractBinder() {
-			@Override
-			protected void configure() {
-				bind(agent).to(Agent.class);
-			}
-		});
+        logger.info("Starting token executor...");
+        executor = Executors.newCachedThreadPool(NamedThreadFactory.create("agent-token-executor"));
 
-		return this.startServer(agentConf, port, resourceConfig);
-	}
+        AgentForkerConfiguration agentForkerConfiguration = agentConf.getAgentForker();
+        if (agentForkerConfiguration != null && agentForkerConfiguration.enabled) {
+            logger.info("Agent forker is enabled. All token messages will be executed in forked agent processes.");
+            agentForker = new AgentForker(agentForkerConfiguration, fileServerHost);
+        } else {
+            logger.info("Agent forker is disabled. All token messages will be executed within this JVM.");
+            agentForker = null;
+        }
 
-	private void validateConfiguration(AgentConf agentConf) {
-		assertMandatoryOption(agentConf.getGridHost(), "gridHost");
-		if (agentConf.isSsl()) {
-			assertMandatorySslOption(agentConf.getKeyStorePath(), "keyStorePath");
-			assertMandatorySslOption(agentConf.getKeyStorePassword(), "keyStorePassword");
-			assertMandatorySslOption(agentConf.getKeyManagerPassword(), "keyManagerPassword");
-		}
-	}
+        int serverPort = this.resolveServerPort(agentUrl, agentPort);
 
-	private void assertMandatoryOption(String actualOptionValue, String optionName) {
-		assertOption(actualOptionValue, "Missing option '" + optionName + "'. This option is mandatory.");
-	}
+        logger.info("Starting server...");
+        server = startServer(agentConf, serverPort);
 
-	private void assertMandatorySslOption(String actualOptionValue, String optionName) {
-		assertOption(actualOptionValue,
-				"Missing option '" + optionName + "'. This option is mandatory when SSL is enabled.");
-	}
+        int actualServerPort = this.getActualServerPort(server);
+        logger.info("Successfully started server on port " + actualServerPort);
 
-	private void assertOption(String actualOptionValue, String errorMessage) {
-		if (actualOptionValue == null || actualOptionValue.trim().length() == 0) {
-			throw new IllegalArgumentException(errorMessage);
-		}
-	}
-	
-	public String getId() {
-		return id;
-	}
-	
-	public void addTokens(int count, Map<String, String> attributes, Map<String, String> selectionPatterns, Map<String, String> properties) {
-		for(int i=0;i<count;i++) {
-			AgentTokenWrapper token = new AgentTokenWrapper();
-			token.getToken().setAgentid(id);
-			Map<String, String> allAttributes = new HashMap<>();
-			if(attributes != null) {
-				allAttributes.putAll(attributes);
-			}
-			allAttributes.put(AgentTypes.AGENT_TYPE_KEY, AgentTypes.AGENT_TYPE);
-			allAttributes.put(AGENT_ID, id);
-			allAttributes.put(TOKEN_ID, token.getUid());
-			token.setAttributes(allAttributes);
-			token.setSelectionPatterns(createInterestMap(selectionPatterns));
-			token.setProperties(properties);
-			token.setServices(agentTokenServices);
-			tokenPool.offerToken(token);
-		}
-	}
-	
-	private Map<String, Interest> createInterestMap(Map<String, String> selectionPatterns) {
-		HashMap<String, Interest> result = new HashMap<>();
-		if(selectionPatterns!=null) {
-			for(Entry<String, String> entry:selectionPatterns.entrySet()) {
-				Interest i = new Interest(Pattern.compile(entry.getValue()), true);
-				result.put(entry.getKey(), i);
-			}
-		}
-		return result;
-	}
+        this.agentUrl = this.getOrBuildActualUrl(agentHost, agentUrl, actualServerPort, agentConf.isSsl());
 
-	private FileManagerClient initFileManager(RegistrationClient registrationClient, String workingDir, FileManagerConfiguration fileManagerConfig) throws IOException {
-		String fileManagerDirPath;
-		if(workingDir!=null) {
-			fileManagerDirPath = workingDir;
-		} else {
-			fileManagerDirPath = ".";
-		}
-		fileManagerDirPath+="/filemanager";
-		File fileManagerDir = new File(fileManagerDirPath);
-		if(!fileManagerDir.exists()) {
-			Files.createDirectories(fileManagerDir.toPath());
-		}
-		return new FileManagerClientImpl(fileManagerDir, registrationClient, fileManagerConfig);
-	}
-
-	protected String getAgentUrl() {
-		return agentUrl;
-	}
-
-	protected AgentTokenPool getTokenPool() {
-		return tokenPool;
-	}
-
-	public AgentTokenServices getAgentTokenServices() {
-		return agentTokenServices;
-	}
-
-	public AgentForker getAgentForker() {
-		return agentForker;
-	}
-
-	protected List<Token> getTokens() {
-		List<Token> tokens = new ArrayList<>();
-		for(AgentTokenWrapper wrapper:tokenPool.getTokens()) {
-			tokens.add(wrapper.getToken());
-		}
-		return tokens;
-	}
+        logger.info("Starting grid registration task using grid URL " + gridUrl + "...");
+        registrationTask = createGridRegistrationTask(registrationClient);
+        timer = createGridRegistrationTimerAndRegisterTask(agentConf);
 
 
-	public synchronized void preStop() throws Exception {
-		if(!stopped) {
-			logger.info("Shutting down...");
+        logger.info("Agent successfully started on port " + actualServerPort
+            + ". The agent will publish following URL for incoming connections: " + this.agentUrl);
+    }
 
-			// Stopping registration task
-			if (timer != null) {
-				timer.cancel();
-			}
+    private RegistrationTask createGridRegistrationTask(RegistrationClient registrationClient) {
+        return new RegistrationTask(this, registrationClient);
+    }
 
-			if (registrationTask != null) {
-				registrationTask.cancel();
-				registrationTask.unregister();
-				registrationTask.destroy();
-			}
+    private Timer createGridRegistrationTimerAndRegisterTask(AgentConf agentConf) {
+        Timer timer = new Timer();
+        timer.schedule(registrationTask, agentConf.getRegistrationOffset(), agentConf.getRegistrationPeriod());
+        return timer;
+    }
 
-			logger.info("Waiting for tokens to be released...");
+    private void buildTokenList(AgentConf agentConf) {
+        List<TokenGroupConf> tokenGroups = agentConf.getTokenGroups();
+        if (tokenGroups != null) {
+            for (TokenGroupConf group : tokenGroups) {
+                TokenConf tokenConf = group.getTokenConf();
+                if (tokenConf != null) {
+                    addTokens(group.getCapacity(), tokenConf.getAttributes(), tokenConf.getSelectionPatterns(),
+                        tokenConf.getProperties());
+                } else {
+                    throw new IllegalArgumentException("Missing section 'tokenConf' in agent configuration");
+                }
+            }
+        }
+    }
 
-			// Wait until all tokens are released
-			boolean gracefullyStopped = pollUntil(tokenPool::areAllTokensFree, gracefulShutdownTimeout);
+    public boolean isRunning() {
+        return server.isRunning();
+    }
 
-			if (gracefullyStopped) {
-				logger.info("Agent gracefully stopped");
-			} else {
-				logger.warn("Timeout while waiting for all tokens to be released. Agent forcibly stopped");
-			}
+    private Server startServer(AgentConf agentConf, int port) throws Exception {
+        ResourceConfig resourceConfig = new ResourceConfig();
+        resourceConfig.packages(AgentServices.class.getPackage().getName());
+        resourceConfig.register(ObjectMapperResolver.class);
+        registerSecurityFilterIfAuthenticationIsEnabled(agentConf.getGridSecurity(), resourceConfig, "agent");
+        final Agent agent = this;
+        resourceConfig.register(new AbstractBinder() {
+            @Override
+            protected void configure() {
+                bind(agent).to(Agent.class);
+            }
+        });
 
-			//client is shared between registration tasks and file manager, closing it only once all token are released
-			if (registrationClient != null) {
-				registrationClient.close();
-			}
-			if (fileManagerClient != null) {
-				fileManagerClient.close();
-			}
+        return this.startServer(agentConf, port, resourceConfig);
+    }
 
-			if (executor != null) {
-				logger.info("Shutting down token executor...");
-				executor.shutdownNow();
-			}
-		}
-	}
+    private void validateConfiguration(AgentConf agentConf) {
+        assertMandatoryOption(agentConf.getGridHost(), "gridHost");
+        if (agentConf.isSsl()) {
+            assertMandatorySslOption(agentConf.getKeyStorePath(), "keyStorePath");
+            assertMandatorySslOption(agentConf.getKeyStorePassword(), "keyStorePassword");
+            assertMandatorySslOption(agentConf.getKeyManagerPassword(), "keyManagerPassword");
+        }
+    }
 
-	@Override
-	public synchronized void close() throws Exception {
-		if(!stopped) {
-			preStop();
+    private void assertMandatoryOption(String actualOptionValue, String optionName) {
+        assertOption(actualOptionValue, "Missing option '" + optionName + "'. This option is mandatory.");
+    }
 
-			logger.info("Closing token reservation sessions...");
-			tokenPool.getTokens().forEach(token -> {
-				TokenReservationSession tokenReservationSession = token.getTokenReservationSession();
-				if (tokenReservationSession != null) {
-					tokenReservationSession.close();
-				}
-			});
+    private void assertMandatorySslOption(String actualOptionValue, String optionName) {
+        assertOption(actualOptionValue,
+            "Missing option '" + optionName + "'. This option is mandatory when SSL is enabled.");
+    }
 
-			// Stopping HTTP server
-			server.stop();
-			logger.info("Web server stopped");
+    private void assertOption(String actualOptionValue, String errorMessage) {
+        if (actualOptionValue == null || actualOptionValue.trim().length() == 0) {
+            throw new IllegalArgumentException(errorMessage);
+        }
+    }
 
-			applicationContextBuilder.close();
-			logger.info("Agent application context closed");
+    public String getId() {
+        return id;
+    }
 
-			if (agentForker != null) {
-				agentForker.close();
-				logger.info("Agent forker stopped");
-			}
+    public void addTokens(int count, Map<String, String> attributes, Map<String, String> selectionPatterns, Map<String, String> properties) {
+        for (int i = 0; i < count; i++) {
+            AgentTokenWrapper token = new AgentTokenWrapper();
+            token.getToken().setAgentid(id);
+            Map<String, String> allAttributes = new HashMap<>();
+            if (attributes != null) {
+                allAttributes.putAll(attributes);
+            }
+            allAttributes.put(AgentTypes.AGENT_TYPE_KEY, AgentTypes.AGENT_TYPE);
+            allAttributes.put(AGENT_ID, id);
+            allAttributes.put(TOKEN_ID, token.getUid());
+            token.setAttributes(allAttributes);
+            token.setSelectionPatterns(createInterestMap(selectionPatterns));
+            token.setProperties(properties);
+            token.setServices(agentTokenServices);
+            tokenPool.offerToken(token);
+        }
+    }
 
-			stopped = true;
-		}
-	}
+    private Map<String, Interest> createInterestMap(Map<String, String> selectionPatterns) {
+        HashMap<String, Interest> result = new HashMap<>();
+        if (selectionPatterns != null) {
+            for (Entry<String, String> entry : selectionPatterns.entrySet()) {
+                Interest i = new Interest(Pattern.compile(entry.getValue()), true);
+                result.put(entry.getKey(), i);
+            }
+        }
+        return result;
+    }
 
-	public boolean isRegistered() {
-		return registered;
-	}
+    private FileManagerClient initFileManager(RegistrationClient registrationClient, String workingDir, FileManagerConfiguration fileManagerConfig) throws IOException {
+        String fileManagerDirPath;
+        if (workingDir != null) {
+            fileManagerDirPath = workingDir;
+        } else {
+            fileManagerDirPath = ".";
+        }
+        fileManagerDirPath += "/filemanager";
+        File fileManagerDir = new File(fileManagerDirPath);
+        if (!fileManagerDir.exists()) {
+            Files.createDirectories(fileManagerDir.toPath());
+        }
+        return new FileManagerClientImpl(fileManagerDir, registrationClient, fileManagerConfig);
+    }
 
-	public void setRegistered(boolean registered) {
-		this.registered = registered;
-	}
-	
-	private static boolean pollUntil(Supplier<Boolean> predicate, long timeout) throws InterruptedException {
-		long t1 = System.currentTimeMillis();
-		while (System.currentTimeMillis() < t1 + (timeout)) {
-			if(predicate.get()) {
-				return true;
-			}
-			Thread.sleep(100);
-		}
-		return false;
-	}
+    protected String getAgentUrl() {
+        return agentUrl;
+    }
 
-	public BootstrapManager getBootstrapManager() {
-		return bootstrapManager;
-	}
+    protected AgentTokenPool getTokenPool() {
+        return tokenPool;
+    }
 
-	public ExecutorService getTokenExecutor() {
-		return executor;
-	}
+    public AgentTokenServices getAgentTokenServices() {
+        return agentTokenServices;
+    }
+
+    public AgentForker getAgentForker() {
+        return agentForker;
+    }
+
+    protected List<Token> getTokens() {
+        List<Token> tokens = new ArrayList<>();
+        for (AgentTokenWrapper wrapper : tokenPool.getTokens()) {
+            tokens.add(wrapper.getToken());
+        }
+        return tokens;
+    }
+
+
+    public synchronized void preStop() throws Exception {
+        if (!stopped) {
+            logger.info("Shutting down...");
+
+            // Stopping registration task
+            if (timer != null) {
+                timer.cancel();
+            }
+
+            if (registrationTask != null) {
+                registrationTask.cancel();
+                registrationTask.unregister();
+                registrationTask.destroy();
+            }
+
+            logger.info("Waiting for tokens to be released...");
+
+            // Wait until all tokens are released
+            boolean gracefullyStopped = pollUntil(tokenPool::areAllTokensFree, gracefulShutdownTimeout);
+
+            if (gracefullyStopped) {
+                logger.info("Agent gracefully stopped");
+            } else {
+                logger.warn("Timeout while waiting for all tokens to be released. Agent forcibly stopped");
+            }
+
+            //client is shared between registration tasks and file manager, closing it only once all token are released
+            if (registrationClient != null) {
+                registrationClient.close();
+            }
+            if (fileManagerClient != null) {
+                fileManagerClient.close();
+            }
+
+            if (executor != null) {
+                logger.info("Shutting down token executor...");
+                executor.shutdownNow();
+            }
+        }
+    }
+
+    @Override
+    public synchronized void close() throws Exception {
+        if (!stopped) {
+            preStop();
+
+            logger.info("Closing token reservation sessions...");
+            tokenPool.getTokens().forEach(token -> {
+                TokenReservationSession tokenReservationSession = token.getTokenReservationSession();
+                if (tokenReservationSession != null) {
+                    tokenReservationSession.close();
+                }
+            });
+
+            // Stopping HTTP server
+            server.stop();
+            logger.info("Web server stopped");
+
+            applicationContextBuilder.close();
+            logger.info("Agent application context closed");
+
+            if (agentForker != null) {
+                agentForker.close();
+                logger.info("Agent forker stopped");
+            }
+
+            stopped = true;
+        }
+    }
+
+    public boolean isRegistered() {
+        return registered;
+    }
+
+    public void setRegistered(boolean registered) {
+        this.registered = registered;
+    }
+
+    private static boolean pollUntil(Supplier<Boolean> predicate, long timeout) throws InterruptedException {
+        long t1 = System.currentTimeMillis();
+        while (System.currentTimeMillis() < t1 + (timeout)) {
+            if (predicate.get()) {
+                return true;
+            }
+            Thread.sleep(100);
+        }
+        return false;
+    }
+
+    public BootstrapManager getBootstrapManager() {
+        return bootstrapManager;
+    }
+
+    public ExecutorService getTokenExecutor() {
+        return executor;
+    }
 }

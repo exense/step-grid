@@ -74,7 +74,7 @@ public class AgentForker implements AutoCloseable {
             forkedAgentConf = Files.createTempFile(workingDirectory, "ForkedAgentConf", ".yaml");
             forkedAgentConf.toFile().deleteOnExit();
             Files.write(forkedAgentConf, FileHelper.readClassLoaderResourceAsByteArray(getClass().getClassLoader(),
-                    "ForkedAgentConf.yaml"), StandardOpenOption.APPEND);
+                "ForkedAgentConf.yaml"), StandardOpenOption.APPEND);
             logger.info("Initializing agent forker using embedded agent conf");
         }
         if (!Files.exists(forkedAgentConf)) {
@@ -97,7 +97,7 @@ public class AgentForker implements AutoCloseable {
             logbackConfiguration = Files.createTempFile(workingDirectory, "logback-forked-agent", ".xml");
             logbackConfiguration.toFile().deleteOnExit();
             Files.write(logbackConfiguration, FileHelper.readClassLoaderResourceAsByteArray(getClass().getClassLoader(),
-                    "logback-forked-agent.xml"), StandardOpenOption.APPEND);
+                "logback-forked-agent.xml"), StandardOpenOption.APPEND);
             logger.info("Using embedded logback configuration");
         }
         return logbackConfiguration;
@@ -194,7 +194,7 @@ public class AgentForker implements AutoCloseable {
             forkedJvmBuilder = new ForkedJvmBuilder(getJavaPath(), findMainClass(), getVmArgs(), getProgArgs());
             try {
                 process = new ProcessBuilder(forkedJvmBuilder.getProcessCommand())
-                        .directory(tempDirectory.toFile()).redirectErrorStream(true).start();
+                    .directory(tempDirectory.toFile()).redirectErrorStream(true).start();
             } catch (Exception e) {
                 logger.error("Error while starting forked agent {}", id, e);
                 close();
@@ -240,7 +240,7 @@ public class AgentForker implements AutoCloseable {
 
         private String getJavaPath() {
             return Optional.ofNullable(configuration.javaPath).orElse(ProcessHandle.current().info().command().orElseThrow(() ->
-                    new IllegalArgumentException("The javaPath is not set and the path to the java executable of the current process could not be determined.")));
+                new IllegalArgumentException("The javaPath is not set and the path to the java executable of the current process could not be determined.")));
         }
 
         private List<String> getVmArgs() {
@@ -284,7 +284,7 @@ public class AgentForker implements AutoCloseable {
          */
         private String findMainClass() {
             String command = Objects.requireNonNull(System.getProperty("sun.java.command"),
-                    "Unable to determine the main class to use for the forked agent. The property 'sun.java.command' is not set");
+                "Unable to determine the main class to use for the forked agent. The property 'sun.java.command' is not set");
             if (logger.isDebugEnabled()) {
                 logger.debug("Using the system property 'sun.java.command' to determine the main class of the current process: {}", command);
             }
@@ -300,7 +300,7 @@ public class AgentForker implements AutoCloseable {
 
         @Override
         public void close() {
-            if(tokenHandle != null) {
+            if (tokenHandle != null) {
                 // Release the token in order for the session and its objects to be released in the forked agent
                 logger.info("Releasing token of forked agent {}...", id);
                 try {
@@ -309,7 +309,7 @@ public class AgentForker implements AutoCloseable {
                     logger.error("Error returning token handle for forked agent {}", id, e);
                 }
             }
-            if(process != null) {
+            if (process != null) {
                 if (agentRef != null) {
                     logger.info("Stopping forked agent {} gracefully...", id);
                     try {
@@ -353,15 +353,15 @@ public class AgentForker implements AutoCloseable {
             int nRetries = 5;
             try {
                 RetryHelper.executeWithRetryOnExceptions(
-                        () -> {
-                            FileUtils.deleteDirectory(tempDirectory.toFile());
-                            logger.info("Deleted forked agent execution directory {}.", tempDirectory);
-                            return null;
-                        },
-                        nRetries,
-                        configuration.tempDirectoryDeletionRetryWait,
-                        List.of(IOException.class),
-                        "Delete forked agent execution directory " + tempDirectory
+                    () -> {
+                        FileUtils.deleteDirectory(tempDirectory.toFile());
+                        logger.info("Deleted forked agent execution directory {}.", tempDirectory);
+                        return null;
+                    },
+                    nRetries,
+                    configuration.tempDirectoryDeletionRetryWait,
+                    List.of(IOException.class),
+                    "Delete forked agent execution directory " + tempDirectory
                 );
             } catch (Exception e) {
                 logger.warn("Failed to delete forked agent execution directory {} after {} retries.", tempDirectory, nRetries, e);

@@ -17,10 +17,10 @@ public abstract class AbstractGridServices {
         return output;
     }
 
-    protected OutputMessage newAgentErrorOutput(AgentError error, Attachment...attachments) {
+    protected OutputMessage newAgentErrorOutput(AgentError error, Attachment... attachments) {
         OutputMessage output = new OutputMessage();
         output.setAgentError(error);
-        if(attachments!=null) {
+        if (attachments != null) {
             for (Attachment attachment : attachments) {
                 output.addAttachment(attachment);
             }

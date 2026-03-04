@@ -79,7 +79,7 @@ public class GridProxyServices extends AbstractGridServices {
     @Path("{agentContext}/token/{id}/process")
     public OutputMessage process(@PathParam("agentContext") String agentContext, @PathParam("id") String tokenId, final InputMessage message) throws GridProxyException {
         try {
-            return gridProxy.forwardMessageToAgent(agentContext, "process", tokenId, message );
+            return gridProxy.forwardMessageToAgent(agentContext, "process", tokenId, message);
         } catch (Exception e) {
             return handleUnexpectedError(e);
         }
@@ -113,7 +113,7 @@ public class GridProxyServices extends AbstractGridServices {
     @GET
     @Path("/ready")
     public Response isRunning() {
-        if(gridProxy.isRunning()) {
+        if (gridProxy.isRunning()) {
             return Response.status(Response.Status.OK).entity("Grid Proxy is running").build();
         } else {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Grid Proxy is not running").build();
