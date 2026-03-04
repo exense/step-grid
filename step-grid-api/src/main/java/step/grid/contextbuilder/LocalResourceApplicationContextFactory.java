@@ -1,18 +1,18 @@
 /*******************************************************************************
  * Copyright (C) 2020, exense GmbH
- *  
+ *
  * This file is part of STEP
- *  
+ *
  * STEP is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- *  
+ *
  * STEP is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
- *  
+ *
  * You should have received a copy of the GNU Affero General Public License
  * along with STEP.  If not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************/
@@ -33,58 +33,58 @@ import step.grid.filemanager.FileVersion;
 
 public class LocalResourceApplicationContextFactory extends ApplicationContextFactory {
 
-	private static final Logger logger = LoggerFactory.getLogger(LocalResourceApplicationContextFactory.class);
+    private static final Logger logger = LoggerFactory.getLogger(LocalResourceApplicationContextFactory.class);
 
-	String resourceName;
-	
-	ClassLoader resourceClassLoader;
-	
-	protected FileManagerClient fileManager;
-	
-	FileVersion localClassLoaderFolder;
-	private File jar;
+    String resourceName;
 
-	public LocalResourceApplicationContextFactory(ClassLoader resourceClassLoader, String resourceName) {
-		super();
-		this.resourceName = resourceName;
-		this.resourceClassLoader = resourceClassLoader;
-	}
+    ClassLoader resourceClassLoader;
 
-	@Override
-	public String getId() {
-		return resourceName;
-	}
+    protected FileManagerClient fileManager;
 
-	@Override
-	public boolean requiresReload() {
-		return false;
-	}
+    FileVersion localClassLoaderFolder;
+    private File jar;
 
-	@Override
-	public ClassLoader buildClassLoader(ClassLoader parentClassLoader) {
-		jar = ResourceExtractor.extractResource(resourceClassLoader, resourceName);
-		if (logger.isDebugEnabled()) {
-			logger.debug("Creating URLClassLoader from extracted local resource file {}", jar.getAbsolutePath());
-		}
-		jar.deleteOnExit();
-		List<URL> urls = ClassPathHelper.forSingleFile(jar);
-		URL[] urlArray = urls.toArray(new URL[urls.size()]);
-		URLClassLoader cl = new URLClassLoader(urlArray, parentClassLoader);
-		return cl;	
-	}
+    public LocalResourceApplicationContextFactory(ClassLoader resourceClassLoader, String resourceName) {
+        super();
+        this.resourceName = resourceName;
+        this.resourceClassLoader = resourceClassLoader;
+    }
 
-	@Override
-	public void onClassLoaderClosed() {
-		if (jar != null) {
-			try {
-				if (logger.isDebugEnabled()) {
-					logger.debug("Deleting extracted jar file {}.", jar);
-				}
-				Files.deleteIfExists(jar.toPath());
-			} catch (IOException e) {
-				logger.error("Unable to delete the extracted JAR file.", e);
-			}
-		}
-	}
+    @Override
+    public String getId() {
+        return resourceName;
+    }
+
+    @Override
+    public boolean requiresReload() {
+        return false;
+    }
+
+    @Override
+    public ClassLoader buildClassLoader(ClassLoader parentClassLoader) {
+        jar = ResourceExtractor.extractResource(resourceClassLoader, resourceName);
+        if (logger.isDebugEnabled()) {
+            logger.debug("Creating URLClassLoader from extracted local resource file {}", jar.getAbsolutePath());
+        }
+        jar.deleteOnExit();
+        List<URL> urls = ClassPathHelper.forSingleFile(jar);
+        URL[] urlArray = urls.toArray(new URL[urls.size()]);
+        URLClassLoader cl = new URLClassLoader(urlArray, parentClassLoader);
+        return cl;
+    }
+
+    @Override
+    public void onClassLoaderClosed() {
+        if (jar != null) {
+            try {
+                if (logger.isDebugEnabled()) {
+                    logger.debug("Deleting extracted jar file {}.", jar);
+                }
+                Files.deleteIfExists(jar.toPath());
+            } catch (IOException e) {
+                logger.error("Unable to delete the extracted JAR file.", e);
+            }
+        }
+    }
 
 }

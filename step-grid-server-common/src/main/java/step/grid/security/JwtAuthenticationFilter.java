@@ -28,26 +28,26 @@ public class JwtAuthenticationFilter implements ContainerRequestFilter {
     @Override
     public void filter(ContainerRequestContext requestContext) {
         String authHeader = requestContext.getHeaderString(HttpHeaders.AUTHORIZATION);
-        
+
         if (authHeader == null || !authHeader.startsWith(BEARER_PREFIX)) {
             abortWithUnauthorized(requestContext, "Missing or invalid Authorization header");
             return;
         }
 
         String token = authHeader.substring(BEARER_PREFIX.length());
-        
+
         try {
             Jwts.parser()
                 .setSigningKey(jwtSecret)
                 .parseClaimsJws(token).getBody();
-            
+
             logger.debug("Successfully validated JWT");
         } catch (JwtException e) {
             logger.warn("JWT validation failed: {}", e.getMessage());
             abortWithUnauthorized(requestContext, "Invalid JWT token");
         }
     }
-    
+
     private void abortWithUnauthorized(ContainerRequestContext requestContext, String message) {
         logger.warn("Authentication failed: {}", message);
         requestContext.abortWith(

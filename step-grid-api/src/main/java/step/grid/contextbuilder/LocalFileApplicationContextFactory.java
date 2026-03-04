@@ -1,18 +1,18 @@
 /*******************************************************************************
  * Copyright (C) 2020, exense GmbH
- *  
+ *
  * This file is part of STEP
- *  
+ *
  * STEP is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- *  
+ *
  * STEP is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
- *  
+ *
  * You should have received a copy of the GNU Affero General Public License
  * along with STEP.  If not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************/
@@ -29,43 +29,43 @@ import step.grid.filemanager.FileManagerException;
 
 public class LocalFileApplicationContextFactory extends ApplicationContextFactory {
 
-	private static final Logger logger = LoggerFactory.getLogger(LocalFileApplicationContextFactory.class);
+    private static final Logger logger = LoggerFactory.getLogger(LocalFileApplicationContextFactory.class);
 
-	private File jarFile;
-	
-	public LocalFileApplicationContextFactory(File jarFile) {
-		super();
-		this.jarFile = jarFile;
-	}
+    private File jarFile;
 
-	@Override
-	public String getId() {
-		return jarFile.getAbsolutePath();
-	}
+    public LocalFileApplicationContextFactory(File jarFile) {
+        super();
+        this.jarFile = jarFile;
+    }
 
-	@Override
-	public boolean requiresReload() {
-		return false;
-	}
+    @Override
+    public String getId() {
+        return jarFile.getAbsolutePath();
+    }
 
-	@Override
-	public ClassLoader buildClassLoader(ClassLoader parentClassLoader) throws FileManagerException {
-		if (logger.isDebugEnabled()) {
-			logger.debug("Creating URLClassLoader from local jar file {}", jarFile.getAbsolutePath());
-		}
-		URL[] urlArray;
-		try {
-			urlArray = new URL[] {jarFile.toURI().toURL()};
-		} catch (MalformedURLException e) {
-			throw new FileManagerException(null, e);
-		}
-		URLClassLoader cl = new URLClassLoader(urlArray, parentClassLoader);
-		return cl;	
-	}
+    @Override
+    public boolean requiresReload() {
+        return false;
+    }
 
-	@Override
-	public void onClassLoaderClosed() {
-		//Provided jar file is managed externally, no copy is done, so it cannot be cleaned up
-	}
+    @Override
+    public ClassLoader buildClassLoader(ClassLoader parentClassLoader) throws FileManagerException {
+        if (logger.isDebugEnabled()) {
+            logger.debug("Creating URLClassLoader from local jar file {}", jarFile.getAbsolutePath());
+        }
+        URL[] urlArray;
+        try {
+            urlArray = new URL[]{jarFile.toURI().toURL()};
+        } catch (MalformedURLException e) {
+            throw new FileManagerException(null, e);
+        }
+        URLClassLoader cl = new URLClassLoader(urlArray, parentClassLoader);
+        return cl;
+    }
+
+    @Override
+    public void onClassLoaderClosed() {
+        //Provided jar file is managed externally, no copy is done, so it cannot be cleaned up
+    }
 
 }

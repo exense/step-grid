@@ -19,15 +19,15 @@ public class GridProxyTest {
     public void gridProxyTest() throws Exception {
         //Rest test client will simply throw a "ProxyTestException" to avoid complex mocking
         Client mock = Mockito.mock(Client.class);
-        Mockito.when(mock.target(anyString())).thenAnswer( ( InvocationOnMock invocationOnMock) -> {
-            throw new ProxyTestException(invocationOnMock.getArgument( 0 ));
+        Mockito.when(mock.target(anyString())).thenAnswer((InvocationOnMock invocationOnMock) -> {
+            throw new ProxyTestException(invocationOnMock.getArgument(0));
         });
         String[] args = {"-config=src/test/resources/GridProxyConf.yaml"};
         GridProxy gridProxy = new GridProxy(args);
         gridProxy.overrideRestClient(mock);
         //Prepare and send registration message
         RegistrationMessage registrationMessage = new RegistrationMessage();
-        registrationMessage.setAgentRef(new AgentRef("agentId1","http://agenturl:1234","default"));
+        registrationMessage.setAgentRef(new AgentRef("agentId1", "http://agenturl:1234", "default"));
         assertThrows("http://localhost:8081/grid/register", ProxyTestException.class, () -> gridProxy.handleRegistrationMessage(registrationMessage));
 
         //validate URL forwarded to the grid server is the proxyfied one

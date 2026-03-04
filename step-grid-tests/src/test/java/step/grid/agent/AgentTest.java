@@ -1,18 +1,18 @@
 /*******************************************************************************
  * Copyright (C) 2020, exense GmbH
- *  
+ *
  * This file is part of STEP
- *  
+ *
  * STEP is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- *  
+ *
  * STEP is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
- *  
+ *
  * You should have received a copy of the GNU Affero General Public License
  * along with STEP.  If not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************/
@@ -42,136 +42,139 @@ import step.grid.io.OutputMessage;
 import step.grid.tokenpool.Interest;
 
 public class AgentTest extends AbstractGridTest {
-	
-	@Before
-	public void init() throws Exception {
-		init(null);
-	}
 
-	@Override
-	public void init(AgentForkerConfiguration agentForkerConfiguration) throws Exception {
-		super.init(agentForkerConfiguration);
-		GridClientConfiguration gridClientConfiguration = new GridClientConfiguration();
-		// For the ForkedAgentTest we have to increase the offset as the default offset of 3s seems to be to low to
-		// let the forked agent start
-		gridClientConfiguration.setReadTimeoutOffset(10000);
-		client = new LocalGridClientImpl(gridClientConfiguration, grid);
-	}
+    @Before
+    public void init() throws Exception {
+        init(null);
+    }
 
-	@Test
-	public void test() throws Exception {
-		Map<String, Interest> interests = new HashMap<>();
-		interests.put("att1", new Interest(Pattern.compile("val.*"), true));
-		
-		JsonNode o = newDummyJson();
-		
-		TokenWrapper token = client.getTokenHandle(null, interests, true);
-		OutputMessage outputMessage = client.call(token.getID(), o, TestTokenHandler.class.getName(), null, null, 5000);
-		Assert.assertEquals(o, outputMessage.getPayload());
-	}
-	
-	@Test
-	public void testException() throws Exception {
-		Map<String, Interest> interests = new HashMap<>();
-		interests.put("att1", new Interest(Pattern.compile("val.*"), true));
-		
-		JsonNode o = new ObjectMapper().createObjectNode().put("exception", "My Error");
-		
-		TokenWrapper token = client.getTokenHandle(null, interests, true);
-		OutputMessage outputMessage = client.call(token.getID(), o, TestTokenHandler.class.getName(), null, null, 5000);
-		Assert.assertEquals(AgentErrorCode.UNEXPECTED, outputMessage.getAgentError().getErrorCode());
-		Assert.assertTrue(outputMessage.getAttachments().size()==1);
-	}
-	
-	@Test
-	public void testNoSession() throws Exception {
-		Map<String, Interest> interests = new HashMap<>();
-		interests.put("att1", new Interest(Pattern.compile("val.*"), true));
-		
-		JsonNode o = newDummyJson();
-		
-		TokenWrapper token = client.getTokenHandle(null, interests, false);		
-		OutputMessage outputMessage = client.call(token.getID(), o, TestTokenHandler.class.getName(), null, null, 5000);
-		Assert.assertEquals(outputMessage.getPayload(), o);;
-	}
-	
-	@Test
-	public void testTimeout() throws Exception {		
-		JsonNode o = new ObjectMapper().createObjectNode().put("delay", 5000);
-		
-		TokenWrapper token = client.getTokenHandle(null, null, true);
-		OutputMessage outputMessage = client.call(token.getID(), o, TestTokenHandler.class.getName(), null, null, 100);
-		
-		Assert.assertEquals(AgentErrorCode.TIMEOUT_REQUEST_INTERRUPTED,outputMessage.getAgentError().getErrorCode());
-		Assert.assertTrue(outputMessage.getAttachments().get(0).getName().equals("stacktrace_before_interruption.log"));
-		
-		
-		// check if the token has been returned to the pool. In this case the second call should return the same error
-		outputMessage = client.call(token.getID(), o, TestTokenHandler.class.getName(), null, null, 100);
-		Assert.assertEquals(AgentErrorCode.TIMEOUT_REQUEST_INTERRUPTED,outputMessage.getAgentError().getErrorCode());
-	}
-	
-	/**
-	 * Test the token execution interruption in {@link AgentServices}
-	 * @throws Exception
-	 */
-	@Test
-	public void testTimeoutNoTokenReturn() throws Exception {
-		// the argument list: set the thread as uninterruptible the sleep delay (in ms) and set   
-		JsonNode o = new ObjectMapper().createObjectNode().put("delay", 5000).put("notInterruptable", true);
-		
-		TokenWrapper token = client.getTokenHandle(null, null, true);
-		OutputMessage outputMessage = client.call(token.getID(), o, TestTokenHandler.class.getName(), null, null, 100);
-		
-		// assert that the call was not interrupted:
-		Assert.assertEquals(AgentErrorCode.TIMEOUT_REQUEST_NOT_INTERRUPTED,outputMessage.getAgentError().getErrorCode());
-		Assert.assertTrue(outputMessage.getAttachments().get(0).getName().equals("stacktrace_before_interruption.log"));
-		
-		// check if the token has been returned to the pool. In this case the second call should return the same error
-		outputMessage = client.call(token.getID(), o, TestTokenHandler.class.getName(), null, null, 10);
-		// we are now allowing for "stuck" tokens to be reused, which means we're potentially letting threads leak on the agent.
-		//Assert.assertTrue(outputMessage.getError().contains("already in use"));
-		
-		o = newDummyJson();
-		
-		// the token should have been returned to the pool after execution 
-		outputMessage = client.call(token.getID(), o, TestTokenHandler.class.getName(), null, null, 100);
-		Assert.assertEquals(null, outputMessage.getAgentError());
-		Assert.assertEquals(o, outputMessage.getPayload());
-	}
+    @Override
+    public void init(AgentForkerConfiguration agentForkerConfiguration) throws Exception {
+        super.init(agentForkerConfiguration);
+        GridClientConfiguration gridClientConfiguration = new GridClientConfiguration();
+        // For the ForkedAgentTest we have to increase the offset as the default offset of 3s seems to be to low to
+        // let the forked agent start
+        gridClientConfiguration.setReadTimeoutOffset(10000);
+        client = new LocalGridClientImpl(gridClientConfiguration, grid);
+    }
 
-	@Test
-	public void testLocalToken() throws Exception {
-		JsonNode o = newDummyJson();
-		
-		TokenWrapper token = client.getLocalTokenHandle();
-		OutputMessage outputMessage = client.call(token.getID(), o, TestTokenHandler.class.getName(), null, null, 1000);
-		
-		Assert.assertEquals(outputMessage.getPayload(), o);;
-	}
+    @Test
+    public void test() throws Exception {
+        Map<String, Interest> interests = new HashMap<>();
+        interests.put("att1", new Interest(Pattern.compile("val.*"), true));
 
-	@Test
-	public void testInterruption() throws Exception {
-		testInterruption(true);
-		testInterruption(false);
-	}
+        JsonNode o = newDummyJson();
 
-	private void testInterruption(boolean createSession) throws Exception {
-		TokenWrapper token = client.getTokenHandle(null, Map.of(), createSession);
-		// Interrupt the execution in 7s. We have to wait that long because the start of the execution may take some time with the forked agent
-		CompletableFuture.delayedExecutor(7000, TimeUnit.MILLISECONDS).execute(() -> {
-			try {
-				client.interruptTokenExecution(token.getID());
-			} catch (GridClientException | AbstractGridClientImpl.AgentCommunicationException e) {
-				throw new RuntimeException(e);
-			}
-		});
-		JsonNode o = new ObjectMapper().createObjectNode().put("delay", 10000);
-		try {
-			OutputMessage outputMessage = client.call(token.getID(), o, TestTokenHandler.class.getName(), null, null, 10_000);
-			Assert.assertEquals("{\"status\":\"interrupted\"}", outputMessage.getPayload().toString());
-		} finally {
-			client.returnTokenHandle(token.getID());
-		}
-	}
+        TokenWrapper token = client.getTokenHandle(null, interests, true);
+        OutputMessage outputMessage = client.call(token.getID(), o, TestTokenHandler.class.getName(), null, null, 5000);
+        Assert.assertEquals(o, outputMessage.getPayload());
+    }
+
+    @Test
+    public void testException() throws Exception {
+        Map<String, Interest> interests = new HashMap<>();
+        interests.put("att1", new Interest(Pattern.compile("val.*"), true));
+
+        JsonNode o = new ObjectMapper().createObjectNode().put("exception", "My Error");
+
+        TokenWrapper token = client.getTokenHandle(null, interests, true);
+        OutputMessage outputMessage = client.call(token.getID(), o, TestTokenHandler.class.getName(), null, null, 5000);
+        Assert.assertEquals(AgentErrorCode.UNEXPECTED, outputMessage.getAgentError().getErrorCode());
+        Assert.assertTrue(outputMessage.getAttachments().size() == 1);
+    }
+
+    @Test
+    public void testNoSession() throws Exception {
+        Map<String, Interest> interests = new HashMap<>();
+        interests.put("att1", new Interest(Pattern.compile("val.*"), true));
+
+        JsonNode o = newDummyJson();
+
+        TokenWrapper token = client.getTokenHandle(null, interests, false);
+        OutputMessage outputMessage = client.call(token.getID(), o, TestTokenHandler.class.getName(), null, null, 5000);
+        Assert.assertEquals(outputMessage.getPayload(), o);
+        ;
+    }
+
+    @Test
+    public void testTimeout() throws Exception {
+        JsonNode o = new ObjectMapper().createObjectNode().put("delay", 5000);
+
+        TokenWrapper token = client.getTokenHandle(null, null, true);
+        OutputMessage outputMessage = client.call(token.getID(), o, TestTokenHandler.class.getName(), null, null, 100);
+
+        Assert.assertEquals(AgentErrorCode.TIMEOUT_REQUEST_INTERRUPTED, outputMessage.getAgentError().getErrorCode());
+        Assert.assertTrue(outputMessage.getAttachments().get(0).getName().equals("stacktrace_before_interruption.log"));
+
+
+        // check if the token has been returned to the pool. In this case the second call should return the same error
+        outputMessage = client.call(token.getID(), o, TestTokenHandler.class.getName(), null, null, 100);
+        Assert.assertEquals(AgentErrorCode.TIMEOUT_REQUEST_INTERRUPTED, outputMessage.getAgentError().getErrorCode());
+    }
+
+    /**
+     * Test the token execution interruption in {@link AgentServices}
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testTimeoutNoTokenReturn() throws Exception {
+        // the argument list: set the thread as uninterruptible the sleep delay (in ms) and set
+        JsonNode o = new ObjectMapper().createObjectNode().put("delay", 5000).put("notInterruptable", true);
+
+        TokenWrapper token = client.getTokenHandle(null, null, true);
+        OutputMessage outputMessage = client.call(token.getID(), o, TestTokenHandler.class.getName(), null, null, 100);
+
+        // assert that the call was not interrupted:
+        Assert.assertEquals(AgentErrorCode.TIMEOUT_REQUEST_NOT_INTERRUPTED, outputMessage.getAgentError().getErrorCode());
+        Assert.assertTrue(outputMessage.getAttachments().get(0).getName().equals("stacktrace_before_interruption.log"));
+
+        // check if the token has been returned to the pool. In this case the second call should return the same error
+        outputMessage = client.call(token.getID(), o, TestTokenHandler.class.getName(), null, null, 10);
+        // we are now allowing for "stuck" tokens to be reused, which means we're potentially letting threads leak on the agent.
+        //Assert.assertTrue(outputMessage.getError().contains("already in use"));
+
+        o = newDummyJson();
+
+        // the token should have been returned to the pool after execution
+        outputMessage = client.call(token.getID(), o, TestTokenHandler.class.getName(), null, null, 100);
+        Assert.assertEquals(null, outputMessage.getAgentError());
+        Assert.assertEquals(o, outputMessage.getPayload());
+    }
+
+    @Test
+    public void testLocalToken() throws Exception {
+        JsonNode o = newDummyJson();
+
+        TokenWrapper token = client.getLocalTokenHandle();
+        OutputMessage outputMessage = client.call(token.getID(), o, TestTokenHandler.class.getName(), null, null, 1000);
+
+        Assert.assertEquals(outputMessage.getPayload(), o);
+        ;
+    }
+
+    @Test
+    public void testInterruption() throws Exception {
+        testInterruption(true);
+        testInterruption(false);
+    }
+
+    private void testInterruption(boolean createSession) throws Exception {
+        TokenWrapper token = client.getTokenHandle(null, Map.of(), createSession);
+        // Interrupt the execution in 7s. We have to wait that long because the start of the execution may take some time with the forked agent
+        CompletableFuture.delayedExecutor(7000, TimeUnit.MILLISECONDS).execute(() -> {
+            try {
+                client.interruptTokenExecution(token.getID());
+            } catch (GridClientException | AbstractGridClientImpl.AgentCommunicationException e) {
+                throw new RuntimeException(e);
+            }
+        });
+        JsonNode o = new ObjectMapper().createObjectNode().put("delay", 10000);
+        try {
+            OutputMessage outputMessage = client.call(token.getID(), o, TestTokenHandler.class.getName(), null, null, 10_000);
+            Assert.assertEquals("{\"status\":\"interrupted\"}", outputMessage.getPayload().toString());
+        } finally {
+            client.returnTokenHandle(token.getID());
+        }
+    }
 }

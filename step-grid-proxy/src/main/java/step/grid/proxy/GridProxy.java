@@ -78,7 +78,7 @@ public class GridProxy extends BaseServer implements AutoCloseable {
 
     public static void main(String[] args) throws Exception {
         GridProxy gridProxy = new GridProxy(args);
-        Runtime.getRuntime().addShutdownHook(new Thread(()->{
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             try {
                 gridProxy.close();
             } catch (Exception e) {
@@ -90,7 +90,7 @@ public class GridProxy extends BaseServer implements AutoCloseable {
     private static GridProxyConfiguration validateArgumentsAndReadConfiguration(String[] args, Class<? extends GridProxyConfiguration> configurationClass) throws Exception {
         ArgumentParser arguments = new ArgumentParser(args);
         String gridProxyConfigPath = arguments.getOption("config");
-        if(gridProxyConfigPath!=null) {
+        if (gridProxyConfigPath != null) {
             return readConfiguration(arguments, gridProxyConfigPath, configurationClass);
         } else {
             throw new RuntimeException("Argument '-config' is missing.");
@@ -140,8 +140,8 @@ public class GridProxy extends BaseServer implements AutoCloseable {
         gridUrl = gridProxyConfiguration.getGridUrl();
         //Determine the actual Url of the grid proxy based either on configuration or actual system hostname and port
         gridProxyUrl = this.getOrBuildActualUrl(gridProxyConfiguration.getGridProxyHost(),
-                gridProxyConfiguration.getGridProxyUrl(),
-                actualServerPort, gridProxyConfiguration.isSsl());
+            gridProxyConfiguration.getGridProxyUrl(),
+            actualServerPort, gridProxyConfiguration.isSsl());
 
         //Create REST client
         client = ClientBuilder.newClient();
@@ -156,9 +156,11 @@ public class GridProxy extends BaseServer implements AutoCloseable {
         afterStart();
     }
 
-    protected void beforeServerStart(ResourceConfig resourceConfig) throws Exception {}
-    
-    protected void afterStart() throws Exception {}
+    protected void beforeServerStart(ResourceConfig resourceConfig) throws Exception {
+    }
+
+    protected void afterStart() throws Exception {
+    }
 
     public String getGridUrl() {
         return gridUrl;
@@ -192,15 +194,15 @@ public class GridProxy extends BaseServer implements AutoCloseable {
         message.getAgentRef().setLocalAgentUrl(agentUrl);
         // adding the name of the proxy to the token attributes in order to allow token selection by proxy name
         Optional.ofNullable(message.getTokens()).ifPresent(tokens -> tokens.forEach(token ->
-                Optional.ofNullable(token.getAttributes()).ifPresent(attributes -> attributes.put(TOKEN_ATTRIBUTE_GRID_PROXY_NAME, gridProxyName))));
+            Optional.ofNullable(token.getAttributes()).ifPresent(attributes -> attributes.put(TOKEN_ATTRIBUTE_GRID_PROXY_NAME, gridProxyName))));
         //Forward registration message to grid server
         try (Response r = withAuthentication(client.target(gridUrl + "/grid/register").request().property(ClientProperties.READ_TIMEOUT, gridReadTimeout))
-                    .property(ClientProperties.CONNECT_TIMEOUT, gridConnectTimeout).post(Entity.entity(message, MediaType.APPLICATION_JSON))) {
+            .property(ClientProperties.CONNECT_TIMEOUT, gridConnectTimeout).post(Entity.entity(message, MediaType.APPLICATION_JSON))) {
 
             r.readEntity(String.class);
         } catch (ProcessingException e) {
-            if(e.getCause() instanceof java.net.ConnectException) {
-                logger.error("Unable to reach " + gridUrl + " while proxyfying agent registration from " + agentUrl + " (java.net.ConnectException: "+e.getCause().getMessage()+")");
+            if (e.getCause() instanceof java.net.ConnectException) {
+                logger.error("Unable to reach " + gridUrl + " while proxyfying agent registration from " + agentUrl + " (java.net.ConnectException: " + e.getCause().getMessage() + ")");
             } else {
                 logger.error("Error while proxyfying registration request to " + gridUrl + " from " + agentUrl, e);
             }
@@ -237,7 +239,7 @@ public class GridProxy extends BaseServer implements AutoCloseable {
         Response fromGrid = null;
         try {
             fromGrid = withAuthentication(client.target(gridUrl + "/grid/file/" + fileId + "/" + version).request().property(ClientProperties.READ_TIMEOUT, gridReadTimeout))
-                    .property(ClientProperties.CONNECT_TIMEOUT, gridConnectTimeout).get();
+                .property(ClientProperties.CONNECT_TIMEOUT, gridConnectTimeout).get();
 
             //Shallow copy to properly clean up the resources of the invocation to the grid server
             final InputStream inputStream = fromGrid.readEntity(InputStream.class);
@@ -274,8 +276,8 @@ public class GridProxy extends BaseServer implements AutoCloseable {
         String agentUrl = contextRootToAgentUrl.get(agentContext);
         if (agentUrl != null) {
             try (Response response = withAuthentication(client.target(agentUrl + "/token/" + tokenId + "/" + operation).request())
-                    .property(ClientProperties.READ_TIMEOUT, agentConnectTimeout + message.getCallTimeout())
-                    .property(ClientProperties.CONNECT_TIMEOUT, agentConnectTimeout).post(Entity.entity(message, MediaType.APPLICATION_JSON))) {
+                .property(ClientProperties.READ_TIMEOUT, agentConnectTimeout + message.getCallTimeout())
+                .property(ClientProperties.CONNECT_TIMEOUT, agentConnectTimeout).post(Entity.entity(message, MediaType.APPLICATION_JSON))) {
                 return response.readEntity(OutputMessage.class);
             }
         } else {
@@ -289,8 +291,8 @@ public class GridProxy extends BaseServer implements AutoCloseable {
         if (agentUrl != null) {
             //Even if the variable is not used, use try-with-resource construct to make sure that resources are cleaned-up
             try (Response response = withAuthentication(client.target(agentUrl + "/token/" + tokenId + "/" + operation).request())
-                    .property(ClientProperties.READ_TIMEOUT, callTimeout)
-                    .property(ClientProperties.CONNECT_TIMEOUT, agentConnectTimeout).get()) {
+                .property(ClientProperties.READ_TIMEOUT, callTimeout)
+                .property(ClientProperties.CONNECT_TIMEOUT, agentConnectTimeout).get()) {
             }
         } else {
             logger.error("Received request for unknown agent Id " + agentContext);

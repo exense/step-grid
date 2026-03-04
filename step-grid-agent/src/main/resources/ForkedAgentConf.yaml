@@ -5,9 +5,9 @@ gridReadTimeout: 20000
 workingDir: ./work
 ssl: false
 tokenGroups:
-- capacity: 1
-  tokenConf:
-    attributes:
-      forkedAgentId: ${forkedAgentId}
+  - capacity: 1
+    tokenConf:
+      attributes:
+        forkedAgentId: ${forkedAgentId}
 agentForker:
   enabled: false

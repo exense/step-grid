@@ -35,7 +35,7 @@ public class GridProxyTest extends GridTest {
 
         GridProxyConfiguration conf = new GridProxyConfiguration();
         conf.setGridProxyUrl("http://localhost:31001");
-        conf.setGridUrl("http://localhost:"+grid.getServerPort());
+        conf.setGridUrl("http://localhost:" + grid.getServerPort());
         gridProxy = new GridProxy(conf);
 
         AgentConf agentConf = new AgentConf("http://localhost:31001", 0, null, 100);

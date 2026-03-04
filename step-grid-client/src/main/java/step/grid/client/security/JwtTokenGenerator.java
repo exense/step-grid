@@ -50,10 +50,10 @@ public class JwtTokenGenerator {
         Instant expiration = now.plus(expirationSeconds, ChronoUnit.SECONDS);
 
         return Jwts.builder()
-                .setIssuedAt(Date.from(now))
-                .setExpiration(Date.from(expiration))
-                .signWith(SignatureAlgorithm.HS256, jwtSecret.getBytes(StandardCharsets.UTF_8))
-                .compact();
+            .setIssuedAt(Date.from(now))
+            .setExpiration(Date.from(expiration))
+            .signWith(SignatureAlgorithm.HS256, jwtSecret.getBytes(StandardCharsets.UTF_8))
+            .compact();
     }
 
     public static JwtTokenGenerator initializeJwtTokenGenerator(SymmetricSecurityConfiguration securityConfiguration, String clientName) {

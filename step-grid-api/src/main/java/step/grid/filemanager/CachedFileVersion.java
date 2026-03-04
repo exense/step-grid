@@ -7,52 +7,52 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class CachedFileVersion {
 
-	private static final Logger logger = LoggerFactory.getLogger(CachedFileVersion.class);
+    private static final Logger logger = LoggerFactory.getLogger(CachedFileVersion.class);
 
-	private final FileVersion fileVersion;
+    private final FileVersion fileVersion;
 
-	private final boolean cleanable;
+    private final boolean cleanable;
 
-	private long lastAccessTime;
+    private long lastAccessTime;
 
-	private final AtomicInteger inUse = new AtomicInteger(0);
+    private final AtomicInteger inUse = new AtomicInteger(0);
 
-	public CachedFileVersion(FileVersion fileVersion, boolean cleanable) {
-		this.fileVersion = fileVersion;
-		this.cleanable = cleanable;
-		this.lastAccessTime = System.currentTimeMillis();
-	}
+    public CachedFileVersion(FileVersion fileVersion, boolean cleanable) {
+        this.fileVersion = fileVersion;
+        this.cleanable = cleanable;
+        this.lastAccessTime = System.currentTimeMillis();
+    }
 
-	public FileVersion getFileVersion() {
-		return fileVersion;
-	}
+    public FileVersion getFileVersion() {
+        return fileVersion;
+    }
 
-	public boolean isCleanable() {
-		return cleanable;
-	}
+    public boolean isCleanable() {
+        return cleanable;
+    }
 
-	public long getLastAccessTime() {
-		return lastAccessTime;
-	}
+    public long getLastAccessTime() {
+        return lastAccessTime;
+    }
 
-	public int updateUsage() {
-		this.lastAccessTime = System.currentTimeMillis();
-		int currentCountInUse = this.inUse.incrementAndGet();
-		if (logger.isDebugEnabled()) {
-			logger.debug("File version {} cache usage increased, new usage count is {}", getFileVersion(), currentCountInUse);
-		}
-		return currentCountInUse;
-	}
+    public int updateUsage() {
+        this.lastAccessTime = System.currentTimeMillis();
+        int currentCountInUse = this.inUse.incrementAndGet();
+        if (logger.isDebugEnabled()) {
+            logger.debug("File version {} cache usage increased, new usage count is {}", getFileVersion(), currentCountInUse);
+        }
+        return currentCountInUse;
+    }
 
-	public int releaseUsage() {
-		int currentCountInUse = inUse.decrementAndGet();
-		if (logger.isDebugEnabled()) {
-			logger.debug("File version {} cache usage decreased, new usage count is {}", getFileVersion(), currentCountInUse);
-		}
-		return currentCountInUse;
-	}
+    public int releaseUsage() {
+        int currentCountInUse = inUse.decrementAndGet();
+        if (logger.isDebugEnabled()) {
+            logger.debug("File version {} cache usage decreased, new usage count is {}", getFileVersion(), currentCountInUse);
+        }
+        return currentCountInUse;
+    }
 
-	public int getCurrentUsageCount() {
-		return inUse.get();
-	}
+    public int getCurrentUsageCount() {
+        return inUse.get();
+    }
 }

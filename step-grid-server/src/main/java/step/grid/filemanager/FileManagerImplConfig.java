@@ -20,40 +20,40 @@ package step.grid.filemanager;
 
 public class FileManagerImplConfig extends FileManagerConfiguration {
 
-	int fileLastModificationCacheConcurrencyLevel = 4;
-	int fileLastModificationCacheMaximumsize = 1000;
-	int fileLastModificationCacheExpireAfter = 500;
+    int fileLastModificationCacheConcurrencyLevel = 4;
+    int fileLastModificationCacheMaximumsize = 1000;
+    int fileLastModificationCacheExpireAfter = 500;
 
-	public FileManagerImplConfig() {
-		super();
-	}
+    public FileManagerImplConfig() {
+        super();
+    }
 
-	public int getFileLastModificationCacheConcurrencyLevel() {
-		return fileLastModificationCacheConcurrencyLevel;
-	}
+    public int getFileLastModificationCacheConcurrencyLevel() {
+        return fileLastModificationCacheConcurrencyLevel;
+    }
 
-	public void setFileLastModificationCacheConcurrencyLevel(int fileLastModificationCacheConcurrencyLevel) {
-		this.fileLastModificationCacheConcurrencyLevel = fileLastModificationCacheConcurrencyLevel;
-	}
+    public void setFileLastModificationCacheConcurrencyLevel(int fileLastModificationCacheConcurrencyLevel) {
+        this.fileLastModificationCacheConcurrencyLevel = fileLastModificationCacheConcurrencyLevel;
+    }
 
-	public int getFileLastModificationCacheMaximumsize() {
-		return fileLastModificationCacheMaximumsize;
-	}
+    public int getFileLastModificationCacheMaximumsize() {
+        return fileLastModificationCacheMaximumsize;
+    }
 
-	public void setFileLastModificationCacheMaximumsize(int fileLastModificationCacheMaximumsize) {
-		this.fileLastModificationCacheMaximumsize = fileLastModificationCacheMaximumsize;
-	}
+    public void setFileLastModificationCacheMaximumsize(int fileLastModificationCacheMaximumsize) {
+        this.fileLastModificationCacheMaximumsize = fileLastModificationCacheMaximumsize;
+    }
 
-	public int getFileLastModificationCacheExpireAfter() {
-		return fileLastModificationCacheExpireAfter;
-	}
+    public int getFileLastModificationCacheExpireAfter() {
+        return fileLastModificationCacheExpireAfter;
+    }
 
-	/**
-	 * Specifies the expiration duration of the last modification cache entries
-	 *
-	 * @param fileLastModificationCacheExpireAfter the expiration duration in ms. A 0 value disables the caching.
-	 */
-	public void setFileLastModificationCacheExpireAfter(int fileLastModificationCacheExpireAfter) {
-		this.fileLastModificationCacheExpireAfter = fileLastModificationCacheExpireAfter;
-	}
+    /**
+     * Specifies the expiration duration of the last modification cache entries
+     *
+     * @param fileLastModificationCacheExpireAfter the expiration duration in ms. A 0 value disables the caching.
+     */
+    public void setFileLastModificationCacheExpireAfter(int fileLastModificationCacheExpireAfter) {
+        this.fileLastModificationCacheExpireAfter = fileLastModificationCacheExpireAfter;
+    }
 }

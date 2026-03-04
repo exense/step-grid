@@ -1,18 +1,18 @@
 /*******************************************************************************
  * Copyright (C) 2020, exense GmbH
- *  
+ *
  * This file is part of STEP
- *  
+ *
  * STEP is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- *  
+ *
  * STEP is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
- *  
+ *
  * You should have received a copy of the GNU Affero General Public License
  * along with STEP.  If not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************/
@@ -26,74 +26,74 @@ import step.grid.filemanager.FileVersionId;
 
 public class InputMessage {
 
-	private String handler;
-	
-	private FileVersionId handlerPackage;
+    private String handler;
 
-	private Map<String, String> properties;
+    private FileVersionId handlerPackage;
 
-	private int callTimeout;
+    private Map<String, String> properties;
 
-	private JsonNode payload;
+    private int callTimeout;
 
-	public InputMessage() {
-		super();
-	}
+    private JsonNode payload;
 
-	/**
-	 * @return the name of the handler class to be used to handle this message
-	 */
-	public String getHandler() {
-		return handler;
-	}
+    public InputMessage() {
+        super();
+    }
 
-	public void setHandler(String handler) {
-		this.handler = handler;
-	}
+    /**
+     * @return the name of the handler class to be used to handle this message
+     */
+    public String getHandler() {
+        return handler;
+    }
 
-	/**
-	 * @return the payload of this message as {@link JsonNode}
-	 */
-	public JsonNode getPayload() {
-		return payload;
-	}
+    public void setHandler(String handler) {
+        this.handler = handler;
+    }
 
-	public void setPayload(JsonNode argument) {
-		this.payload = argument;
-	}
+    /**
+     * @return the payload of this message as {@link JsonNode}
+     */
+    public JsonNode getPayload() {
+        return payload;
+    }
 
-	/**
-	 * @return the properties attached to this message
-	 */
-	public Map<String, String> getProperties() {
-		return properties;
-	}
+    public void setPayload(JsonNode argument) {
+        this.payload = argument;
+    }
 
-	public void setProperties(Map<String, String> properties) {
-		this.properties = properties;
-	}
+    /**
+     * @return the properties attached to this message
+     */
+    public Map<String, String> getProperties() {
+        return properties;
+    }
 
-	/**
-	 * @return the call timeout for the processing of this message in ms
-	 */
-	public int getCallTimeout() {
-		return callTimeout;
-	}
+    public void setProperties(Map<String, String> properties) {
+        this.properties = properties;
+    }
 
-	public void setCallTimeout(int callTimeout) {
-		this.callTimeout = callTimeout;
-	}
+    /**
+     * @return the call timeout for the processing of this message in ms
+     */
+    public int getCallTimeout() {
+        return callTimeout;
+    }
 
-	/**
-	 * @return the handle to the remote package (jar) containing the handler. Optional.
-	 */
-	public FileVersionId getHandlerPackage() {
-		return handlerPackage;
-	}
+    public void setCallTimeout(int callTimeout) {
+        this.callTimeout = callTimeout;
+    }
 
-	public void setHandlerPackage(FileVersionId handlerPackage) {
-		this.handlerPackage = handlerPackage;
-	}
-	
-	
+    /**
+     * @return the handle to the remote package (jar) containing the handler. Optional.
+     */
+    public FileVersionId getHandlerPackage() {
+        return handlerPackage;
+    }
+
+    public void setHandlerPackage(FileVersionId handlerPackage) {
+        this.handlerPackage = handlerPackage;
+    }
+
+
 }
