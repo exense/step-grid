@@ -3,7 +3,10 @@
 [![License](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](LICENSE.txt)
 [![Maven Central](https://img.shields.io/maven-central/v/ch.exense.step/step-grid)](https://central.sonatype.com/artifact/ch.exense.step/step-grid)
 
-A distributed execution grid framework for the [Step automation platform](https://step.exense.ch). `step-grid` provides the infrastructure to distribute and execute workloads across a pool of remote agents, with built-in token management, JWT-based security, Prometheus metrics, and a pluggable file manager.
+A distributed execution grid framework for the [Step automation platform](https://step.dev). `step-grid` provides the infrastructure to distribute and execute workloads across a pool of remote agents, with built-in token management, JWT-based security, Prometheus metrics, and a pluggable file manager.
+
+For full documentation, architecture details, and getting started guides, see the main repository:
+**[github.com/exense/step](https://github.com/exense/step)**
 
 ## Overview
 
