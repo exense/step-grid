@@ -57,9 +57,9 @@
     <maven.compiler.release>11</maven.compiler.release>
 
     <!-- internal dependencies -->
-    <dependencies.version>0.0.0-SED-4622-SNAPSHOT</dependencies.version>
-    <exense-commons.version>0.0.0-SED-4622-SNAPSHOT</exense-commons.version>
-    <step-api.version>0.0.0-SED-4622-SNAPSHOT</step-api.version>
+    <dependencies.version>0.0.0-MASTER-SNAPSHOT</dependencies.version>
+    <exense-commons.version>0.0.0-MASTER-SNAPSHOT</exense-commons.version>
+    <step-api.version>0.0.0-MASTER-SNAPSHOT</step-api.version>
 
     <!-- maven build dependencies -->
     <dep.mvn.jacoco.version>0.8.12</dep.mvn.jacoco.version>
