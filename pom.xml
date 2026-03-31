@@ -57,9 +57,9 @@
     <maven.compiler.release>11</maven.compiler.release>
 
     <!-- internal dependencies -->
-    <dependencies.version>0.0.0-MASTER-SNAPSHOT</dependencies.version>
-    <exense-commons.version>0.0.0-MASTER-SNAPSHOT</exense-commons.version>
-    <step-api.version>0.0.0-MASTER-SNAPSHOT</step-api.version>
+    <dependencies.version>0.0.0-SED-4631-SNAPSHOT</dependencies.version>
+    <exense-commons.version>0.0.0-SED-4631-SNAPSHOT</exense-commons.version>
+    <step-api.version>0.0.0-SED-4631-SNAPSHOT</step-api.version>
 
     <!-- maven build dependencies -->
     <dep.mvn.jacoco.version>0.8.12</dep.mvn.jacoco.version>
@@ -208,12 +208,6 @@
         <artifactId>step-grid-server-common</artifactId>
         <version>${project.version}</version>
       </dependency>
-
-      <dependency>
-        <groupId>org.glassfish.jaxb</groupId>
-        <artifactId>jaxb-runtime</artifactId>
-        <version>2.3.1</version>
-      </dependency>
     </dependencies>
   </dependencyManagement>
 
@@ -231,6 +225,11 @@
     <dependency>
       <groupId>ch.qos.logback</groupId>
       <artifactId>logback-classic</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-core</artifactId>
       <scope>test</scope>
     </dependency>
   </dependencies>
@@ -304,11 +303,7 @@
             </goals>
             <configuration>
               <rules>
-                <requireUpperBoundDeps>
-                  <excludes>
-                    <exclude>jakarta.xml.bind:jakarta.xml.bind-api</exclude>
-                  </excludes>
-                </requireUpperBoundDeps>
+                <requireUpperBoundDeps/>
               </rules>
               <fail>true</fail>
             </configuration>
