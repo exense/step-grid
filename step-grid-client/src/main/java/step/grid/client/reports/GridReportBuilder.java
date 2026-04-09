@@ -35,7 +35,7 @@ public class GridReportBuilder {
         this.gridClient = gridClient;
     }
 
-    public List<TokenGroupCapacity> getUsageByIdentity(List<String> groupbys) {
+    public List<TokenGroupCapacity> getUsageByIdentity(Set<String> groupbys) {
         Map<Map<String, String>, TokenGroupCapacity> countsByIdentity = new HashMap<>();
 
         for (TokenWrapper aToken : gridClient.getTokens()) {
