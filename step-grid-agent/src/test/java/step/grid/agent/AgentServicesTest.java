@@ -18,20 +18,12 @@
  ******************************************************************************/
 package step.grid.agent;
 
-import static org.junit.Assert.*;
-
-import java.net.InetSocketAddress;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.ws.rs.core.Response;
-import org.eclipse.jetty.server.Request;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-
 import step.grid.agent.conf.AgentConf;
 import step.grid.agent.conf.TokenConf;
 import step.grid.agent.conf.TokenGroupConf;
@@ -40,6 +32,15 @@ import step.grid.io.AgentError;
 import step.grid.io.AgentErrorCode;
 import step.grid.io.InputMessage;
 import step.grid.io.OutputMessage;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class AgentServicesTest {
 
@@ -146,8 +147,8 @@ public class AgentServicesTest {
         a.agent = agent;
         a.init();
 
-        Request request = new Request(null, null);
-        request.setRemoteAddr(new InetSocketAddress(0));
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        when(request.getRemoteAddr()).thenReturn("0.0.0.0");
 
         Response registered = a.isRegistered(request);
         Assert.assertEquals(500, registered.getStatus());
