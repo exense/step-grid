@@ -2,6 +2,7 @@ package step.grid.security;
 
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerRequestFilter;
 import jakarta.ws.rs.core.HttpHeaders;
@@ -10,6 +11,7 @@ import org.glassfish.jersey.server.ResourceConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 
 
@@ -19,10 +21,10 @@ public class JwtAuthenticationFilter implements ContainerRequestFilter {
     private static final Logger logger = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
     private static final String BEARER_PREFIX = "Bearer ";
 
-    private final byte[] jwtSecret;
+    private final SecretKey jwtSecret;
 
     public JwtAuthenticationFilter(String jwtSecretKey) {
-        this.jwtSecret = jwtSecretKey.getBytes(StandardCharsets.UTF_8);
+        this.jwtSecret = Keys.hmacShaKeyFor(jwtSecretKey.getBytes(StandardCharsets.UTF_8));
     }
 
     @Override
@@ -38,8 +40,10 @@ public class JwtAuthenticationFilter implements ContainerRequestFilter {
 
         try {
             Jwts.parser()
-                .setSigningKey(jwtSecret)
-                .parseClaimsJws(token).getBody();
+                .verifyWith(jwtSecret)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
 
             logger.debug("Successfully validated JWT");
         } catch (JwtException e) {
