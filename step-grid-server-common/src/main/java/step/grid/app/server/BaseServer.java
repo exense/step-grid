@@ -18,8 +18,8 @@
  ******************************************************************************/
 package step.grid.app.server;
 
-import io.prometheus.client.hotspot.DefaultExports;
-import io.prometheus.client.servlet.jakarta.exporter.MetricsServlet;
+import io.prometheus.metrics.exporter.servlet.jakarta.PrometheusMetricsServlet;
+import io.prometheus.metrics.instrumentation.jvm.JvmMetrics;
 import org.eclipse.jetty.ee10.servlet.ServletContextHandler;
 import org.eclipse.jetty.ee10.servlet.ServletHolder;
 import org.eclipse.jetty.server.*;
@@ -97,9 +97,9 @@ public class BaseServer {
         if (appConfiguration.isExposeMetrics()) {
             ServletContextHandler servletContext = new ServletContextHandler();
             servletContext.setContextPath("/metrics");
-            servletContext.addServlet(new ServletHolder(new MetricsServlet()), "");
+            servletContext.addServlet(new ServletHolder(new PrometheusMetricsServlet()), "");
             //Start default JVM metrics
-            DefaultExports.initialize();
+            JvmMetrics.builder().register();
             handlers.addHandler(servletContext);
 
             logger.info("Exposing prometheus JVM metrics under path '/metrics'");
