@@ -57,7 +57,7 @@
     <!-- internal dependencies -->
     <dependencies.version>0.0.0-MASTER-SNAPSHOT</dependencies.version>
     <exense-commons.version>0.0.0-MASTER-SNAPSHOT</exense-commons.version>
-    <step-api.version>0.0.0-MASTER-SNAPSHOT</step-api.version>
+    <step-api.version>0.0.0-SED-4639-SNAPSHOT</step-api.version>
 
   </properties>
 
