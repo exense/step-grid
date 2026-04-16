@@ -42,14 +42,17 @@ public class GridReportBuilder {
         this.grid = adapterGrid;
     }
 
-    public List<TokenGroupCapacity> getUsageByIdentity(Set<String> groupbys) {
+    public List<TokenGroupCapacity> getUsageByIdentity(Set<String> groupBys) {
+        if (groupBys == null) {
+            groupBys = Set.of();
+        }
         Map<Map<String, String>, TokenGroupCapacity> countsByIdentity = new HashMap<>();
 
         for (TokenWrapper aToken : grid.getTokens()) {
             Map<String, String> key = new HashMap<>();
 
-            for (String groupby : groupbys) {
-                key.put(groupby, getValue(groupby, aToken));
+            for (String groupBy : groupBys) {
+                key.put(groupBy, getValue(groupBy, aToken));
             }
 
             if (!countsByIdentity.containsKey(key)) {
