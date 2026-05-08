@@ -70,14 +70,14 @@
       <artifactId>jackson-dataformat-yaml</artifactId>
     </dependency>
 
-    <!-- Hotspot JVM metrics-->
+    <!-- JVM instrumentation and servlet exporter -->
     <dependency>
       <groupId>io.prometheus</groupId>
-      <artifactId>simpleclient_hotspot</artifactId>
+      <artifactId>prometheus-metrics-instrumentation-jvm</artifactId>
     </dependency>
     <dependency>
       <groupId>io.prometheus</groupId>
-      <artifactId>simpleclient_servlet_jakarta</artifactId>
+      <artifactId>prometheus-metrics-exporter-servlet-jakarta</artifactId>
     </dependency>
 
     <dependency>

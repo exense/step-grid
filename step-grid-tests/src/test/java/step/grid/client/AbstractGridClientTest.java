@@ -381,17 +381,17 @@ public abstract class AbstractGridClientTest extends AbstractGridTest {
 
         GridReportBuilder reportBuilder = new GridReportBuilder(client);
 
-        List<TokenGroupCapacity> usageByIdentity = reportBuilder.getUsageByIdentity(List.of());
+        List<TokenGroupCapacity> usageByIdentity = reportBuilder.getUsageByIdentity(Set.of());
         assertEquals(1, usageByIdentity.size());
         assertEquals(1, (int) usageByIdentity.get(0).getCountByState().get(TokenWrapperState.IN_USE));
 
-        usageByIdentity = reportBuilder.getUsageByIdentity(List.of("url"));
+        usageByIdentity = reportBuilder.getUsageByIdentity(Set.of("url"));
         assertEquals(1, usageByIdentity.size());
         assertEquals(1, (int) usageByIdentity.get(0).getCountByState().get(TokenWrapperState.IN_USE));
 
         returnToken(token);
 
-        usageByIdentity = reportBuilder.getUsageByIdentity(List.of());
+        usageByIdentity = reportBuilder.getUsageByIdentity(Set.of());
         assertEquals(1, usageByIdentity.size());
         assertEquals(1, (int) usageByIdentity.get(0).getCountByState().get(TokenWrapperState.FREE));
 
