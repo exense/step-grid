@@ -22,7 +22,7 @@ public class WaitingPretender<P extends Identity, F extends Identity> {
 
     final P pretender;
 
-    Token<F> associatedToken;
+    volatile Token<F> associatedToken;
 
     /**
      * If the waiting pretender had a match in the grid at the beginning of the selection

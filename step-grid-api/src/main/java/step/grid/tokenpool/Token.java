@@ -18,11 +18,13 @@
  ******************************************************************************/
 package step.grid.tokenpool;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+
 class Token<T extends Identity> {
 
     protected final T object;
 
-    protected volatile boolean available;
+    protected final AtomicBoolean available = new AtomicBoolean(false);
 
     protected volatile boolean invalidated;
 
@@ -37,6 +39,6 @@ class Token<T extends Identity> {
     }
 
     protected boolean isFree() {
-        return available && !invalidated;
+        return available.get() && !invalidated;
     }
 }

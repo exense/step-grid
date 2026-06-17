@@ -22,7 +22,6 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -43,7 +42,7 @@ public class TokenPool<P extends Identity, F extends Identity> implements Closea
 
     final AffinityEvaluator<P, F> affinityEval;
 
-    final Map<String, Token<F>> tokens = new HashMap<>();
+    final ConcurrentHashMap<String, Token<F>> tokens = new ConcurrentHashMap<>();
 
     final Map<String, Consumer<F>> returnTokenListeners = new ConcurrentHashMap<>();
 
@@ -91,27 +90,40 @@ public class TokenPool<P extends Identity, F extends Identity> implements Closea
     }
 
     public F selectToken(P pretender, long matchExistsTimeout, long noMatchExistsTimeout) throws TimeoutException, InterruptedException {
-        boolean poolContainsMatchingToken = false;
+        // Scan the pool and CAS-claim the best available token.
+        // On CAS failure another thread just took our candidate; re-scan so we never
+        // miss a different available token (e.g. token #2 when token #1 was stolen).
+        boolean anyMatchExists = false;
+        while (true) {
+            Token<F> best = null;
+            int bestScore = -1;
+            anyMatchExists = false;
 
-        synchronized (tokens) {
-            MatchingResult matchingResult = searchMatchesInTokenList(pretender);
-            Token<F> bestMatch = matchingResult.bestAvailableMatch;
-            if (matchingResult.bestAvailableMatch != null) {
-                if (logger.isDebugEnabled()) {
-                    logger.debug("Found token without queuing. Pretender=" + pretender.toString() + ". Token=" + bestMatch.toString());
+            for (Token<F> token : tokens.values()) {
+                int score = affinityEval.getAffinityScore(pretender, token.object);
+                if (score < 0) continue;
+                anyMatchExists = true;
+                if (token.available.get() && score > bestScore) {
+                    bestScore = score;
+                    best = token;
                 }
-                bestMatch.available = false;
-                return bestMatch.object;
-            } else if (matchingResult.bestMatch != null) {
-                poolContainsMatchingToken = true;
             }
+
+            if (best == null) break; // no available match; fall through to wait queue
+
+            if (best.available.compareAndSet(true, false)) {
+                if (logger.isDebugEnabled()) {
+                    logger.debug("Found token without queuing. Pretender=" + pretender.toString() + ". Token=" + best.object.toString());
+                }
+                return best.object;
+            }
+            // CAS failed: re-scan to find the next best available token
         }
 
         if (logger.isDebugEnabled()) {
             logger.debug("No free token found. Enqueuing... Pretender=" + pretender.toString());
         }
-
-        return waitForMatch(pretender, matchExistsTimeout, noMatchExistsTimeout, poolContainsMatchingToken);
+        return waitForMatch(pretender, matchExistsTimeout, noMatchExistsTimeout, anyMatchExists);
     }
 
     private F waitForMatch(P pretender, long matchExistsTimeout, long noMatchExistsTimeout, boolean poolContainsMatchingToken) throws InterruptedException, TimeoutException {
@@ -183,7 +195,7 @@ public class TokenPool<P extends Identity, F extends Identity> implements Closea
                 bestScore = score;
                 bestMatch = token;
             }
-            if (token.available) {
+            if (token.available.get()) {
                 if (score != -1 && score > bestAvailableScore) {
                     bestAvailableScore = score;
                     bestAvailableMatch = token;
@@ -218,7 +230,7 @@ public class TokenPool<P extends Identity, F extends Identity> implements Closea
     public void addReturnTokenListener(String tokenId, Consumer<F> consumer) {
         synchronized (tokens) {
             Token<F> token = tokens.get(tokenId);
-            if (token.available) {
+            if (token.available.get()) {
                 callReturnTokenListener(token.getObject(), consumer);
             } else {
                 returnTokenListeners.put(tokenId, consumer);
@@ -227,21 +239,30 @@ public class TokenPool<P extends Identity, F extends Identity> implements Closea
     }
 
     public void returnToken(F object) {
+        Token<F> token;
+        Consumer<F> listener;
+
+        // Minimal critical section: O(1) structural lookup only.
         synchronized (tokens) {
             if (logger.isDebugEnabled()) {
                 logger.debug("Returning token. Token=" + object.toString());
             }
-            Token<F> token = findToken(object);
+            token = findToken(object);
             if (token.invalidated) {
                 removeToken(token);
-            } else {
-                token.available = true;
-                Consumer<F> listener = returnTokenListeners.remove(object.getID());
-                if (listener != null) {
-                    callReturnTokenListener(object, listener);
-                }
-                checkForMatchInPretenderWaitingQueue(token);
+                return;
             }
+            listener = returnTokenListeners.remove(object.getID());
+        }
+
+        if (listener != null) {
+            callReturnTokenListener(object, listener);
+        }
+
+        // Token is still available=false here. Assign it directly to a waiting pretender
+        // before ever exposing it as available, so no concurrent selectToken can steal it.
+        if (!assignToPretender(token)) {
+            token.available.set(true);
         }
     }
 
@@ -269,7 +290,6 @@ public class TokenPool<P extends Identity, F extends Identity> implements Closea
         return tokens.get(object.getID());
     }
 
-
     public String offerToken(F object) {
         synchronized (tokens) {
             if (logger.isTraceEnabled()) {
@@ -281,14 +301,17 @@ public class TokenPool<P extends Identity, F extends Identity> implements Closea
                 token = existingToken;
             } else {
                 token = new Token<>(object);
-                token.available = true;
+                // available starts as false (AtomicBoolean default): the token is invisible
+                // to selectToken CAS until we have checked waiting pretenders below.
             }
             boolean allowed = tokenRegistrationCallbacks.stream().allMatch(cb -> cb.beforeRegistering(token.object));
             if (allowed) {
                 if (existingToken == null) {
-                    // new token, put it in the map
                     tokens.put(token.object.getID(), token);
-                    checkForMatchInPretenderWaitingQueue(token);
+                    // Check pretenders before making the token claimable by selectToken.
+                    if (!assignToPretender(token)) {
+                        token.available.set(true);
+                    }
                 }
                 keepaliveToken(token);
                 return token.getObject().getID();
@@ -300,6 +323,32 @@ public class TokenPool<P extends Identity, F extends Identity> implements Closea
                 return null;
             }
         }
+    }
+
+    // Finds the first waiting pretender that matches the token and assigns it directly,
+    // keeping the token available=false throughout. Double-checked under the pretender
+    // lock so two concurrent returnToken calls cannot assign the same pretender.
+    // Returns true if a pretender was assigned, false otherwise.
+    private boolean assignToPretender(Token<F> token) {
+        synchronized (waitingPretenders) {
+            for (WaitingPretender<P, F> pretender : waitingPretenders) {
+                if (pretender.associatedToken == null
+                        && affinityEval.getAffinityScore(pretender.pretender, token.object) >= 0) {
+                    synchronized (pretender) {
+                        if (pretender.associatedToken == null) {
+                            pretender.associatedToken = token;
+                            if (logger.isTraceEnabled()) {
+                                logger.trace("Pretender match found for token " + token.getObject().getID()
+                                    + " notifying pretender: " + pretender);
+                            }
+                            pretender.notify();
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        return false;
     }
 
     private void keepaliveTimeoutCheck() {
@@ -319,10 +368,9 @@ public class TokenPool<P extends Identity, F extends Identity> implements Closea
         }
     }
 
-
     public void keepaliveToken(String id) {
-        synchronized (tokens) {
-            Token<F> token = tokens.get(id);
+        Token<F> token = tokens.get(id);
+        if (token != null) {
             keepaliveToken(token);
         }
     }
@@ -332,14 +380,8 @@ public class TokenPool<P extends Identity, F extends Identity> implements Closea
     }
 
     public F getToken(String id) {
-        synchronized (tokens) {
-            Token<F> token = tokens.get(id);
-            if (token != null) {
-                return token.getObject();
-            } else {
-                return null;
-            }
-        }
+        Token<F> token = tokens.get(id);
+        return token != null ? token.getObject() : null;
     }
 
     public void invalidate(String id) {
@@ -362,37 +404,10 @@ public class TokenPool<P extends Identity, F extends Identity> implements Closea
                 logger.debug("Invalidating token. Token=" + token.object);
             }
             token.invalidated = true;
-            if (token.available) {
+            if (token.available.get()) {
                 removeToken(token);
             }
         }
-    }
-
-
-    private void checkForMatchInPretenderWaitingQueue(Token<F> token) {
-        WaitingPretender<P, F> pretenderMatch = selectPretender(token);
-        if (pretenderMatch != null) {
-            token.available = false;
-            pretenderMatch.associatedToken = token;
-            synchronized (pretenderMatch) {
-                if (logger.isTraceEnabled()) {
-                    logger.trace("Pretender match found for token " + token.getObject().getID()
-                        + " notifying pretender: " + pretenderMatch);
-                }
-                pretenderMatch.notify();
-            }
-        }
-    }
-
-    private WaitingPretender<P, F> selectPretender(Token<F> token) {
-        synchronized (waitingPretenders) {
-            for (WaitingPretender<P, F> pretender : waitingPretenders) {
-                if (pretender.associatedToken == null && affinityEval.getAffinityScore(pretender.pretender, token.object) >= 0) {
-                    return pretender;
-                }
-            }
-        }
-        return null;
     }
 
     public int getSize() {
@@ -400,9 +415,7 @@ public class TokenPool<P extends Identity, F extends Identity> implements Closea
     }
 
     public List<F> getTokens() {
-        synchronized (tokens) {
-            return tokens.values().stream().map(t -> t.getObject()).collect(Collectors.toList());
-        }
+        return tokens.values().stream().map(t -> t.getObject()).collect(Collectors.toList());
     }
 
     public List<P> getWaitingPretenders() {
