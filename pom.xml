@@ -55,9 +55,9 @@
     <maven.compiler.release>21</maven.compiler.release>
 
     <!-- internal dependencies -->
-    <dependencies.version>2026.6.03</dependencies.version>
-    <exense-commons.version>2.2.0</exense-commons.version>
-    <step-api.version>1.6.0</step-api.version>
+    <dependencies.version>0.0.0-SED-4790-SNAPSHOT</dependencies.version>
+    <exense-commons.version>0.0.0-SED-4790-SNAPSHOT</exense-commons.version>
+    <step-api.version>0.0.0-SED-4790-SNAPSHOT</step-api.version>
 
   </properties>
 
