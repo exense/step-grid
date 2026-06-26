@@ -38,6 +38,7 @@ import static step.grid.agent.Agent.PROPERTY_PREFIX;
 public class AgentForker implements AutoCloseable {
 
     private static final Logger logger = LoggerFactory.getLogger(AgentForker.class);
+    private static final String FORKED_AGENT_DIR_PREFIX = "forked-agent";
     private final AgentForkerConfiguration configuration;
     private final GridImpl grid;
     private final String fileServerHost;
@@ -57,6 +58,10 @@ public class AgentForker implements AutoCloseable {
         workingDirectory = Path.of(Objects.requireNonNull(configuration.workingDirectory)).toAbsolutePath();
         workingDirectory.toFile().mkdirs();
         logger.debug("Using working directory: {}", workingDirectory);
+        // Remove execution directories left over by forked agents of a previous run that crashed before they
+        // could be cleaned up. Each forked agent stores its own ephemeral file cache inside its execution
+        // directory, so deleting these also purges any leftover cached artifacts (AC-4).
+        cleanupStaleForkedAgentDirectories();
         forkedAgentConf = getForkedAgentConf(configuration);
         logbackConfiguration = getLogbackConfiguration(configuration);
         grid = createGrid();
@@ -118,6 +123,22 @@ public class AgentForker implements AutoCloseable {
             return freeAgentPorts;
         } else {
             return null;
+        }
+    }
+
+    private void cleanupStaleForkedAgentDirectories() {
+        File[] staleDirectories = workingDirectory.toFile().listFiles(
+            (dir, name) -> name.startsWith(FORKED_AGENT_DIR_PREFIX) && new File(dir, name).isDirectory());
+        if (staleDirectories == null) {
+            return;
+        }
+        for (File staleDirectory : staleDirectories) {
+            logger.info("Removing stale forked agent execution directory {} left over by a previous run.", staleDirectory);
+            try {
+                FileUtils.deleteDirectory(staleDirectory);
+            } catch (IOException e) {
+                logger.warn("Failed to delete stale forked agent execution directory {}.", staleDirectory, e);
+            }
         }
     }
 
@@ -189,7 +210,7 @@ public class AgentForker implements AutoCloseable {
             this.port = port;
             this.agentProperties = agentProperties;
             id = nextSessionId.getAndIncrement();
-            tempDirectory = Files.createTempDirectory(workingDirectory, "forked-agent" + id);
+            tempDirectory = Files.createTempDirectory(workingDirectory, FORKED_AGENT_DIR_PREFIX + id);
             logger.info("Starting forked agent {} in {}...", id, tempDirectory);
             forkedJvmBuilder = new ForkedJvmBuilder(getJavaPath(), findMainClass(), getVmArgs(), getProgArgs());
             try {

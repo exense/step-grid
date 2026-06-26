@@ -32,10 +32,14 @@ import step.grid.Token;
 import step.grid.agent.forker.AgentForker;
 import step.grid.agent.tokenpool.*;
 import step.grid.agent.tokenpool.AgentTokenPool.InvalidTokenIdException;
+import step.grid.app.filemanager.FileVersionResponseFactory;
 import step.grid.bootstrap.BootstrapManager;
 import step.grid.contextbuilder.ApplicationContextBuilderException;
 import step.grid.filemanager.ControllerCallTimeout;
+import step.grid.filemanager.FileManagerClient;
 import step.grid.filemanager.FileManagerException;
+import step.grid.filemanager.FileVersion;
+import step.grid.filemanager.FileVersionId;
 import step.grid.io.*;
 import step.grid.security.Secured;
 
@@ -63,6 +67,8 @@ public class AgentServices extends AbstractGridServices {
 
     private AgentForker agentForker;
 
+    private FileManagerClient fileManagerClient;
+
     public AgentServices() {
         super();
     }
@@ -73,6 +79,29 @@ public class AgentServices extends AbstractGridServices {
         bootstrapManager = agent.getBootstrapManager();
         executor = agent.getTokenExecutor();
         agentForker = agent.getAgentForker();
+        fileManagerClient = agent.getAgentTokenServices().getFileManagerClient();
+    }
+
+    /**
+     * Serves a file version to the agent's forked agents, acting as their exclusive upstream file server.
+     * <p>
+     * The endpoint is controller-compatible (same path and wire format as the grid server) so that a forked
+     * agent's {@code RegistrationClient} can download from its main agent exactly as it would from the
+     * controller. On a cache miss the main agent's file manager transparently downloads the version from the
+     * controller. The request is served <b>without</b> registering an in-use lock (AC-3): forked agents
+     * manage their own ephemeral cache, so the main agent only needs to make the artifact available, not to
+     * track its usage.
+     */
+    @Secured
+    @GET
+    @Path("/grid/file/{id}/{version}")
+    public Response getFile(@PathParam("id") String id, @PathParam("version") String version) throws FileManagerException {
+        FileVersionId fileVersionId = new FileVersionId(id, version);
+        FileVersion fileVersion = fileManagerClient.requestFileVersion(fileVersionId, true, false);
+        if (fileVersion == null) {
+            return Response.status(Response.Status.NOT_FOUND).entity("File version " + fileVersionId + " not found").build();
+        }
+        return FileVersionResponseFactory.buildFileResponse(fileVersion);
     }
 
     class ExecutionContext {

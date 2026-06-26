@@ -21,6 +21,13 @@ package step.grid.filemanager;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -156,6 +163,130 @@ public class FileManagerClientImplTest {
         fileManagerClient.removeFileVersionFromCache(fileVersionId1);
         // assert that the file has been deleted
         Assert.assertFalse(fileVersionActual1.getFile().exists());
+    }
+
+    /**
+     * AC-2: when several threads request the same (fileId, version) concurrently, only one download is
+     * performed. The other threads block on and reuse the result of the active download.
+     */
+    @Test
+    public void testConcurrentRequestsTriggerSingleDownload() throws Exception {
+        CountDownLatch enteredDownload = new CountDownLatch(1);
+        CountDownLatch releaseDownload = new CountDownLatch(1);
+        fileProvider = (fileVersionId, container) -> {
+            callCount.incrementAndGet();
+            enteredDownload.countDown();
+            try {
+                releaseDownload.await(5, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+            return copyInto(container, fileVersionId);
+        };
+        initFileManagerClient(3600000, 3600000);
+
+        int nThreads = 5;
+        ExecutorService pool = Executors.newFixedThreadPool(nThreads);
+        try {
+            List<Future<FileVersion>> futures = new ArrayList<>();
+            for (int i = 0; i < nThreads; i++) {
+                futures.add(pool.submit((Callable<FileVersion>) () -> fileManagerClient.requestFileVersion(fileVersionId1, true)));
+            }
+            // Wait for the single writer to be inside the download, then give the other threads time to pile up
+            Assert.assertTrue(enteredDownload.await(5, TimeUnit.SECONDS));
+            Thread.sleep(200);
+            releaseDownload.countDown();
+            for (Future<FileVersion> future : futures) {
+                Assert.assertNotNull(future.get(5, TimeUnit.SECONDS));
+            }
+        } finally {
+            pool.shutdownNow();
+        }
+
+        Assert.assertEquals(1, callCount.get());
+        Assert.assertEquals(1, fileManagerFolder.list().length);
+    }
+
+    /**
+     * AC-2: downloads of different versions of the same file are not serialized, they proceed in parallel.
+     * The provider blocks until both downloads have entered, which can only complete if they run concurrently.
+     */
+    @Test
+    public void testDifferentVersionsDownloadConcurrently() throws Exception {
+        CountDownLatch bothInside = new CountDownLatch(2);
+        fileProvider = (fileVersionId, container) -> {
+            callCount.incrementAndGet();
+            bothInside.countDown();
+            try {
+                Assert.assertTrue("Downloads of different versions must run concurrently", bothInside.await(5, TimeUnit.SECONDS));
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+            return copyInto(container, fileVersionId);
+        };
+        initFileManagerClient(3600000, 3600000);
+
+        FileVersionId version1 = new FileVersionId("f1", "1");
+        FileVersionId version2 = new FileVersionId("f1", "2");
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+        try {
+            Future<FileVersion> future1 = pool.submit((Callable<FileVersion>) () -> fileManagerClient.requestFileVersion(version1, true));
+            Future<FileVersion> future2 = pool.submit((Callable<FileVersion>) () -> fileManagerClient.requestFileVersion(version2, true));
+            Assert.assertNotNull(future1.get(10, TimeUnit.SECONDS));
+            Assert.assertNotNull(future2.get(10, TimeUnit.SECONDS));
+        } finally {
+            pool.shutdownNow();
+        }
+
+        Assert.assertEquals(2, callCount.get());
+    }
+
+    /**
+     * Crash-safety: a temporary container left behind by an interrupted download (e.g. a crash) is ignored and
+     * cleaned up when the cache is loaded, and a fresh request still succeeds.
+     */
+    @Test
+    public void testLeftoverTempFolderCleanedOnLoad() throws Exception {
+        File fileIdFolder = new File(fileManagerFolder, fileVersionId1.getFileId());
+        File tempContainer = new File(fileIdFolder, ".tmp-" + fileVersionId1.getVersion() + "-abc123");
+        Assert.assertTrue(tempContainer.mkdirs());
+        Assert.assertTrue(new File(tempContainer, "partial.dat").createNewFile());
+
+        initFileManagerClient(3600000, 3600000); // triggers loadCache()
+
+        Assert.assertFalse("Leftover temporary download folder must be removed on load", tempContainer.exists());
+
+        FileVersion fileVersion = fileManagerClient.requestFileVersion(fileVersionId1, true);
+        Assert.assertNotNull(fileVersion);
+        Assert.assertEquals(1, callCount.get());
+        Assert.assertTrue(fileVersion.getFile().exists());
+    }
+
+    /**
+     * AC-3 / AC-5: a request with usage tracking disabled does not register an in-use lock. The cached version
+     * is therefore evicted by the TTL cleanup on its own, without any call to releaseFileVersion.
+     */
+    @Test
+    public void testRequestWithoutUsageTrackingIsEvictedByTtl() throws Exception {
+        initFileManagerClient(200, 100);
+        FileVersion fileVersion = fileManagerClient.requestFileVersion(fileVersionId1, true, false);
+        Assert.assertNotNull(fileVersion);
+        Assert.assertEquals(1, callCount.get());
+        Assert.assertEquals(1, fileManagerFolder.list().length);
+
+        // No releaseFileVersion call: as usage wasn't tracked, the TTL cleanup must evict the file on its own
+        Thread.sleep(500);
+        Assert.assertEquals(0, fileManagerFolder.list().length);
+    }
+
+    private FileVersion copyInto(File container, FileVersionId fileVersionId) throws FileManagerException {
+        File target = new File(container.getAbsolutePath() + "/" + fileVersion1.file.getName());
+        try {
+            Files.copy(fileVersion1.file.toPath(), target.toPath());
+        } catch (IOException e) {
+            throw new FileManagerException(fileVersionId, e);
+        }
+        return new FileVersion(target, fileVersionId, false);
     }
 
 }

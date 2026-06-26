@@ -241,7 +241,19 @@ public class GridImpl implements Grid {
 
     private void initializeServer() {
         ResourceConfig resourceConfig = new ResourceConfig();
-        resourceConfig.packages(GridServices.class.getPackage().getName());
+        // Register the grid's own resource explicitly rather than scanning the whole 'step.grid' package tree.
+        // The broad scan would also pick up foreign JAX-RS resources that happen to live under 'step.grid' on
+        // the classpath (e.g. the agent's and the grid proxy's services), which both expose a '/grid/file/...'
+        // endpoint and would clash with each other and with the grid's own file endpoint.
+        resourceConfig.register(GridServices.class);
+        // The grid object mapper resolver customizes the JSON (de)serialization of grid types exchanged with
+        // remote clients/agents. It lives in step-grid-client which isn't a dependency of this module, so it is
+        // registered by name when present on the classpath (as in the controller and in integration tests).
+        try {
+            resourceConfig.register(Class.forName("step.grid.client.GridObjectMapperResolver"));
+        } catch (ClassNotFoundException e) {
+            logger.debug("GridObjectMapperResolver is not on the classpath, falling back to default JSON mapping");
+        }
         resourceConfig.register(JacksonJaxbJsonProvider.class);
         resourceConfig.register(MultiPartFeature.class);
 

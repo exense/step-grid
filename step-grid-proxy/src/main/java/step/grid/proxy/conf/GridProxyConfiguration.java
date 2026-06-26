@@ -35,8 +35,47 @@ public class GridProxyConfiguration extends AppConfiguration {
     private Integer agentReserveTimeout = 3000;
     private Integer agentReleaseTimeout = 3000;
 
+    /**
+     * Directory where the grid proxy caches the artifacts it downloads from the grid. Files are stored using
+     * the same {@code <cacheRoot>/<fileId>/<version>/} layout as the controller and the agent.
+     */
+    private String fileCacheDirectory = "work/filemanager";
+    /**
+     * Time-to-live, in minutes, after which an artifact that hasn't been requested anymore is evicted from the
+     * proxy cache by the cleanup job.
+     */
+    private Long fileCacheTtlMinutes = 1440L;
+    /**
+     * Frequency, in minutes, at which the proxy cache cleanup job runs.
+     */
+    private Long fileCacheCleanupFrequencyMinutes = 60L;
+
     public GridProxyConfiguration() {
         super();
+    }
+
+    public String getFileCacheDirectory() {
+        return fileCacheDirectory;
+    }
+
+    public void setFileCacheDirectory(String fileCacheDirectory) {
+        this.fileCacheDirectory = fileCacheDirectory;
+    }
+
+    public Long getFileCacheTtlMinutes() {
+        return fileCacheTtlMinutes;
+    }
+
+    public void setFileCacheTtlMinutes(Long fileCacheTtlMinutes) {
+        this.fileCacheTtlMinutes = fileCacheTtlMinutes;
+    }
+
+    public Long getFileCacheCleanupFrequencyMinutes() {
+        return fileCacheCleanupFrequencyMinutes;
+    }
+
+    public void setFileCacheCleanupFrequencyMinutes(Long fileCacheCleanupFrequencyMinutes) {
+        this.fileCacheCleanupFrequencyMinutes = fileCacheCleanupFrequencyMinutes;
     }
 
     public String getGridProxyName() {

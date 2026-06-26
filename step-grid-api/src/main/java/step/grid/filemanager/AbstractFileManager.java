@@ -24,6 +24,9 @@ import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.FilenameFilter;
 import java.io.IOException;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
@@ -46,6 +49,12 @@ public class AbstractFileManager {
     protected static final String CLEANABLE_PROPERTY = "cleanable";
     protected static final String ORIGINAL_FILE_PATH_PROPERTY = "originalfile";
     protected static final String META_FILENAME = "filemanager.meta";
+    /**
+     * Prefix used for the temporary container folders into which file versions are downloaded before being
+     * atomically moved to their final {@code <fileId>/<version>} location. Any folder starting with this
+     * prefix is a partial/in-progress download and is ignored (and cleaned up) when loading the cache.
+     */
+    protected static final String TEMP_CONTAINER_PREFIX = ".tmp-";
     protected final File cacheFolder;
     protected ConcurrentHashMap<String, Map<FileVersionId, CachedFileVersion>> fileHandleCache = new ConcurrentHashMap<>();
     protected FileManagerConfiguration fileManagerConfiguration;
@@ -74,6 +83,13 @@ public class AbstractFileManager {
                         for (File container : file.listFiles()) {
                             String fileId = file.getName();
                             String version = container.getName();
+                            if (version.startsWith(TEMP_CONTAINER_PREFIX)) {
+                                // Leftover of an interrupted download (e.g. a crash). Discard it so the cache
+                                // recovers cleanly and the version can be downloaded again on the next request.
+                                logger.info("Removing leftover temporary download folder " + container.getAbsolutePath());
+                                FileHelper.safeDeleteFolder(container);
+                                continue;
+                            }
                             if (container.isDirectory()) {
                                 FileVersionId fileVersionId = new FileVersionId(fileId, version);
 
@@ -133,9 +149,42 @@ public class AbstractFileManager {
         return container;
     }
 
-    protected void createMetaFile(String registryIndex, CachedFileVersion cachedFileVersion) throws FileManagerException {
+    /**
+     * Returns the final {@code <cacheRoot>/<fileId>/<version>} container folder <b>without</b> creating it.
+     * Used by the atomic download flow which must not pre-create the target of the atomic move.
+     */
+    protected File getFinalContainerFolder(FileVersionId fileVersionId) {
+        return new File(cacheFolder + "/" + fileVersionId.getFileId() + "/" + fileVersionId.getVersion());
+    }
+
+    /**
+     * Creates a unique temporary container folder (sibling of the final version folder, under the same
+     * {@code <fileId>} folder) into which a file version is downloaded before being atomically moved to its
+     * final location. Keeping the temp folder under the {@code <fileId>} folder guarantees it sits on the
+     * same file system as the final folder so that the move can be atomic (a rename).
+     */
+    protected File createTempContainerFolder(FileVersionId fileVersionId) {
+        File tempContainer = new File(getFileCacheFolder(fileVersionId.getFileId()),
+            TEMP_CONTAINER_PREFIX + fileVersionId.getVersion() + "-" + UUID.randomUUID());
+        tempContainer.mkdirs();
+        return tempContainer;
+    }
+
+    /**
+     * Atomically moves a fully downloaded temporary container into its final {@code <fileId>/<version>}
+     * location. Falls back to a non-atomic move if the underlying file system doesn't support atomic moves.
+     */
+    protected void moveContainerIntoPlace(File tempContainer, File finalContainer) throws IOException {
+        try {
+            Files.move(tempContainer.toPath(), finalContainer.toPath(), StandardCopyOption.ATOMIC_MOVE);
+        } catch (AtomicMoveNotSupportedException e) {
+            Files.move(tempContainer.toPath(), finalContainer.toPath());
+        }
+    }
+
+    protected void createMetaFileInContainer(File container, String registryIndex, CachedFileVersion cachedFileVersion) throws FileManagerException {
         FileVersion fileVersion = cachedFileVersion.getFileVersion();
-        File metaFile = getMetaFile(fileVersion.getVersionId());
+        File metaFile = new File(container + "/" + META_FILENAME);
         Properties metaProperties = new Properties();
         metaProperties.setProperty(DIRECTORY_PROPERTY, Boolean.toString(fileVersion.isDirectory()));
         metaProperties.setProperty(CLEANABLE_PROPERTY, Boolean.toString(cachedFileVersion.isCleanable()));
@@ -147,6 +196,11 @@ public class AbstractFileManager {
         } catch (IOException e) {
             throw new FileManagerException(fileVersion.getVersionId(), "Error while writing meta file '" + metaFile + "'", e);
         }
+    }
+
+    protected void createMetaFile(String registryIndex, CachedFileVersion cachedFileVersion) throws FileManagerException {
+        FileVersion fileVersion = cachedFileVersion.getFileVersion();
+        createMetaFileInContainer(getContainerFolder(fileVersion.getVersionId()), registryIndex, cachedFileVersion);
     }
 
     private Properties getMetaProperties(FileVersionId fileVersionId) throws IOException, FileNotFoundException {

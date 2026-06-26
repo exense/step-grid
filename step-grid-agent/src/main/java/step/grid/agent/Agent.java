@@ -171,15 +171,6 @@ public class Agent extends BaseServer implements AutoCloseable {
         logger.info("Starting token executor...");
         executor = Executors.newCachedThreadPool(NamedThreadFactory.create("agent-token-executor"));
 
-        AgentForkerConfiguration agentForkerConfiguration = agentConf.getAgentForker();
-        if (agentForkerConfiguration != null && agentForkerConfiguration.enabled) {
-            logger.info("Agent forker is enabled. All token messages will be executed in forked agent processes.");
-            agentForker = new AgentForker(agentForkerConfiguration, fileServerHost);
-        } else {
-            logger.info("Agent forker is disabled. All token messages will be executed within this JVM.");
-            agentForker = null;
-        }
-
         int serverPort = this.resolveServerPort(agentUrl, agentPort);
 
         logger.info("Starting server...");
@@ -189,6 +180,18 @@ public class Agent extends BaseServer implements AutoCloseable {
         logger.info("Successfully started server on port " + actualServerPort);
 
         this.agentUrl = this.getOrBuildActualUrl(agentHost, agentUrl, actualServerPort, agentConf.isSsl());
+
+        // The agent forker is created after the server has started so that forked agents can be pointed at
+        // this main agent's own URL as their file server: a forked agent never contacts the controller
+        // directly, it downloads its artifacts from its main agent (which caches them once on its behalf).
+        AgentForkerConfiguration agentForkerConfiguration = agentConf.getAgentForker();
+        if (agentForkerConfiguration != null && agentForkerConfiguration.enabled) {
+            logger.info("Agent forker is enabled. All token messages will be executed in forked agent processes.");
+            agentForker = new AgentForker(agentForkerConfiguration, this.agentUrl);
+        } else {
+            logger.info("Agent forker is disabled. All token messages will be executed within this JVM.");
+            agentForker = null;
+        }
 
         logger.info("Starting grid registration task using grid URL " + gridUrl + "...");
         registrationTask = createGridRegistrationTask(registrationClient);

@@ -34,11 +34,16 @@ public class GridProxyTest extends GridTest {
         grid.start();
 
         GridProxyConfiguration conf = new GridProxyConfiguration();
-        conf.setGridProxyUrl("http://localhost:31001");
+        // Bind to a random free port instead of a hardcoded one to avoid clashes with OS-reserved port ranges
+        conf.setGridProxyHost("localhost");
+        conf.setGridProxyPort(0);
         conf.setGridUrl("http://localhost:" + grid.getServerPort());
+        // Use an isolated temporary cache directory so the proxy cache doesn't leak between test runs
+        conf.setFileCacheDirectory(FileHelper.createTempFolder().getAbsolutePath());
         gridProxy = new GridProxy(conf);
+        String gridProxyUrl = gridProxy.getGridProxyUrl();
 
-        AgentConf agentConf = new AgentConf("http://localhost:31001", 0, null, 100);
+        AgentConf agentConf = new AgentConf(gridProxyUrl, 0, null, 100);
         agentConf.setGracefulShutdownTimeout(100l);
         agentConf.setFileManagerConfiguration(new FileManagerConfiguration());
         agent = new Agent(agentConf);
