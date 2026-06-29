@@ -132,38 +132,45 @@ public class HttpFileVersionProvider implements FileVersionProvider {
                 throw new ControllerCallException(e);
             }
         }
-        if (response.getStatus() != 200) {
-            String error = response.readEntity(String.class);
-            throw new RuntimeException("Unexpected server error: " + error);
-        } else {
-            InputStream in = (InputStream) response.getEntity();
-            String contentDisposition = response.getHeaderString("content-disposition");
-            if (contentDisposition != null) {
+        // Always close the Response (and its underlying entity stream) regardless of how header/entity
+        // processing terminates, to avoid leaking the connection and the file descriptor.
+        try {
+            if (response.getStatus() != 200) {
+                String error = response.readEntity(String.class);
+                throw new RuntimeException("Unexpected server error: " + error);
+            }
+            // Acquire the entity stream up-front in a try-with-resources so it is always closed, even if the
+            // header validation below throws. Relying on response.close() alone is not always sufficient to
+            // release an unconsumed entity stream (and the connection it holds) with some JAX-RS connectors.
+            try (InputStream in = (InputStream) response.getEntity()) {
+                String contentDisposition = response.getHeaderString("content-disposition");
+                if (contentDisposition == null) {
+                    throw new RuntimeException("No content-disposition header found in the HTTP response");
+                }
                 boolean isDirectory = contentDisposition.contains("type = dir");
                 Matcher m = FILENAME_PATTERN.matcher(contentDisposition);
-                if (m.find()) {
-                    String filename = m.group(1);
-
-                    long t2 = System.currentTimeMillis();
-                    File file = resolveWithinContainer(container, filename);
-                    if (isDirectory) {
-                        FileHelper.unzip(in, file);
-                    } else {
-                        try (BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(file))) {
-                            FileHelper.copy(in, bos, 1024);
-                        }
-                    }
-                    if (logger.isDebugEnabled()) {
-                        logger.debug("Uncompressed file " + fileVersionId + " in " + (System.currentTimeMillis() - t2) + "ms to " + file.getAbsoluteFile());
-                    }
-
-                    return new FileVersion(file, fileVersionId, isDirectory);
-                } else {
+                if (!m.find()) {
                     throw new RuntimeException("Unable to find filename in header: " + contentDisposition);
                 }
-            } else {
-                throw new RuntimeException("No content-disposition header found in the HTTP response");
+                String filename = m.group(1);
+
+                long t2 = System.currentTimeMillis();
+                File file = resolveWithinContainer(container, filename);
+                if (isDirectory) {
+                    FileHelper.unzip(in, file);
+                } else {
+                    try (BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(file))) {
+                        FileHelper.copy(in, bos, 1024);
+                    }
+                }
+                if (logger.isDebugEnabled()) {
+                    logger.debug("Uncompressed file " + fileVersionId + " in " + (System.currentTimeMillis() - t2) + "ms to " + file.getAbsoluteFile());
+                }
+
+                return new FileVersion(file, fileVersionId, isDirectory);
             }
+        } finally {
+            response.close();
         }
     }
 

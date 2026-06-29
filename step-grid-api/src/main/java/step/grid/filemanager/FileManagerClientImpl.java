@@ -65,6 +65,10 @@ public class FileManagerClientImpl extends AbstractFileManager implements FileMa
 
     @Override
     public FileVersion requestFileVersion(FileVersionId fileVersionId, boolean cleanableFromClientCache, boolean trackUsage) throws FileManagerException {
+        // The fileId and version end up as path segments of the cache folder (<cacheRoot>/<fileId>/<version>).
+        // They may originate from untrusted HTTP callers (e.g. the main-agent and grid-proxy file endpoints),
+        // so reject any value containing path-traversal or separator characters before resolving any path.
+        validateFileVersionId(fileVersionId);
         try {
             fileHandleCacheLock.readLock().lock();
             Map<FileVersionId, CachedFileVersion> versionCache = getVersionMap(fileVersionId.getFileId());
@@ -119,6 +123,24 @@ public class FileManagerClientImpl extends AbstractFileManager implements FileMa
             return cachedFileVersion.getFileVersion();
         } finally {
             fileHandleCacheLock.readLock().unlock();
+        }
+    }
+
+    /**
+     * Guards against path traversal: the {@code fileId} and {@code version} are used as single path segments
+     * of the cache folder, so neither may be {@code null} nor contain {@code ".."} or a path separator.
+     */
+    private static void validateFileVersionId(FileVersionId fileVersionId) {
+        if (fileVersionId == null) {
+            throw new IllegalArgumentException("fileVersionId must not be null");
+        }
+        validatePathSegment("fileId", fileVersionId.getFileId());
+        validatePathSegment("version", fileVersionId.getVersion());
+    }
+
+    private static void validatePathSegment(String name, String value) {
+        if (value == null || value.contains("..") || value.contains("/") || value.contains("\\")) {
+            throw new IllegalArgumentException("Invalid " + name + ": must not be null or contain path traversal sequences");
         }
     }
 
