@@ -23,6 +23,9 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.channels.FileChannel;
+import java.nio.channels.FileLock;
+import java.nio.channels.OverlappingFileLockException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
@@ -39,6 +42,7 @@ public class AgentForker implements AutoCloseable {
 
     private static final Logger logger = LoggerFactory.getLogger(AgentForker.class);
     private static final String FORKED_AGENT_DIR_PREFIX = "forked-agent";
+    private static final String FORKED_AGENT_DIR_LOCK_FILE = ".lock";
     private final AgentForkerConfiguration configuration;
     private final GridImpl grid;
     private final String fileServerHost;
@@ -127,18 +131,47 @@ public class AgentForker implements AutoCloseable {
     }
 
     private void cleanupStaleForkedAgentDirectories() {
-        File[] staleDirectories = workingDirectory.toFile().listFiles(
+        File[] candidateDirectories = workingDirectory.toFile().listFiles(
             (dir, name) -> name.startsWith(FORKED_AGENT_DIR_PREFIX) && new File(dir, name).isDirectory());
-        if (staleDirectories == null) {
+        if (candidateDirectories == null) {
             return;
         }
-        for (File staleDirectory : staleDirectories) {
-            logger.info("Removing stale forked agent execution directory {} left over by a previous run.", staleDirectory);
-            try {
-                FileUtils.deleteDirectory(staleDirectory);
-            } catch (IOException e) {
-                logger.warn("Failed to delete stale forked agent execution directory {}.", staleDirectory, e);
+        for (File candidateDirectory : candidateDirectories) {
+            // The working directory may be shared with other agent processes. Each live forked agent holds an
+            // exclusive lock on the lock file inside its execution directory for its whole lifetime. We only
+            // delete a directory if we can acquire that lock, which means no live process owns it: the OS
+            // releases file locks when a process exits (including on a crash), so a directory left over by a
+            // previous run can be locked here, whereas a directory still in use by a running agent cannot.
+            if (!isStaleForkedAgentDirectory(candidateDirectory)) {
+                logger.debug("Skipping forked agent execution directory {} as it is still in use by another process.", candidateDirectory);
+                continue;
             }
+            logger.info("Removing stale forked agent execution directory {} left over by a previous run.", candidateDirectory);
+            try {
+                FileUtils.deleteDirectory(candidateDirectory);
+            } catch (IOException e) {
+                logger.warn("Failed to delete stale forked agent execution directory {}.", candidateDirectory, e);
+            }
+        }
+    }
+
+    private boolean isStaleForkedAgentDirectory(File directory) {
+        Path lockFilePath = directory.toPath().resolve(FORKED_AGENT_DIR_LOCK_FILE);
+        try (FileChannel channel = FileChannel.open(lockFilePath, StandardOpenOption.CREATE, StandardOpenOption.WRITE)) {
+            FileLock lock = channel.tryLock();
+            if (lock == null) {
+                return false;
+            }
+            // Release the lock right away so the directory (including the lock file) can be deleted afterwards.
+            lock.release();
+            return true;
+        } catch (OverlappingFileLockException e) {
+            // The lock is already held by this JVM. This is not expected during construction, but be safe and
+            // treat the directory as in use.
+            return false;
+        } catch (IOException e) {
+            logger.warn("Could not determine whether forked agent execution directory {} is still in use; keeping it.", directory, e);
+            return false;
         }
     }
 
@@ -202,6 +235,7 @@ public class AgentForker implements AutoCloseable {
         private final ForkedJvmBuilder forkedJvmBuilder;
         private final long id;
         private final Path tempDirectory;
+        private final FileChannel lockChannel;
         private final int port;
         private final Map<String, String> agentProperties;
         private final AgentRef agentRef;
@@ -211,6 +245,10 @@ public class AgentForker implements AutoCloseable {
             this.agentProperties = agentProperties;
             id = nextSessionId.getAndIncrement();
             tempDirectory = Files.createTempDirectory(workingDirectory, FORKED_AGENT_DIR_PREFIX + id);
+            // Acquire and hold an exclusive lock on the directory for the whole lifetime of the forked agent so
+            // that another agent process sharing the same working directory does not delete it while it is in
+            // use (see cleanupStaleForkedAgentDirectories).
+            lockChannel = lockForkedAgentDirectory(tempDirectory);
             logger.info("Starting forked agent {} in {}...", id, tempDirectory);
             forkedJvmBuilder = new ForkedJvmBuilder(getJavaPath(), findMainClass(), getVmArgs(), getProgArgs());
             try {
@@ -369,7 +407,30 @@ public class AgentForker implements AutoCloseable {
             }
         }
 
+        private FileChannel lockForkedAgentDirectory(Path directory) throws IOException {
+            Path lockFilePath = directory.resolve(FORKED_AGENT_DIR_LOCK_FILE);
+            FileChannel channel = FileChannel.open(lockFilePath, StandardOpenOption.CREATE, StandardOpenOption.WRITE);
+            try {
+                if (channel.tryLock() == null) {
+                    throw new IOException("Could not acquire exclusive lock on forked agent execution directory " + directory);
+                }
+            } catch (IOException | OverlappingFileLockException e) {
+                channel.close();
+                throw new IOException("Could not lock forked agent execution directory " + directory, e);
+            }
+            return channel;
+        }
+
         private void deleteTempDir() {
+            // Release the directory lock before deleting, otherwise the lock file cannot be removed (on Windows
+            // an open/locked file cannot be deleted even by the owning process).
+            if (lockChannel != null) {
+                try {
+                    lockChannel.close();
+                } catch (IOException e) {
+                    logger.warn("Error while releasing lock on forked agent execution directory {}.", tempDirectory, e);
+                }
+            }
             logger.info("Deleting forked agent execution directory {}...", tempDirectory);
             int nRetries = 5;
             try {

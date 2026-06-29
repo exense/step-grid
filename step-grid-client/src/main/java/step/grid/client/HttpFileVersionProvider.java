@@ -38,6 +38,7 @@ import step.grid.filemanager.FileVersionProvider;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.net.SocketTimeoutException;
 import java.util.List;
@@ -144,7 +145,7 @@ public class HttpFileVersionProvider implements FileVersionProvider {
                     String filename = m.group(1);
 
                     long t2 = System.currentTimeMillis();
-                    File file = new File(container + "/" + filename);
+                    File file = resolveWithinContainer(container, filename);
                     if (isDirectory) {
                         FileHelper.unzip(in, file);
                     } else {
@@ -164,5 +165,24 @@ public class HttpFileVersionProvider implements FileVersionProvider {
                 throw new RuntimeException("No content-disposition header found in the HTTP response");
             }
         }
+    }
+
+    /**
+     * Resolves the destination file for the given upstream-supplied filename, guarding against path
+     * traversal. The {@code filename} comes from the upstream {@code content-disposition} header and must
+     * not be trusted: a compromised or malicious upstream could return a value containing traversal
+     * sequences (e.g. {@code ../../evil}) to write outside the target container. We therefore reject any
+     * resolved path whose canonical form escapes the container.
+     */
+    private static File resolveWithinContainer(File container, String filename) throws IOException {
+        File file = new File(container, filename);
+        String containerCanonical = container.getCanonicalPath();
+        String fileCanonical = file.getCanonicalPath();
+        if (!fileCanonical.equals(containerCanonical)
+            && !fileCanonical.startsWith(containerCanonical + File.separator)) {
+            throw new IOException("Refusing to write file outside of the target container. Container: "
+                + containerCanonical + ", resolved file: " + fileCanonical + ", filename from header: " + filename);
+        }
+        return file;
     }
 }

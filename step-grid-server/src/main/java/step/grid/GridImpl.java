@@ -251,8 +251,8 @@ public class GridImpl implements Grid {
         // registered by name when present on the classpath (as in the controller and in integration tests).
         try {
             resourceConfig.register(Class.forName("step.grid.client.GridObjectMapperResolver"));
-        } catch (ClassNotFoundException e) {
-            logger.debug("GridObjectMapperResolver is not on the classpath, falling back to default JSON mapping");
+        } catch (ClassNotFoundException | LinkageError e) {
+            logger.debug("GridObjectMapperResolver is not on the classpath or cannot be loaded, falling back to default JSON mapping");
         }
         resourceConfig.register(JacksonJaxbJsonProvider.class);
         resourceConfig.register(MultiPartFeature.class);
