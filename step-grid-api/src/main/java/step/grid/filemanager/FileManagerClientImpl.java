@@ -78,12 +78,24 @@ public class FileManagerClientImpl extends AbstractFileManager implements FileMa
                 CachedFileVersion cachedFileVersion = versionCache.get(fileVersionId);
                 if (cachedFileVersion != null) {
                     applyUsage(cachedFileVersion, trackUsage);
+                    if (logger.isDebugEnabled()) {
+                        logger.debug("Cache hit: file version " + fileVersionId + " served from local cache (trackUsage="
+                            + trackUsage + ", usageCount=" + cachedFileVersion.getCurrentUsageCount() + ")");
+                    }
                     return cachedFileVersion.getFileVersion();
                 }
             }
 
             if (fileProvider == null) {
+                if (logger.isDebugEnabled()) {
+                    logger.debug("Cache miss: file version " + fileVersionId + " not in local cache and no file provider "
+                        + "configured to fetch it from an upstream, returning null");
+                }
                 return null;
+            }
+
+            if (logger.isDebugEnabled()) {
+                logger.debug("Cache miss: file version " + fileVersionId + " not in local cache, will fetch it from the upstream");
             }
 
             // Cache miss: ensure a single download per (fileId, version), concurrent callers block and reuse it
@@ -100,10 +112,22 @@ public class FileManagerClientImpl extends AbstractFileManager implements FileMa
                         cachedFileVersion = versionCache.get(fileVersionId);
                     }
                     if (cachedFileVersion == null) {
+                        if (logger.isDebugEnabled()) {
+                            logger.debug("Fetching file version " + fileVersionId + " from the upstream (single writer for this version)");
+                        }
+                        long downloadStart = System.currentTimeMillis();
                         cachedFileVersion = downloadAndStore(fileVersionId, cleanableFromClientCache);
                         synchronized (versionCache) {
                             versionCache.put(fileVersionId, cachedFileVersion);
                         }
+                        if (logger.isDebugEnabled()) {
+                            logger.debug("Fetched file version " + fileVersionId + " from the upstream and stored it in the local cache in "
+                                + (System.currentTimeMillis() - downloadStart) + "ms");
+                        }
+                    } else if (logger.isDebugEnabled()) {
+                        // Another writer completed the download between our fast-path miss and us claiming the slot
+                        logger.debug("File version " + fileVersionId + " appeared in the local cache while acquiring the download slot "
+                            + "(completed by a concurrent writer), skipping the upstream fetch");
                     }
                     ourFuture.complete(cachedFileVersion);
                 } catch (Throwable t) {
@@ -117,6 +141,10 @@ public class FileManagerClientImpl extends AbstractFileManager implements FileMa
                 }
             } else {
                 // Another thread is already downloading this version, wait for and reuse its result
+                if (logger.isDebugEnabled()) {
+                    logger.debug("File version " + fileVersionId + " is currently being fetched from the upstream by another thread, "
+                        + "waiting for and reusing its result");
+                }
                 cachedFileVersion = joinDownload(fileVersionId, inProgress);
             }
             applyUsage(cachedFileVersion, trackUsage);

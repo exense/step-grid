@@ -38,6 +38,7 @@ import step.grid.app.configuration.ConfigurationParser;
 import step.grid.app.filemanager.FileVersionResponseFactory;
 import step.grid.app.server.BaseServer;
 import step.grid.client.HttpFileVersionProvider;
+import step.grid.client.RemoteGridClientImpl;
 import step.grid.client.security.JwtTokenGenerator;
 import step.grid.filemanager.FileManagerClient;
 import step.grid.filemanager.FileManagerClientImpl;
@@ -80,6 +81,7 @@ public class GridProxy extends BaseServer implements AutoCloseable {
     private final Integer agentReserveTimeout;
     private final Integer agentReleaseTimeout;
     private JwtTokenGenerator jwtTokenGenerator;
+    private RemoteGridClientImpl remoteGridClient;
 
     public static void main(String[] args) throws Exception {
         GridProxy gridProxy = new GridProxy(args);
@@ -159,6 +161,7 @@ public class GridProxy extends BaseServer implements AutoCloseable {
         agentReleaseTimeout = gridProxyConfiguration.getAgentReleaseTimeout();
 
         fileManagerClient = initFileManagerClient(gridProxyConfiguration);
+        remoteGridClient = new RemoteGridClientImpl(gridUrl, gridProxyConfiguration.getGridSecurity());
 
         afterStart();
     }
@@ -175,12 +178,10 @@ public class GridProxy extends BaseServer implements AutoCloseable {
         cacheFolder.mkdirs();
         HttpFileVersionProvider fileVersionProvider = new HttpFileVersionProvider(client, gridUrl, jwtTokenGenerator,
             gridConnectTimeout, gridReadTimeout, gridProxyConfiguration.getGridMaxRetries(), gridProxyConfiguration.getGridRetryDelayMs());
-        FileManagerConfiguration fileManagerConfiguration = new FileManagerConfiguration();
-        fileManagerConfiguration.setEnableCleanup(true);
-        fileManagerConfiguration.setCleanupTimeToLiveMinutes(gridProxyConfiguration.getFileCacheTtlMinutes());
-        fileManagerConfiguration.setCleanupFrequencyMinutes(gridProxyConfiguration.getFileCacheCleanupFrequencyMinutes());
-        logger.info("Initializing grid proxy file cache in {} with a TTL of {} minutes", cacheFolder.getAbsolutePath(),
-            gridProxyConfiguration.getFileCacheTtlMinutes());
+        FileManagerConfiguration fileManagerConfiguration = gridProxyConfiguration.getFileManagerConfiguration();
+        logger.info("Initializing grid proxy file cache in {} with a TTL of {} minutes (cleanup {})",
+            cacheFolder.getAbsolutePath(), fileManagerConfiguration.getCleanupTimeToLiveMinutes(),
+            fileManagerConfiguration.isEnableCleanup() ? "enabled" : "disabled");
         return new FileManagerClientImpl(cacheFolder, fileVersionProvider, fileManagerConfiguration);
     }
 
@@ -237,6 +238,10 @@ public class GridProxy extends BaseServer implements AutoCloseable {
             //Rethrow exception as response to the Agent
             throw e;
         }
+    }
+
+    public void forwardStartTokenMaintenance(String tokenId) {
+        remoteGridClient.startTokenMaintenance(tokenId);
     }
 
     /**
@@ -326,6 +331,13 @@ public class GridProxy extends BaseServer implements AutoCloseable {
                 fileManagerClient.close();
             } catch (Exception e) {
                 logger.error("Error while closing the grid proxy file cache", e);
+            }
+        }
+        if (remoteGridClient != null) {
+            try {
+                remoteGridClient.close();
+            } catch (Exception e) {
+                logger.error("Error while closing the grid client", e);
             }
         }
         if (server != null && !server.isStopped()) {

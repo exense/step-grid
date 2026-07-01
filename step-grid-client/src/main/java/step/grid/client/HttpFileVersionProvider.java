@@ -114,6 +114,9 @@ public class HttpFileVersionProvider implements FileVersionProvider {
     }
 
     private FileVersion downloadAndSaveFileVersion(FileVersionId fileVersionId, File container) throws Exception {
+        if (logger.isDebugEnabled()) {
+            logger.debug("Downloading file version " + fileVersionId + " from upstream file server " + fileServer);
+        }
         Response response;
         try {
             response = withAuthentication(client.target(fileServer + "/grid/file/" + fileVersionId.getFileId() + "/" + fileVersionId.getVersion()).request())

@@ -19,6 +19,7 @@
 package step.grid.proxy.conf;
 
 import step.grid.app.configuration.AppConfiguration;
+import step.grid.filemanager.FileManagerConfiguration;
 import step.grid.security.SymmetricSecurityConfiguration;
 
 public class GridProxyConfiguration extends AppConfiguration {
@@ -41,14 +42,10 @@ public class GridProxyConfiguration extends AppConfiguration {
      */
     private String fileCacheDirectory = "work/filemanager";
     /**
-     * Time-to-live, in minutes, after which an artifact that hasn't been requested anymore is evicted from the
-     * proxy cache by the cleanup job.
+     * Cleanup/TTL configuration of the proxy artifact cache (cleanup enablement, time-to-live and job
+     * frequency). Mirrors the {@code fileManagerConfiguration} block of the agent configuration.
      */
-    private Long fileCacheTtlMinutes = 1440L;
-    /**
-     * Frequency, in minutes, at which the proxy cache cleanup job runs.
-     */
-    private Long fileCacheCleanupFrequencyMinutes = 60L;
+    private FileManagerConfiguration fileManagerConfiguration = new FileManagerConfiguration();
 
     public GridProxyConfiguration() {
         super();
@@ -62,20 +59,12 @@ public class GridProxyConfiguration extends AppConfiguration {
         this.fileCacheDirectory = fileCacheDirectory;
     }
 
-    public Long getFileCacheTtlMinutes() {
-        return fileCacheTtlMinutes;
+    public FileManagerConfiguration getFileManagerConfiguration() {
+        return fileManagerConfiguration;
     }
 
-    public void setFileCacheTtlMinutes(Long fileCacheTtlMinutes) {
-        this.fileCacheTtlMinutes = fileCacheTtlMinutes;
-    }
-
-    public Long getFileCacheCleanupFrequencyMinutes() {
-        return fileCacheCleanupFrequencyMinutes;
-    }
-
-    public void setFileCacheCleanupFrequencyMinutes(Long fileCacheCleanupFrequencyMinutes) {
-        this.fileCacheCleanupFrequencyMinutes = fileCacheCleanupFrequencyMinutes;
+    public void setFileManagerConfiguration(FileManagerConfiguration fileManagerConfiguration) {
+        this.fileManagerConfiguration = fileManagerConfiguration;
     }
 
     public String getGridProxyName() {

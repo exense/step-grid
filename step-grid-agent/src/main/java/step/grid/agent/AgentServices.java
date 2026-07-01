@@ -97,9 +97,17 @@ public class AgentServices extends AbstractGridServices {
     @Path("/grid/file/{id}/{version}")
     public Response getFile(@PathParam("id") String id, @PathParam("version") String version) throws FileManagerException {
         FileVersionId fileVersionId = new FileVersionId(id, version);
+        if (logger.isDebugEnabled()) {
+            logger.debug("Serving file version " + fileVersionId + " to a forked agent (resolving it from the local cache, "
+                + "downloading it from the upstream on a cache miss)");
+        }
         FileVersion fileVersion = fileManagerClient.requestFileVersion(fileVersionId, true, false);
         if (fileVersion == null) {
+            logger.warn("File version " + fileVersionId + " requested by a forked agent was not found");
             return Response.status(Response.Status.NOT_FOUND).entity("File version " + fileVersionId + " not found").build();
+        }
+        if (logger.isDebugEnabled()) {
+            logger.debug("Served file version " + fileVersionId + " to a forked agent from " + fileVersion.getFile().getAbsolutePath());
         }
         return FileVersionResponseFactory.buildFileResponse(fileVersion);
     }
