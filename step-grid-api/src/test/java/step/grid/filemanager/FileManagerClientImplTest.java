@@ -213,14 +213,14 @@ public class FileManagerClientImplTest {
      */
     @Test
     public void testLeftoverTempFolderCleanedOnLoad() throws Exception {
-        File fileIdFolder = new File(fileManagerFolder, fileVersionId1.getFileId());
-        File tempContainer = new File(fileIdFolder, ".tmp-" + fileVersionId1.getVersion() + "-abc123");
+        File tempContainerRoot = new File(fileManagerFolder, ".tmp");
+        File tempContainer = new File(tempContainerRoot, fileVersionId1.getFileId() + "-" + fileVersionId1.getVersion() + "-abc123");
         Assert.assertTrue(tempContainer.mkdirs());
         Assert.assertTrue(new File(tempContainer, "partial.dat").createNewFile());
 
         initFileManagerClient(3600000, 3600000); // triggers loadCache()
 
-        Assert.assertFalse("Leftover temporary download folder must be removed on load", tempContainer.exists());
+        Assert.assertFalse("Leftover temporary download folder must be removed on load", tempContainerRoot.exists());
 
         FileVersion fileVersion = fileManagerClient.requestFileVersion(fileVersionId1, true);
         Assert.assertNotNull(fileVersion);

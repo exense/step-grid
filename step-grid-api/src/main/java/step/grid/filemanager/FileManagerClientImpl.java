@@ -130,15 +130,15 @@ public class FileManagerClientImpl extends AbstractFileManager implements FileMa
             File finalDataFile = new File(finalContainer, downloaded.getFile().getName());
             FileVersion finalFileVersion = new FileVersion(finalDataFile, fileVersionId, downloaded.isDirectory());
             return new CachedFileVersion(finalFileVersion, cleanable);
-        } catch (FileManagerException e) {
-            FileHelper.safeDeleteFolder(tempContainer);
-            throw e;
         } catch (IOException e) {
-            FileHelper.safeDeleteFolder(tempContainer);
             throw new FileManagerException(fileVersionId, "Error while storing file version " + fileVersionId, e);
-        } catch (RuntimeException e) {
+        } finally {
+            // On success the temp container has been moved into place and no longer exists (no-op); on any
+            // failure this discards the partial download so no corrupt/leftover container is left behind.
             FileHelper.safeDeleteFolder(tempContainer);
-            throw e;
+            // Best-effort removal of the now-idle temp directory so the cache root stays clean. delete() only
+            // removes it when empty, so it is a no-op while a concurrent download still holds a container there.
+            getTempContainerRootFolder().delete();
         }
     }
 

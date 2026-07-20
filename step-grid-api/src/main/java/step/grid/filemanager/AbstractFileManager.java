@@ -50,11 +50,14 @@ public class AbstractFileManager {
     protected static final String ORIGINAL_FILE_PATH_PROPERTY = "originalfile";
     protected static final String META_FILENAME = "filemanager.meta";
     /**
-     * Prefix used for the temporary container folders into which file versions are downloaded before being
-     * atomically moved to their final {@code <fileId>/<version>} location. Any folder starting with this
-     * prefix is a partial/in-progress download and is ignored (and cleaned up) when loading the cache.
+     * Name of the dedicated directory, directly under the cache root, holding the temporary container folders
+     * into which file versions are downloaded before being atomically moved to their final
+     * {@code <fileId>/<version>} location. The whole directory holds only partial/in-progress downloads, so it
+     * is discarded as a whole when loading the cache (recovering cleanly from a crash). It is kept under the
+     * cache root so the temp folders sit on the same file system as their final destination, making the move an
+     * atomic rename.
      */
-    protected static final String TEMP_CONTAINER_PREFIX = ".tmp-";
+    protected static final String TEMP_CONTAINER_DIR = ".tmp";
     protected final File cacheFolder;
     protected ConcurrentHashMap<String, Map<FileVersionId, CachedFileVersion>> fileHandleCache = new ConcurrentHashMap<>();
     protected FileManagerConfiguration fileManagerConfiguration;
@@ -77,19 +80,22 @@ public class AbstractFileManager {
     protected void loadCache() {
         logger.info("Loading file manager client cache from data folder: " + cacheFolder.getAbsolutePath());
         if (cacheFolder.exists() && cacheFolder.isDirectory()) {
+            // Discard any leftover temporary download folders (e.g. from a crash) in one shot: they all live under
+            // the dedicated temp directory, so the cache recovers cleanly and the versions can be downloaded again.
+            File tempContainerRoot = getTempContainerRootFolder();
+            if (tempContainerRoot.exists()) {
+                logger.info("Removing leftover temporary download folder " + tempContainerRoot.getAbsolutePath());
+                FileHelper.safeDeleteFolder(tempContainerRoot);
+            }
             for (File file : cacheFolder.listFiles()) {
+                if (file.getName().equals(TEMP_CONTAINER_DIR)) {
+                    continue;
+                }
                 try {
                     if (file.isDirectory()) {
                         for (File container : file.listFiles()) {
                             String fileId = file.getName();
                             String version = container.getName();
-                            if (version.startsWith(TEMP_CONTAINER_PREFIX)) {
-                                // Leftover of an interrupted download (e.g. a crash). Discard it so the cache
-                                // recovers cleanly and the version can be downloaded again on the next request.
-                                logger.info("Removing leftover temporary download folder " + container.getAbsolutePath());
-                                FileHelper.safeDeleteFolder(container);
-                                continue;
-                            }
                             if (container.isDirectory()) {
                                 FileVersionId fileVersionId = new FileVersionId(fileId, version);
 
@@ -158,14 +164,23 @@ public class AbstractFileManager {
     }
 
     /**
-     * Creates a unique temporary container folder (sibling of the final version folder, under the same
-     * {@code <fileId>} folder) into which a file version is downloaded before being atomically moved to its
-     * final location. Keeping the temp folder under the {@code <fileId>} folder guarantees it sits on the
-     * same file system as the final folder so that the move can be atomic (a rename).
+     * Returns the dedicated {@link #TEMP_CONTAINER_DIR} directory, directly under the cache root, that holds the
+     * temporary download containers. Not created here; {@link #createTempContainerFolder(FileVersionId)} creates
+     * it on demand.
+     */
+    protected File getTempContainerRootFolder() {
+        return new File(cacheFolder, TEMP_CONTAINER_DIR);
+    }
+
+    /**
+     * Creates a unique temporary container folder, under the dedicated {@link #TEMP_CONTAINER_DIR} directory at
+     * the cache root, into which a file version is downloaded before being atomically moved to its final
+     * location. Keeping the temp folders under the cache root guarantees they sit on the same file system as the
+     * final folders so that the move can be atomic (a rename).
      */
     protected File createTempContainerFolder(FileVersionId fileVersionId) {
-        File tempContainer = new File(getFileCacheFolder(fileVersionId.getFileId()),
-            TEMP_CONTAINER_PREFIX + fileVersionId.getVersion() + "-" + UUID.randomUUID());
+        File tempContainer = new File(getTempContainerRootFolder(),
+            fileVersionId.getFileId() + "-" + fileVersionId.getVersion() + "-" + UUID.randomUUID());
         tempContainer.mkdirs();
         return tempContainer;
     }
@@ -175,6 +190,12 @@ public class AbstractFileManager {
      * location. Falls back to a non-atomic move if the underlying file system doesn't support atomic moves.
      */
     protected void moveContainerIntoPlace(File tempContainer, File finalContainer) throws IOException {
+        // The temp container lives under the dedicated temp directory, so the final <fileId> parent folder may
+        // not exist yet; create it before moving the container into place.
+        File finalParent = finalContainer.getParentFile();
+        if (finalParent != null && !finalParent.exists()) {
+            finalParent.mkdirs();
+        }
         try {
             Files.move(tempContainer.toPath(), finalContainer.toPath(), StandardCopyOption.ATOMIC_MOVE);
         } catch (AtomicMoveNotSupportedException e) {
