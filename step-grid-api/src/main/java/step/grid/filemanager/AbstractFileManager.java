@@ -59,10 +59,11 @@ public class AbstractFileManager {
      */
     protected static final String TEMP_CONTAINER_DIR = ".tmp";
     /**
-     * Name of the marker file, at the cache root, recording the directory storage mode of a client cache. Its
-     * presence means directories are stored <b>archived</b> (raw, serve-only mode); its absence means directories
-     * are stored <b>exploded</b> (the default, for executing consumers). A change of mode between runs makes the
-     * on-disk cache unusable, so the cache is dropped and rebuilt (see {@code FileManagerClientImpl}).
+     * Name of the marker file, at the cache root, recording the {@link FileManagerClientMode} of a client cache.
+     * Its presence marks a {@link FileManagerClientMode#RELAY} cache (directories stored archived); its absence
+     * marks a {@link FileManagerClientMode#CONSUMER} cache (directories stored exploded, the default). A change of
+     * mode between runs makes the on-disk cache unusable, so the cache is dropped and rebuilt (see
+     * {@code FileManagerClientImpl}).
      */
     protected static final String CACHE_MODE_FILENAME = ".cachemode";
     protected final File cacheFolder;

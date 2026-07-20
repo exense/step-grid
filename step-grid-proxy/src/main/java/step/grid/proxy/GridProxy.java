@@ -42,6 +42,7 @@ import step.grid.client.RemoteGridClientImpl;
 import step.grid.client.security.JwtTokenGenerator;
 import step.grid.filemanager.FileManagerClient;
 import step.grid.filemanager.FileManagerClientImpl;
+import step.grid.filemanager.FileManagerClientMode;
 import step.grid.filemanager.FileManagerException;
 import step.grid.filemanager.FileVersion;
 import step.grid.filemanager.FileVersionId;
@@ -175,8 +176,8 @@ public class GridProxy extends BaseServer implements AutoCloseable {
     private FileManagerClient initFileManagerClient(GridProxyConfiguration gridProxyConfiguration) {
         File cacheFolder = new File(gridProxyConfiguration.getFileCacheDirectory());
         HttpFileVersionProvider fileVersionProvider = new HttpFileVersionProvider(client, gridUrl, jwtTokenGenerator,
-            gridConnectTimeout, gridReadTimeout, gridProxyConfiguration.getGridMaxRetries(), gridProxyConfiguration.getGridRetryDelayMs(), false);
-        return new FileManagerClientImpl(cacheFolder, fileVersionProvider, gridProxyConfiguration.getFileManagerConfiguration(), false);
+            gridConnectTimeout, gridReadTimeout, gridProxyConfiguration.getGridMaxRetries(), gridProxyConfiguration.getGridRetryDelayMs(), FileManagerClientMode.RELAY);
+        return new FileManagerClientImpl(cacheFolder, fileVersionProvider, gridProxyConfiguration.getFileManagerConfiguration(), FileManagerClientMode.RELAY);
     }
 
     protected void beforeServerStart(ResourceConfig resourceConfig) throws Exception {

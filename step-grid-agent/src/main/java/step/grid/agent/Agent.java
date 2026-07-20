@@ -39,6 +39,7 @@ import step.grid.bootstrap.BootstrapManager;
 import step.grid.contextbuilder.ApplicationContextBuilder;
 import step.grid.filemanager.FileManagerClient;
 import step.grid.filemanager.FileManagerClientImpl;
+import step.grid.filemanager.FileManagerClientMode;
 import step.grid.filemanager.FileManagerConfiguration;
 import step.grid.threads.NamedThreadFactory;
 import step.grid.tokenpool.Interest;
@@ -147,18 +148,17 @@ public class Agent extends BaseServer implements AutoCloseable {
         String fileServerHost = Optional.ofNullable(agentConf.getFileServerHost()).orElse(gridUrl);
 
         // When the forker is enabled the main agent never executes keywords itself (all token messages run in
-        // forked agents), it only serves artifacts to them. In that case directory artifacts are kept archived
-        // (not exploded) and re-served verbatim; otherwise they are exploded so this agent can execute them.
+        // forked agents), it only relays artifacts to them:
         AgentForkerConfiguration agentForkerConfiguration = agentConf.getAgentForker();
         boolean forkerEnabled = agentForkerConfiguration != null && agentForkerConfiguration.enabled;
-        boolean explodeDirectories = !forkerEnabled;
+        FileManagerClientMode fileManagerClientMode = forkerEnabled ? FileManagerClientMode.RELAY : FileManagerClientMode.CONSUMER;
 
         registrationClient = new RegistrationClient(gridUrl, fileServerHost,
             agentConf.getGridConnectTimeout(), agentConf.getGridReadTimeout(),
-            agentConf.getGridMaxRetries(), agentConf.getGridRetryDelayMs(), agentConf.getGridSecurity(), explodeDirectories);
+            agentConf.getGridMaxRetries(), agentConf.getGridRetryDelayMs(), agentConf.getGridSecurity(), fileManagerClientMode);
 
 
-        fileManagerClient = initFileManager(registrationClient, agentConf.getWorkingDir(), agentConf.getFileManagerConfiguration(), explodeDirectories);
+        fileManagerClient = initFileManager(registrationClient, agentConf.getWorkingDir(), agentConf.getFileManagerConfiguration(), fileManagerClientMode);
 
         agentTokenServices = new AgentTokenServices(fileManagerClient);
         agentTokenServices.setAgentProperties(agentConf.getProperties());
@@ -311,7 +311,7 @@ public class Agent extends BaseServer implements AutoCloseable {
         return result;
     }
 
-    private FileManagerClient initFileManager(RegistrationClient registrationClient, String workingDir, FileManagerConfiguration fileManagerConfig, boolean explodeDirectories) throws IOException {
+    private FileManagerClient initFileManager(RegistrationClient registrationClient, String workingDir, FileManagerConfiguration fileManagerConfig, FileManagerClientMode mode) throws IOException {
         String fileManagerDirPath;
         if (workingDir != null) {
             fileManagerDirPath = workingDir;
@@ -323,7 +323,7 @@ public class Agent extends BaseServer implements AutoCloseable {
         if (!fileManagerDir.exists()) {
             Files.createDirectories(fileManagerDir.toPath());
         }
-        return new FileManagerClientImpl(fileManagerDir, registrationClient, fileManagerConfig, explodeDirectories);
+        return new FileManagerClientImpl(fileManagerDir, registrationClient, fileManagerConfig, mode);
     }
 
     protected String getAgentUrl() {

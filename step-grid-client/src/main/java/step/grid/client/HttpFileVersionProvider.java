@@ -30,6 +30,7 @@ import org.slf4j.LoggerFactory;
 import step.grid.client.security.JwtTokenGenerator;
 import step.grid.filemanager.ControllerCallException;
 import step.grid.filemanager.ControllerCallTimeout;
+import step.grid.filemanager.FileManagerClientMode;
 import step.grid.filemanager.FileManagerException;
 import step.grid.filemanager.FileVersion;
 import step.grid.filemanager.FileVersionId;
@@ -74,12 +75,11 @@ public class HttpFileVersionProvider implements FileVersionProvider {
     private final int maxRetries;
     private final int retryDelayMs;
     /**
-     * Whether directory artifacts are exploded (unzipped) on download. Executing consumers (a regular agent or a
-     * forked agent) need the exploded tree to build classpaths; serve-only caches (the grid proxy and a main
-     * agent running in forker mode) keep the archive as-is and re-serve it verbatim, avoiding a pointless
-     * unzip-on-download + zip-on-serve round-trip.
+     * The role this provider serves. In {@link FileManagerClientMode#CONSUMER} mode directory artifacts are
+     * exploded (unzipped) on download so they can be used directly; in {@link FileManagerClientMode#RELAY} mode
+     * they are kept archived and stored as-is to be re-served verbatim.
      */
-    private final boolean explodeDirectories;
+    private final FileManagerClientMode mode;
 
     /**
      * @param client            the JAX-RS client used to perform the download
@@ -89,11 +89,12 @@ public class HttpFileVersionProvider implements FileVersionProvider {
      * @param callTimeout       the read timeout in milliseconds
      * @param maxRetries        the maximum number of download retries on transient network errors
      * @param retryDelayMs      the delay between retries in milliseconds
-     * @param explodeDirectories whether directory artifacts are unzipped on download ({@code true}, for executing
-     *                           consumers) or kept archived and stored as-is ({@code false}, for serve-only caches)
+     * @param mode              {@link FileManagerClientMode#CONSUMER} to explode (unzip) directory artifacts on
+     *                          download for an executing consumer, {@link FileManagerClientMode#RELAY} to keep
+     *                          them archived and store them as-is for re-serving
      */
     public HttpFileVersionProvider(Client client, String fileServer, JwtTokenGenerator jwtTokenGenerator,
-                                   int connectionTimeout, int callTimeout, int maxRetries, int retryDelayMs, boolean explodeDirectories) {
+                                   int connectionTimeout, int callTimeout, int maxRetries, int retryDelayMs, FileManagerClientMode mode) {
         this.client = client;
         this.fileServer = fileServer;
         this.jwtTokenGenerator = jwtTokenGenerator;
@@ -101,7 +102,7 @@ public class HttpFileVersionProvider implements FileVersionProvider {
         this.callTimeout = callTimeout;
         this.maxRetries = maxRetries;
         this.retryDelayMs = retryDelayMs;
-        this.explodeDirectories = explodeDirectories;
+        this.mode = mode;
     }
 
     private Invocation.Builder withAuthentication(Invocation.Builder requestBuilder) {
@@ -169,10 +170,10 @@ public class HttpFileVersionProvider implements FileVersionProvider {
 
                 long t2 = System.currentTimeMillis();
                 File file = resolveWithinContainer(container, filename);
-                if (isDirectory && explodeDirectories) {
+                if (isDirectory && mode == FileManagerClientMode.CONSUMER) {
                     FileHelper.unzip(in, file);
                 } else {
-                    // A plain file, or a directory kept archived for a serve-only cache: store the stream as-is.
+                    // A plain file, or a directory kept archived for a relay cache: store the stream as-is.
                     try (BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(file))) {
                         FileHelper.copy(in, bos, 1024);
                     }
