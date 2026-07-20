@@ -269,15 +269,17 @@ public class GridProxy extends BaseServer implements AutoCloseable {
     }
 
     public Response forwardGetFileRequest(String fileId, String version) throws FileManagerException {
-        // Serve the file from the local cache, downloading it from the grid only on a cache miss. The request is
-        // served without registering an in-use lock (trackUsage=false): the proxy doesn't track runtime usage,
-        // cached versions are only evicted based on TTL.
+        // Serve the file from the local cache, downloading it from the grid only on a cache miss. The version is
+        // requested with usage tracking and the in-use lock is released only once the response has been fully
+        // streamed (see FileVersionResponseFactory#buildFileResponse). This keeps the file protected from
+        // eviction for the whole duration of the transfer, which makes parallel serving safe even with an
+        // immediate-eviction TTL of 0.
         FileVersionId fileVersionId = new FileVersionId(fileId, version);
-        FileVersion fileVersion = fileManagerClient.requestFileVersion(fileVersionId, true, false);
+        FileVersion fileVersion = fileManagerClient.requestFileVersion(fileVersionId, true);
         if (fileVersion == null) {
             return Response.status(Response.Status.NOT_FOUND).entity("File version " + fileVersionId + " not found").build();
         }
-        return FileVersionResponseFactory.buildFileResponse(fileVersion);
+        return FileVersionResponseFactory.buildFileResponse(fileManagerClient, fileVersion);
     }
 
     protected FileManagerClient getFileManagerClient() {

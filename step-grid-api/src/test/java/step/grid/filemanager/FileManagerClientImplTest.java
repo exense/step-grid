@@ -208,40 +208,6 @@ public class FileManagerClientImplTest {
     }
 
     /**
-     * AC-2: downloads of different versions of the same file are not serialized, they proceed in parallel.
-     * The provider blocks until both downloads have entered, which can only complete if they run concurrently.
-     */
-    @Test
-    public void testDifferentVersionsDownloadConcurrently() throws Exception {
-        CountDownLatch bothInside = new CountDownLatch(2);
-        fileProvider = (fileVersionId, container) -> {
-            callCount.incrementAndGet();
-            bothInside.countDown();
-            try {
-                Assert.assertTrue("Downloads of different versions must run concurrently", bothInside.await(5, TimeUnit.SECONDS));
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
-            return copyInto(container, fileVersionId);
-        };
-        initFileManagerClient(3600000, 3600000);
-
-        FileVersionId version1 = new FileVersionId("f1", "1");
-        FileVersionId version2 = new FileVersionId("f1", "2");
-        ExecutorService pool = Executors.newFixedThreadPool(2);
-        try {
-            Future<FileVersion> future1 = pool.submit((Callable<FileVersion>) () -> fileManagerClient.requestFileVersion(version1, true));
-            Future<FileVersion> future2 = pool.submit((Callable<FileVersion>) () -> fileManagerClient.requestFileVersion(version2, true));
-            Assert.assertNotNull(future1.get(10, TimeUnit.SECONDS));
-            Assert.assertNotNull(future2.get(10, TimeUnit.SECONDS));
-        } finally {
-            pool.shutdownNow();
-        }
-
-        Assert.assertEquals(2, callCount.get());
-    }
-
-    /**
      * Crash-safety: a temporary container left behind by an interrupted download (e.g. a crash) is ignored and
      * cleaned up when the cache is loaded, and a fresh request still succeeds.
      */
@@ -260,23 +226,6 @@ public class FileManagerClientImplTest {
         Assert.assertNotNull(fileVersion);
         Assert.assertEquals(1, callCount.get());
         Assert.assertTrue(fileVersion.getFile().exists());
-    }
-
-    /**
-     * AC-3 / AC-5: a request with usage tracking disabled does not register an in-use lock. The cached version
-     * is therefore evicted by the TTL cleanup on its own, without any call to releaseFileVersion.
-     */
-    @Test
-    public void testRequestWithoutUsageTrackingIsEvictedByTtl() throws Exception {
-        initFileManagerClient(200, 100);
-        FileVersion fileVersion = fileManagerClient.requestFileVersion(fileVersionId1, true, false);
-        Assert.assertNotNull(fileVersion);
-        Assert.assertEquals(1, callCount.get());
-        Assert.assertEquals(1, fileManagerFolder.list().length);
-
-        // No releaseFileVersion call: as usage wasn't tracked, the TTL cleanup must evict the file on its own
-        Thread.sleep(500);
-        Assert.assertEquals(0, fileManagerFolder.list().length);
     }
 
     private FileVersion copyInto(File container, FileVersionId fileVersionId) throws FileManagerException {

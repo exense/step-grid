@@ -35,16 +35,6 @@ public class CachedFileVersion {
         return lastAccessTime;
     }
 
-    /**
-     * Refreshes the last access time of this cached version <b>without</b> incrementing the in-use
-     * counter. Used when a file version is read by a consumer that must not register an in-use lock
-     * (e.g. the main agent serving a forked agent, or the grid proxy cache). This keeps the TTL based
-     * eviction driven by the last actual access while preserving the "no usage tracking" semantics.
-     */
-    public void touch() {
-        this.lastAccessTime = System.currentTimeMillis();
-    }
-
     public int updateUsage() {
         this.lastAccessTime = System.currentTimeMillis();
         int currentCountInUse = this.inUse.incrementAndGet();

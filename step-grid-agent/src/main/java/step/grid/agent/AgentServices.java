@@ -88,9 +88,11 @@ public class AgentServices extends AbstractGridServices {
      * The endpoint is controller-compatible (same path and wire format as the grid server) so that a forked
      * agent's {@code RegistrationClient} can download from its main agent exactly as it would from the
      * controller. On a cache miss the main agent's file manager transparently downloads the version from the
-     * controller. The request is served <b>without</b> registering an in-use lock (AC-3): forked agents
-     * manage their own ephemeral cache, so the main agent only needs to make the artifact available, not to
-     * track its usage.
+     * controller. The version is requested <b>with</b> usage tracking and the in-use lock is released only
+     * once the response has been fully streamed (see
+     * {@link FileVersionResponseFactory#buildFileResponse(step.grid.filemanager.FileManagerClient, FileVersion)}).
+     * This keeps the file protected from eviction for the whole duration of the transfer, which makes parallel
+     * serving safe even with an immediate-eviction TTL of 0.
      */
     @Secured
     @GET
@@ -101,7 +103,7 @@ public class AgentServices extends AbstractGridServices {
             logger.debug("Serving file version " + fileVersionId + " to a forked agent (resolving it from the local cache, "
                 + "downloading it from the upstream on a cache miss)");
         }
-        FileVersion fileVersion = fileManagerClient.requestFileVersion(fileVersionId, true, false);
+        FileVersion fileVersion = fileManagerClient.requestFileVersion(fileVersionId, true);
         if (fileVersion == null) {
             logger.warn("File version " + fileVersionId + " requested by a forked agent was not found");
             return Response.status(Response.Status.NOT_FOUND).entity("File version " + fileVersionId + " not found").build();
@@ -109,7 +111,7 @@ public class AgentServices extends AbstractGridServices {
         if (logger.isDebugEnabled()) {
             logger.debug("Served file version " + fileVersionId + " to a forked agent from " + fileVersion.getFile().getAbsolutePath());
         }
-        return FileVersionResponseFactory.buildFileResponse(fileVersion);
+        return FileVersionResponseFactory.buildFileResponse(fileManagerClient, fileVersion);
     }
 
     class ExecutionContext {

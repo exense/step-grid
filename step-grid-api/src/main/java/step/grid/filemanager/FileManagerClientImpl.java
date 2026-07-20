@@ -21,9 +21,6 @@ package step.grid.filemanager;
 import java.io.File;
 import java.io.IOException;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
-import java.util.concurrent.ConcurrentHashMap;
 
 import ch.exense.commons.io.FileHelper;
 import org.slf4j.Logger;
@@ -41,14 +38,6 @@ public class FileManagerClientImpl extends AbstractFileManager implements FileMa
     protected FileVersionProvider fileProvider;
 
     /**
-     * Tracks the downloads currently in progress, keyed by {@link FileVersionId}. This enforces the
-     * single-writer guarantee: for any given {@code (fileId, version)} only one thread performs the
-     * download while concurrent requests for the same version block on and reuse its result. Downloads of
-     * <i>different</i> versions (even of the same file) proceed in parallel.
-     */
-    private final ConcurrentHashMap<FileVersionId, CompletableFuture<CachedFileVersion>> downloadsInProgress = new ConcurrentHashMap<>();
-
-    /**
      * @param cacheFolder  the folder to be used to store the {@link FileVersion}s
      * @param fileProvider the file provider responsible for the retrieval of the {@link FileVersion} if absent of the cache
      */
@@ -60,11 +49,6 @@ public class FileManagerClientImpl extends AbstractFileManager implements FileMa
 
     @Override
     public FileVersion requestFileVersion(FileVersionId fileVersionId, boolean cleanableFromClientCache) throws FileManagerException {
-        return requestFileVersion(fileVersionId, cleanableFromClientCache, true);
-    }
-
-    @Override
-    public FileVersion requestFileVersion(FileVersionId fileVersionId, boolean cleanableFromClientCache, boolean trackUsage) throws FileManagerException {
         // The fileId and version end up as path segments of the cache folder (<cacheRoot>/<fileId>/<version>).
         // They may originate from untrusted HTTP callers (e.g. the main-agent and grid-proxy file endpoints),
         // so reject any value containing path-traversal or separator characters before resolving any path.
@@ -72,83 +56,38 @@ public class FileManagerClientImpl extends AbstractFileManager implements FileMa
         try {
             fileHandleCacheLock.readLock().lock();
             Map<FileVersionId, CachedFileVersion> versionCache = getVersionMap(fileVersionId.getFileId());
-
-            // Fast path: cache hit
+            // The whole lookup / download / publication / usage sequence is serialized on the version map monitor,
+            // the same monitor the release and eviction paths synchronize on. This guarantees a single download
+            // per (fileId, version) and, crucially when the cache is configured for immediate eviction (a TTL of
+            // 0, where a version is deleted as soon as its usage drops back to 0 in releaseFileVersionFromCache),
+            // that a version can never be evicted between being published to the cache and the caller acquiring
+            // its usage lock.
             synchronized (versionCache) {
                 CachedFileVersion cachedFileVersion = versionCache.get(fileVersionId);
-                if (cachedFileVersion != null) {
-                    applyUsage(cachedFileVersion, trackUsage);
+                if (cachedFileVersion == null) {
+                    if (fileProvider == null) {
+                        if (logger.isDebugEnabled()) {
+                            logger.debug("Cache miss: file version " + fileVersionId + " not in local cache and no file provider "
+                                + "configured to fetch it from an upstream, returning null");
+                        }
+                        return null;
+                    }
                     if (logger.isDebugEnabled()) {
-                        logger.debug("Cache hit: file version " + fileVersionId + " served from local cache (trackUsage="
-                            + trackUsage + ", usageCount=" + cachedFileVersion.getCurrentUsageCount() + ")");
+                        logger.debug("Cache miss: file version " + fileVersionId + " not in local cache, fetching it from the upstream");
                     }
-                    return cachedFileVersion.getFileVersion();
-                }
-            }
-
-            if (fileProvider == null) {
-                if (logger.isDebugEnabled()) {
-                    logger.debug("Cache miss: file version " + fileVersionId + " not in local cache and no file provider "
-                        + "configured to fetch it from an upstream, returning null");
-                }
-                return null;
-            }
-
-            if (logger.isDebugEnabled()) {
-                logger.debug("Cache miss: file version " + fileVersionId + " not in local cache, will fetch it from the upstream");
-            }
-
-            // Cache miss: ensure a single download per (fileId, version), concurrent callers block and reuse it
-            CompletableFuture<CachedFileVersion> ourFuture = new CompletableFuture<>();
-            CompletableFuture<CachedFileVersion> inProgress = downloadsInProgress.putIfAbsent(fileVersionId, ourFuture);
-            CachedFileVersion cachedFileVersion;
-            if (inProgress == null) {
-                // We are the single writer for this version (putIfAbsent return null if the entry was absent)
-                try {
-                    // Re-check the cache: a previous writer may have completed and removed its in-progress entry
-                    // between our fast-path miss above and us claiming the download slot. This avoids a redundant
-                    // download (and an atomic move onto an already existing final container).
-                    synchronized (versionCache) {
-                        cachedFileVersion = versionCache.get(fileVersionId);
+                    long downloadStart = System.currentTimeMillis();
+                    cachedFileVersion = downloadAndStore(fileVersionId, cleanableFromClientCache);
+                    versionCache.put(fileVersionId, cachedFileVersion);
+                    if (logger.isDebugEnabled()) {
+                        logger.debug("Fetched file version " + fileVersionId + " from the upstream and stored it in the local cache in "
+                            + (System.currentTimeMillis() - downloadStart) + "ms");
                     }
-                    if (cachedFileVersion == null) {
-                        if (logger.isDebugEnabled()) {
-                            logger.debug("Fetching file version " + fileVersionId + " from the upstream (single writer for this version)");
-                        }
-                        long downloadStart = System.currentTimeMillis();
-                        cachedFileVersion = downloadAndStore(fileVersionId, cleanableFromClientCache);
-                        synchronized (versionCache) {
-                            versionCache.put(fileVersionId, cachedFileVersion);
-                        }
-                        if (logger.isDebugEnabled()) {
-                            logger.debug("Fetched file version " + fileVersionId + " from the upstream and stored it in the local cache in "
-                                + (System.currentTimeMillis() - downloadStart) + "ms");
-                        }
-                    } else if (logger.isDebugEnabled()) {
-                        // Another writer completed the download between our fast-path miss and us claiming the slot
-                        logger.debug("File version " + fileVersionId + " appeared in the local cache while acquiring the download slot "
-                            + "(completed by a concurrent writer), skipping the upstream fetch");
-                    }
-                    ourFuture.complete(cachedFileVersion);
-                } catch (Throwable t) {
-                    ourFuture.completeExceptionally(t);
-                    if (t instanceof FileManagerException) {
-                        throw (FileManagerException) t;
-                    }
-                    throw new FileManagerException(fileVersionId, "Error while downloading file version " + fileVersionId, t);
-                } finally {
-                    downloadsInProgress.remove(fileVersionId, ourFuture);
+                } else if (logger.isDebugEnabled()) {
+                    logger.debug("Cache hit: file version " + fileVersionId + " served from local cache");
                 }
-            } else {
-                // Another thread is already downloading this version, wait for and reuse its result
-                if (logger.isDebugEnabled()) {
-                    logger.debug("File version " + fileVersionId + " is currently being fetched from the upstream by another thread, "
-                        + "waiting for and reusing its result");
-                }
-                cachedFileVersion = joinDownload(fileVersionId, inProgress);
+                cachedFileVersion.updateUsage();
+                return cachedFileVersion.getFileVersion();
             }
-            applyUsage(cachedFileVersion, trackUsage);
-            return cachedFileVersion.getFileVersion();
         } finally {
             fileHandleCacheLock.readLock().unlock();
         }
@@ -169,26 +108,6 @@ public class FileManagerClientImpl extends AbstractFileManager implements FileMa
     private static void validatePathSegment(String name, String value) {
         if (value == null || value.contains("..") || value.contains("/") || value.contains("\\")) {
             throw new IllegalArgumentException("Invalid " + name + ": must not be null or contain path traversal sequences");
-        }
-    }
-
-    private void applyUsage(CachedFileVersion cachedFileVersion, boolean trackUsage) {
-        if (trackUsage) {
-            cachedFileVersion.updateUsage();
-        } else {
-            cachedFileVersion.touch();
-        }
-    }
-
-    private CachedFileVersion joinDownload(FileVersionId fileVersionId, CompletableFuture<CachedFileVersion> inProgress) throws FileManagerException {
-        try {
-            return inProgress.join();
-        } catch (CompletionException e) {
-            Throwable cause = e.getCause() != null ? e.getCause() : e;
-            if (cause instanceof FileManagerException) {
-                throw (FileManagerException) cause;
-            }
-            throw new FileManagerException(fileVersionId, "Error while waiting for the download of file version " + fileVersionId, cause);
         }
     }
 

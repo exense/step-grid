@@ -107,7 +107,7 @@ public class AbstractFileManager {
                                 CachedFileVersion cachedFileVersion = new CachedFileVersion(fileVersion, isCleanable);
                                 logger.debug("Adding file to cache. file id: " + fileId + " and version " + version);
 
-                                Map<FileVersionId, CachedFileVersion> fileVersions = fileHandleCache.computeIfAbsent(fileId, f -> new ConcurrentHashMap<FileVersionId, CachedFileVersion>());
+                                Map<FileVersionId, CachedFileVersion> fileVersions = fileHandleCache.computeIfAbsent(fileId, f -> new HashMap<>());
                                 fileVersions.put(fileVersionId, cachedFileVersion);
                             } else {
                                 logger.error("The file " + file.getAbsolutePath() + " is not a directory!");

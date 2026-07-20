@@ -22,6 +22,7 @@ import ch.exense.commons.io.FileHelper;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.StreamingOutput;
+import step.grid.filemanager.FileManagerClient;
 import step.grid.filemanager.FileVersion;
 
 import java.io.File;
@@ -44,19 +45,41 @@ public class FileVersionResponseFactory {
     private FileVersionResponseFactory() {
     }
 
-    public static Response buildFileResponse(FileVersion fileVersion) {
+    /**
+     * Builds a response streaming the given cached {@link FileVersion} and <b>releases the in-use lock held
+     * on it once the streaming completes</b> (on success, on error, or on client disconnect).
+     * <p>
+     * The caller must have acquired the version with usage tracking enabled
+     * ({@code requestFileVersion(..., trackUsage=true)}) so that the file cannot be evicted by the cleanup
+     * job while it is being streamed. The content of the file is only read here, inside the
+     * {@link StreamingOutput}, i.e. after the caller's resource method has returned and released any cache
+     * lock. Tying the {@link FileManagerClient#releaseFileVersion(FileVersion)} call to the end of the stream
+     * therefore keeps the usage count above zero for the whole duration of the transfer, which is what makes
+     * parallel serving safe (including with an immediate-eviction TTL of 0) and prevents a cleanup sweep from
+     * deleting the file mid-stream.
+     *
+     * @param fileManagerClient the client from which the version was requested, used to release the usage lock
+     * @param fileVersion       the cached version to stream, acquired with {@code trackUsage=true}
+     */
+    public static Response buildFileResponse(FileManagerClient fileManagerClient, FileVersion fileVersion) {
         File file = fileVersion.getFile();
         boolean isDirectory = fileVersion.isDirectory();
         StreamingOutput fileStream = output -> {
-            if (isDirectory) {
-                // The cached directory is stored unzipped, re-zip it to match the controller wire format
-                FileHelper.zip(file, output);
-            } else {
-                try (InputStream inputStream = new FileInputStream(file)) {
-                    FileHelper.copy(inputStream, output, 2048);
+            try {
+                if (isDirectory) {
+                    // The cached directory is stored unzipped, re-zip it to match the controller wire format
+                    FileHelper.zip(file, output);
+                } else {
+                    try (InputStream inputStream = new FileInputStream(file)) {
+                        FileHelper.copy(inputStream, output, 2048);
+                    }
                 }
+                output.flush();
+            } finally {
+                // Release the usage lock only once the file has been fully streamed (or the transfer failed),
+                // so the version stays protected from eviction for the entire duration of the transfer.
+                fileManagerClient.releaseFileVersion(fileVersion);
             }
-            output.flush();
         };
         return Response.ok(fileStream, MediaType.APPLICATION_OCTET_STREAM)
             .header("content-disposition", "attachment; filename = " + file.getName() + "; type = " + (isDirectory ? "dir" : "file"))
