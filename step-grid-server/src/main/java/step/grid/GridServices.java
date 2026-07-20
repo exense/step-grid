@@ -18,7 +18,6 @@
  ******************************************************************************/
 package step.grid;
 
-import ch.exense.commons.io.FileHelper;
 import io.swagger.v3.oas.annotations.Hidden;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
@@ -28,6 +27,7 @@ import jakarta.ws.rs.core.StreamingOutput;
 import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
 import org.glassfish.jersey.media.multipart.FormDataParam;
 import step.grid.agent.RegistrationMessage;
+import step.grid.app.filemanager.FileVersionResponseFactory;
 import step.grid.filemanager.FileManager;
 import step.grid.filemanager.FileManagerException;
 import step.grid.filemanager.FileVersion;
@@ -62,34 +62,8 @@ public class GridServices {
     @Path("/file/{id}/{version}")
     public Response getFile(@PathParam("id") String id, @PathParam("version") String version) throws IOException, FileManagerException {
         FileVersionId versionId = new FileVersionId(id, version);
-        FileVersion fileVersion = null;
-        try {
-            fileVersion = fileManager.getFileVersion(versionId);
-
-            File file = fileVersion.getFile();
-            FileInputStream inputStream = new FileInputStream(file);
-
-            StreamingOutput fileStream = new StreamingOutput() {
-
-                @Override
-                public void write(OutputStream output) throws IOException, WebApplicationException {
-                    try {
-                        // This buffer size doesn't seem to have a significant effect on the performance
-                        FileHelper.copy(inputStream, output, 2048);
-                        output.flush();
-                    } finally {
-                        inputStream.close();
-                    }
-                }
-            };
-
-            return Response.ok(fileStream, MediaType.APPLICATION_OCTET_STREAM)
-                .header("content-disposition", "attachment; filename = " + file.getName() + "; type = " + (fileVersion.isDirectory() ? "dir" : "file")).build();
-        } finally {
-            if (fileVersion != null) {
-                fileManager.releaseFileVersion(fileVersion);
-            }
-        }
+        FileVersion fileVersion = fileManager.getFileVersion(versionId);
+        return FileVersionResponseFactory.buildFileResponse(fileVersion, fileManager::releaseFileVersion);
     }
 
     @Secured

@@ -58,6 +58,13 @@ public class AbstractFileManager {
      * atomic rename.
      */
     protected static final String TEMP_CONTAINER_DIR = ".tmp";
+    /**
+     * Name of the marker file, at the cache root, recording the directory storage mode of a client cache. Its
+     * presence means directories are stored <b>archived</b> (raw, serve-only mode); its absence means directories
+     * are stored <b>exploded</b> (the default, for executing consumers). A change of mode between runs makes the
+     * on-disk cache unusable, so the cache is dropped and rebuilt (see {@code FileManagerClientImpl}).
+     */
+    protected static final String CACHE_MODE_FILENAME = ".cachemode";
     protected final File cacheFolder;
     protected ConcurrentHashMap<String, Map<FileVersionId, CachedFileVersion>> fileHandleCache = new ConcurrentHashMap<>();
     protected FileManagerConfiguration fileManagerConfiguration;
@@ -88,7 +95,7 @@ public class AbstractFileManager {
                 FileHelper.safeDeleteFolder(tempContainerRoot);
             }
             for (File file : cacheFolder.listFiles()) {
-                if (file.getName().equals(TEMP_CONTAINER_DIR)) {
+                if (file.getName().equals(TEMP_CONTAINER_DIR) || file.getName().equals(CACHE_MODE_FILENAME)) {
                     continue;
                 }
                 try {
@@ -170,6 +177,15 @@ public class AbstractFileManager {
      */
     protected File getTempContainerRootFolder() {
         return new File(cacheFolder, TEMP_CONTAINER_DIR);
+    }
+
+    /**
+     * Deletes the whole cache folder and recreates it empty. Used to drop a cache that has become unusable,
+     * e.g. after a directory storage-mode change.
+     */
+    protected void wipeCacheFolder() {
+        FileHelper.safeDeleteFolder(cacheFolder);
+        cacheFolder.mkdirs();
     }
 
     /**

@@ -111,7 +111,7 @@ public class AgentServices extends AbstractGridServices {
         if (logger.isDebugEnabled()) {
             logger.debug("Served file version " + fileVersionId + " to a forked agent from " + fileVersion.getFile().getAbsolutePath());
         }
-        return FileVersionResponseFactory.buildFileResponse(fileManagerClient, fileVersion);
+        return FileVersionResponseFactory.buildFileResponse(fileVersion, fileManagerClient::releaseFileVersion);
     }
 
     class ExecutionContext {

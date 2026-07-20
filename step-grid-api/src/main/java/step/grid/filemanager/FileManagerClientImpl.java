@@ -19,6 +19,7 @@
 package step.grid.filemanager;
 
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Map;
 
@@ -38,13 +39,67 @@ public class FileManagerClientImpl extends AbstractFileManager implements FileMa
     protected FileVersionProvider fileProvider;
 
     /**
+     * Whether directory artifacts are stored exploded (unzipped). Must match the mode of the {@link FileVersionProvider}
+     * (e.g. {@code HttpFileVersionProvider}). Serve-only caches (grid proxy, forker main agent) store directories
+     * archived ({@code false}); executing consumers store them exploded ({@code true}).
+     */
+    protected final boolean explodeDirectories;
+
+    /**
      * @param cacheFolder  the folder to be used to store the {@link FileVersion}s
      * @param fileProvider the file provider responsible for the retrieval of the {@link FileVersion} if absent of the cache
      */
     public FileManagerClientImpl(File cacheFolder, FileVersionProvider fileProvider, FileManagerConfiguration fileManagerConfiguration) {
+        this(cacheFolder, fileProvider, fileManagerConfiguration, true);
+    }
+
+    /**
+     * @param explodeDirectories whether directory artifacts are stored exploded (executing consumer) or kept
+     *                           archived (serve-only cache). Must match the mode of the {@code fileProvider}.
+     */
+    public FileManagerClientImpl(File cacheFolder, FileVersionProvider fileProvider, FileManagerConfiguration fileManagerConfiguration, boolean explodeDirectories) {
         super(cacheFolder, fileManagerConfiguration);
         this.fileProvider = fileProvider;
+        this.explodeDirectories = explodeDirectories;
+        reconcileCacheStorageMode();
         loadCache();
+    }
+
+    /**
+     * Reconciles the on-disk cache with the current directory storage mode. The mode is recorded by the
+     * presence/absence of the {@link #CACHE_MODE_FILENAME} marker: present means directories are stored archived
+     * (raw / serve-only), absent means exploded (executing consumer). If the mode changed since the cache was
+     * populated, the on-disk layout is incompatible with how files would now be stored and served, so the cache
+     * is dropped and rebuilt from the upstream on demand. Runs before {@link #loadCache()}.
+     */
+    private void reconcileCacheStorageMode() {
+        // Directory storage mode is persisted by the presence (raw) or absence (exploded) of the marker file.
+        File marker = new File(cacheFolder, CACHE_MODE_FILENAME);
+        boolean rawCacheOnDisk = marker.exists();
+        boolean rawMode = !explodeDirectories;
+        if (rawCacheOnDisk != rawMode) {
+            // The persisted mode differs from the current one: any cached content is stored in a way that is
+            // incompatible with how files are now stored and served, so drop the cache and let it rebuild from
+            // the upstream on demand. Wiping is a harmless no-op when the cache is empty (e.g. on first start).
+            wipeCacheFolder();
+            if (rawMode) {
+                writeCacheModeMarker(marker);
+            }
+            logger.info("File manager cache in {} (re)initialized for '{}' directory storage mode",
+                cacheFolder.getAbsolutePath(), rawMode ? "raw" : "exploded");
+        }
+    }
+
+    private void writeCacheModeMarker(File marker) {
+        try {
+            marker.getParentFile().mkdirs();
+            try (FileWriter writer = new FileWriter(marker)) {
+                writer.write("raw");
+            }
+        } catch (IOException e) {
+            logger.warn("Could not write the file manager cache mode marker " + marker.getAbsolutePath()
+                + ". The cache may be unnecessarily dropped on the next restart.", e);
+        }
     }
 
     @Override

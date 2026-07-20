@@ -175,8 +175,8 @@ public class GridProxy extends BaseServer implements AutoCloseable {
     private FileManagerClient initFileManagerClient(GridProxyConfiguration gridProxyConfiguration) {
         File cacheFolder = new File(gridProxyConfiguration.getFileCacheDirectory());
         HttpFileVersionProvider fileVersionProvider = new HttpFileVersionProvider(client, gridUrl, jwtTokenGenerator,
-            gridConnectTimeout, gridReadTimeout, gridProxyConfiguration.getGridMaxRetries(), gridProxyConfiguration.getGridRetryDelayMs());
-        return new FileManagerClientImpl(cacheFolder, fileVersionProvider, gridProxyConfiguration.getFileManagerConfiguration());
+            gridConnectTimeout, gridReadTimeout, gridProxyConfiguration.getGridMaxRetries(), gridProxyConfiguration.getGridRetryDelayMs(), false);
+        return new FileManagerClientImpl(cacheFolder, fileVersionProvider, gridProxyConfiguration.getFileManagerConfiguration(), false);
     }
 
     protected void beforeServerStart(ResourceConfig resourceConfig) throws Exception {
@@ -273,7 +273,7 @@ public class GridProxy extends BaseServer implements AutoCloseable {
         if (fileVersion == null) {
             return Response.status(Response.Status.NOT_FOUND).entity("File version " + fileVersionId + " not found").build();
         }
-        return FileVersionResponseFactory.buildFileResponse(fileManagerClient, fileVersion);
+        return FileVersionResponseFactory.buildFileResponse(fileVersion, fileManagerClient::releaseFileVersion);
     }
 
     protected FileManagerClient getFileManagerClient() {

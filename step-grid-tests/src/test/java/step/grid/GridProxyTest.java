@@ -1,21 +1,31 @@
 package step.grid;
 
 import ch.exense.commons.io.FileHelper;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Test;
 import step.grid.agent.AbstractGridTest;
 import step.grid.agent.Agent;
 import step.grid.agent.conf.AgentConf;
 import step.grid.client.GridClientConfiguration;
 import step.grid.client.LocalGridClientImpl;
+import step.grid.client.TestMessageHandler;
 import step.grid.filemanager.FileManagerConfiguration;
 import step.grid.filemanager.FileManagerImplConfig;
+import step.grid.filemanager.FileVersionId;
+import step.grid.io.OutputMessage;
 import step.grid.proxy.GridProxy;
 import step.grid.proxy.conf.GridProxyConfiguration;
 
 import java.io.File;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class GridProxyTest extends GridTest {
 
@@ -64,6 +74,37 @@ public class GridProxyTest extends GridTest {
         if (gridProxy != null) {
             gridProxy.close();
         }
+    }
+
+    /**
+     * Fetching a directory artifact through the proxy: the proxy caches the directory <b>archived</b> (raw, no
+     * explode) and re-serves it verbatim with a {@code type = dir} response, and the agent (behind the proxy)
+     * explodes it locally. Verifies the whole raw-storage / re-serve path end-to-end by reading back the
+     * transferred folder's structure.
+     */
+    @Test
+    public void testFolderRegistrationThroughProxy() throws Exception {
+        TokenWrapper token = selectToken();
+
+        // Create a simple directory structure
+        File tempDir = FileHelper.createTempFolder();
+        File subFolder = new File(tempDir + "/SubFolder1");
+        subFolder.mkdirs();
+        new File(subFolder + "/File1").createNewFile();
+        new File(tempDir + "/File1").createNewFile();
+
+        // Register the directory on the grid; the agent downloads it from the proxy, which caches it archived
+        FileVersionId fileHandle = client.registerFile(tempDir, true).getVersionId();
+
+        JsonNode node = new ObjectMapper().createObjectNode().put("folder", fileHandle.getFileId()).put("fileVersion", fileHandle.getVersion());
+
+        // TestMessageHandler resolves the folder version (exploded by the agent) and returns its structure
+        OutputMessage output = client.call(token.getID(), node, TestMessageHandler.class.getName(), null, new HashMap<>(), 100000);
+        client.returnTokenHandle(token.getID());
+
+        List<String> content = Arrays.stream(output.getPayload().get("content").asText().split(";")).sorted().collect(Collectors.toList());
+        List<String> expected = Arrays.stream("SubFolder1;File1;".split(";")).sorted().collect(Collectors.toList());
+        Assert.assertEquals(expected, content);
     }
 
 }

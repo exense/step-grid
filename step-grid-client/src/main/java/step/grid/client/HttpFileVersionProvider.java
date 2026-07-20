@@ -73,6 +73,13 @@ public class HttpFileVersionProvider implements FileVersionProvider {
     private final int callTimeout;
     private final int maxRetries;
     private final int retryDelayMs;
+    /**
+     * Whether directory artifacts are exploded (unzipped) on download. Executing consumers (a regular agent or a
+     * forked agent) need the exploded tree to build classpaths; serve-only caches (the grid proxy and a main
+     * agent running in forker mode) keep the archive as-is and re-serve it verbatim, avoiding a pointless
+     * unzip-on-download + zip-on-serve round-trip.
+     */
+    private final boolean explodeDirectories;
 
     /**
      * @param client            the JAX-RS client used to perform the download
@@ -82,9 +89,11 @@ public class HttpFileVersionProvider implements FileVersionProvider {
      * @param callTimeout       the read timeout in milliseconds
      * @param maxRetries        the maximum number of download retries on transient network errors
      * @param retryDelayMs      the delay between retries in milliseconds
+     * @param explodeDirectories whether directory artifacts are unzipped on download ({@code true}, for executing
+     *                           consumers) or kept archived and stored as-is ({@code false}, for serve-only caches)
      */
     public HttpFileVersionProvider(Client client, String fileServer, JwtTokenGenerator jwtTokenGenerator,
-                                   int connectionTimeout, int callTimeout, int maxRetries, int retryDelayMs) {
+                                   int connectionTimeout, int callTimeout, int maxRetries, int retryDelayMs, boolean explodeDirectories) {
         this.client = client;
         this.fileServer = fileServer;
         this.jwtTokenGenerator = jwtTokenGenerator;
@@ -92,6 +101,7 @@ public class HttpFileVersionProvider implements FileVersionProvider {
         this.callTimeout = callTimeout;
         this.maxRetries = maxRetries;
         this.retryDelayMs = retryDelayMs;
+        this.explodeDirectories = explodeDirectories;
     }
 
     private Invocation.Builder withAuthentication(Invocation.Builder requestBuilder) {
@@ -159,15 +169,16 @@ public class HttpFileVersionProvider implements FileVersionProvider {
 
                 long t2 = System.currentTimeMillis();
                 File file = resolveWithinContainer(container, filename);
-                if (isDirectory) {
+                if (isDirectory && explodeDirectories) {
                     FileHelper.unzip(in, file);
                 } else {
+                    // A plain file, or a directory kept archived for a serve-only cache: store the stream as-is.
                     try (BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(file))) {
                         FileHelper.copy(in, bos, 1024);
                     }
                 }
                 if (logger.isDebugEnabled()) {
-                    logger.debug("Uncompressed file " + fileVersionId + " in " + (System.currentTimeMillis() - t2) + "ms to " + file.getAbsoluteFile());
+                    logger.debug("Stored file " + fileVersionId + " in " + (System.currentTimeMillis() - t2) + "ms to " + file.getAbsoluteFile());
                 }
 
                 return new FileVersion(file, fileVersionId, isDirectory);

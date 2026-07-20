@@ -55,7 +55,8 @@ public class RegistrationClient implements FileVersionProvider {
     int retryDelayMs;
 
     public RegistrationClient(String registrationServer, String fileServer, int connectionTimeout, int callTimeout,
-                              int maxRetries, int retryDelayMs, SymmetricSecurityConfiguration gridSecurityConfiguration) {
+                              int maxRetries, int retryDelayMs, SymmetricSecurityConfiguration gridSecurityConfiguration,
+                              boolean explodeDirectories) {
         super();
         this.registrationServer = registrationServer;
         this.client = ClientBuilder.newClient();
@@ -69,7 +70,7 @@ public class RegistrationClient implements FileVersionProvider {
         jwtTokenGenerator = JwtTokenGenerator.initializeJwtTokenGenerator(gridSecurityConfiguration, "registration client");
         // Delegate the actual artifact download to the shared HTTP file version provider
         this.fileVersionProvider = new HttpFileVersionProvider(client, fileServer, jwtTokenGenerator,
-            connectionTimeout, callTimeout, maxRetries, retryDelayMs);
+            connectionTimeout, callTimeout, maxRetries, retryDelayMs, explodeDirectories);
     }
 
     public boolean sendRegistrationMessage(RegistrationMessage message) {

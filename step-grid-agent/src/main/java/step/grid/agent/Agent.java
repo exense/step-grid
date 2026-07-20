@@ -146,12 +146,19 @@ public class Agent extends BaseServer implements AutoCloseable {
         String gridUrl = agentConf.getGridHost();
         String fileServerHost = Optional.ofNullable(agentConf.getFileServerHost()).orElse(gridUrl);
 
+        // When the forker is enabled the main agent never executes keywords itself (all token messages run in
+        // forked agents), it only serves artifacts to them. In that case directory artifacts are kept archived
+        // (not exploded) and re-served verbatim; otherwise they are exploded so this agent can execute them.
+        AgentForkerConfiguration agentForkerConfiguration = agentConf.getAgentForker();
+        boolean forkerEnabled = agentForkerConfiguration != null && agentForkerConfiguration.enabled;
+        boolean explodeDirectories = !forkerEnabled;
+
         registrationClient = new RegistrationClient(gridUrl, fileServerHost,
             agentConf.getGridConnectTimeout(), agentConf.getGridReadTimeout(),
-            agentConf.getGridMaxRetries(), agentConf.getGridRetryDelayMs(), agentConf.getGridSecurity());
+            agentConf.getGridMaxRetries(), agentConf.getGridRetryDelayMs(), agentConf.getGridSecurity(), explodeDirectories);
 
 
-        fileManagerClient = initFileManager(registrationClient, agentConf.getWorkingDir(), agentConf.getFileManagerConfiguration());
+        fileManagerClient = initFileManager(registrationClient, agentConf.getWorkingDir(), agentConf.getFileManagerConfiguration(), explodeDirectories);
 
         agentTokenServices = new AgentTokenServices(fileManagerClient);
         agentTokenServices.setAgentProperties(agentConf.getProperties());
@@ -184,8 +191,7 @@ public class Agent extends BaseServer implements AutoCloseable {
         // The agent forker is created after the server has started so that forked agents can be pointed at
         // this main agent's own URL as their file server: a forked agent never contacts the controller
         // directly, it downloads its artifacts from its main agent (which caches them once on its behalf).
-        AgentForkerConfiguration agentForkerConfiguration = agentConf.getAgentForker();
-        if (agentForkerConfiguration != null && agentForkerConfiguration.enabled) {
+        if (forkerEnabled) {
             logger.info("Agent forker is enabled. All token messages will be executed in forked agent processes.");
             agentForker = new AgentForker(agentForkerConfiguration, this.agentUrl);
         } else {
@@ -305,7 +311,7 @@ public class Agent extends BaseServer implements AutoCloseable {
         return result;
     }
 
-    private FileManagerClient initFileManager(RegistrationClient registrationClient, String workingDir, FileManagerConfiguration fileManagerConfig) throws IOException {
+    private FileManagerClient initFileManager(RegistrationClient registrationClient, String workingDir, FileManagerConfiguration fileManagerConfig, boolean explodeDirectories) throws IOException {
         String fileManagerDirPath;
         if (workingDir != null) {
             fileManagerDirPath = workingDir;
@@ -317,7 +323,7 @@ public class Agent extends BaseServer implements AutoCloseable {
         if (!fileManagerDir.exists()) {
             Files.createDirectories(fileManagerDir.toPath());
         }
-        return new FileManagerClientImpl(fileManagerDir, registrationClient, fileManagerConfig);
+        return new FileManagerClientImpl(fileManagerDir, registrationClient, fileManagerConfig, explodeDirectories);
     }
 
     protected String getAgentUrl() {

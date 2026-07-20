@@ -22,12 +22,12 @@ import ch.exense.commons.io.FileHelper;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.StreamingOutput;
-import step.grid.filemanager.FileManagerClient;
 import step.grid.filemanager.FileVersion;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
+import java.util.function.Consumer;
 
 /**
  * Builds a controller-compatible HTTP {@link Response} streaming the content of a cached {@link FileVersion}.
@@ -37,8 +37,16 @@ import java.io.InputStream;
  * so that any downstream consumer (a forked agent, or a proxied agent) can be served transparently regardless
  * of whether it ultimately fetches from the controller, a grid proxy or a main agent.
  * <p>
- * Unlike the grid server, which stores directories as a single zip file, the file manager <i>client</i> stores
- * directories <b>unzipped</b>. Directories are therefore re-zipped on the fly when re-served.
+ * A directory may be stored either <b>exploded</b> (a real directory on disk, e.g. an executing agent's cache),
+ * in which case it is zipped on the fly, or already <b>archived</b> as a single zip file (the grid server, and
+ * serve-only client caches), in which case it is streamed as-is. Both cases produce the {@code type = dir} wire
+ * format. The form is detected from the on-disk artifact, so no caller needs to know how it was stored.
+ * <p>
+ * The usage lock on the served version is released only once the streaming completes (on success, error, or
+ * client disconnect), via the {@code releaser} callback. The caller must therefore acquire the version with
+ * usage tracking so it can't be evicted mid-stream; tying the release to the end of the {@link StreamingOutput}
+ * keeps the usage count above zero for the whole transfer, which makes parallel serving safe (including with an
+ * immediate-eviction TTL of 0) and prevents a cleanup sweep from deleting the file mid-stream.
  */
 public class FileVersionResponseFactory {
 
@@ -46,28 +54,21 @@ public class FileVersionResponseFactory {
     }
 
     /**
-     * Builds a response streaming the given cached {@link FileVersion} and <b>releases the in-use lock held
-     * on it once the streaming completes</b> (on success, on error, or on client disconnect).
-     * <p>
-     * The caller must have acquired the version with usage tracking enabled
-     * ({@code requestFileVersion(..., trackUsage=true)}) so that the file cannot be evicted by the cleanup
-     * job while it is being streamed. The content of the file is only read here, inside the
-     * {@link StreamingOutput}, i.e. after the caller's resource method has returned and released any cache
-     * lock. Tying the {@link FileManagerClient#releaseFileVersion(FileVersion)} call to the end of the stream
-     * therefore keeps the usage count above zero for the whole duration of the transfer, which is what makes
-     * parallel serving safe (including with an immediate-eviction TTL of 0) and prevents a cleanup sweep from
-     * deleting the file mid-stream.
+     * Builds a response streaming the given {@link FileVersion} and releasing it once the streaming completes.
      *
-     * @param fileManagerClient the client from which the version was requested, used to release the usage lock
-     * @param fileVersion       the cached version to stream, acquired with {@code trackUsage=true}
+     * @param fileVersion the version to stream (acquired with usage tracking)
+     * @param releaser    releases the version's usage lock; invoked once the transfer finishes or fails, e.g.
+     *                    {@code fileManager::releaseFileVersion} / {@code fileManagerClient::releaseFileVersion}
      */
-    public static Response buildFileResponse(FileManagerClient fileManagerClient, FileVersion fileVersion) {
+    public static Response buildFileResponse(FileVersion fileVersion, Consumer<FileVersion> releaser) {
         File file = fileVersion.getFile();
         boolean isDirectory = fileVersion.isDirectory();
+        // A directory stored exploded (a real directory on disk) is zipped on the fly; a directory stored
+        // archived (a single zip file) and plain files are streamed as-is.
+        boolean zipOnTheFly = isDirectory && file.isDirectory();
         StreamingOutput fileStream = output -> {
             try {
-                if (isDirectory) {
-                    // The cached directory is stored unzipped, re-zip it to match the controller wire format
+                if (zipOnTheFly) {
                     FileHelper.zip(file, output);
                 } else {
                     try (InputStream inputStream = new FileInputStream(file)) {
@@ -78,7 +79,7 @@ public class FileVersionResponseFactory {
             } finally {
                 // Release the usage lock only once the file has been fully streamed (or the transfer failed),
                 // so the version stays protected from eviction for the entire duration of the transfer.
-                fileManagerClient.releaseFileVersion(fileVersion);
+                releaser.accept(fileVersion);
             }
         };
         return Response.ok(fileStream, MediaType.APPLICATION_OCTET_STREAM)
