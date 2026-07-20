@@ -42,7 +42,6 @@ import step.grid.client.RemoteGridClientImpl;
 import step.grid.client.security.JwtTokenGenerator;
 import step.grid.filemanager.FileManagerClient;
 import step.grid.filemanager.FileManagerClientImpl;
-import step.grid.filemanager.FileManagerConfiguration;
 import step.grid.filemanager.FileManagerException;
 import step.grid.filemanager.FileVersion;
 import step.grid.filemanager.FileVersionId;
@@ -175,14 +174,9 @@ public class GridProxy extends BaseServer implements AutoCloseable {
      */
     private FileManagerClient initFileManagerClient(GridProxyConfiguration gridProxyConfiguration) {
         File cacheFolder = new File(gridProxyConfiguration.getFileCacheDirectory());
-        cacheFolder.mkdirs();
         HttpFileVersionProvider fileVersionProvider = new HttpFileVersionProvider(client, gridUrl, jwtTokenGenerator,
             gridConnectTimeout, gridReadTimeout, gridProxyConfiguration.getGridMaxRetries(), gridProxyConfiguration.getGridRetryDelayMs());
-        FileManagerConfiguration fileManagerConfiguration = gridProxyConfiguration.getFileManagerConfiguration();
-        logger.info("Initializing grid proxy file cache in {} with a TTL of {} minutes (cleanup {})",
-            cacheFolder.getAbsolutePath(), fileManagerConfiguration.getCleanupTimeToLiveMinutes(),
-            fileManagerConfiguration.isEnableCleanup() ? "enabled" : "disabled");
-        return new FileManagerClientImpl(cacheFolder, fileVersionProvider, fileManagerConfiguration);
+        return new FileManagerClientImpl(cacheFolder, fileVersionProvider, gridProxyConfiguration.getFileManagerConfiguration());
     }
 
     protected void beforeServerStart(ResourceConfig resourceConfig) throws Exception {
@@ -332,7 +326,7 @@ public class GridProxy extends BaseServer implements AutoCloseable {
             try {
                 fileManagerClient.close();
             } catch (Exception e) {
-                logger.error("Error while closing the grid proxy file cache", e);
+                logger.error("Error while closing the grid proxy file manager", e);
             }
         }
         if (remoteGridClient != null) {
