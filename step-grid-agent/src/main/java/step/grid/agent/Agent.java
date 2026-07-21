@@ -148,7 +148,7 @@ public class Agent extends BaseServer implements AutoCloseable {
         String fileServerHost = Optional.ofNullable(agentConf.getFileServerHost()).orElse(gridUrl);
 
         // When the forker is enabled the main agent never executes keywords itself (all token messages run in
-        // forked agents), it only relays artifacts to them:
+        // forked agents), it only relays files to them:
         AgentForkerConfiguration agentForkerConfiguration = agentConf.getAgentForker();
         boolean forkerEnabled = agentForkerConfiguration != null && agentForkerConfiguration.enabled;
         FileManagerClientMode fileManagerClientMode = forkerEnabled ? FileManagerClientMode.RELAY : FileManagerClientMode.CONSUMER;
@@ -190,7 +190,7 @@ public class Agent extends BaseServer implements AutoCloseable {
 
         // The agent forker is created after the server has started so that forked agents can be pointed at
         // this main agent's own URL as their file server: a forked agent never contacts the controller
-        // directly, it downloads its artifacts from its main agent (which caches them once on its behalf).
+        // directly, it downloads its files from its main agent (which caches them once on its behalf).
         if (forkerEnabled) {
             logger.info("Agent forker is enabled. All token messages will be executed in forked agent processes.");
             agentForker = new AgentForker(agentForkerConfiguration, this.agentUrl);

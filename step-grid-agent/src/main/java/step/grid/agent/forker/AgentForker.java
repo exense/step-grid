@@ -60,7 +60,7 @@ public class AgentForker implements AutoCloseable {
         logger.debug("Using working directory: {}", workingDirectory);
         // Remove execution directories left over by forked agents of a previous run that crashed before they
         // could be cleaned up. Each forked agent stores its own ephemeral file cache inside its execution
-        // directory, so deleting these also purges any leftover cached artifacts (AC-4).
+        // directory, so deleting these also purges any leftover cached files (AC-4).
         cleanupStaleForkedAgentDirectories();
         forkedAgentConf = getForkedAgentConf(configuration);
         logbackConfiguration = getLogbackConfiguration(configuration);

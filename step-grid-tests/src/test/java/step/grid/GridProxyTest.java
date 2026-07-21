@@ -48,8 +48,8 @@ public class GridProxyTest extends GridTest {
         conf.setGridProxyHost("localhost");
         conf.setGridProxyPort(0);
         conf.setGridUrl("http://localhost:" + grid.getServerPort());
-        // Use an isolated temporary cache directory so the proxy cache doesn't leak between test runs
-        conf.setFileCacheDirectory(FileHelper.createTempFolder().getAbsolutePath());
+        // Use an isolated temporary working directory so the proxy cache doesn't leak between test runs
+        conf.setWorkingDir(FileHelper.createTempFolder().getAbsolutePath());
         gridProxy = new GridProxy(conf);
         String gridProxyUrl = gridProxy.getGridProxyUrl();
 
@@ -77,9 +77,9 @@ public class GridProxyTest extends GridTest {
     }
 
     /**
-     * Fetching a directory artifact through the proxy: the proxy caches the directory <b>archived</b> (raw, no
+     * Fetching a directory through the proxy: the proxy caches the directory <b>archived</b> (relay mode, no
      * explode) and re-serves it verbatim with a {@code type = dir} response, and the agent (behind the proxy)
-     * explodes it locally. Verifies the whole raw-storage / re-serve path end-to-end by reading back the
+     * explodes it locally. Verifies the whole relay-storage / re-serve path end-to-end by reading back the
      * transferred folder's structure.
      */
     @Test

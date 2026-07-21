@@ -37,12 +37,14 @@ public class GridProxyConfiguration extends AppConfiguration {
     private Integer agentReleaseTimeout = 3000;
 
     /**
-     * Directory where the grid proxy caches the artifacts it downloads from the grid. Files are stored using
-     * the same {@code <cacheRoot>/<fileId>/<version>/} layout as the controller and the agent.
+     * Working directory of the grid proxy. The proxy creates its {@code filemanager} cache folder underneath it
+     * (i.e. {@code <workingDir>/filemanager}), where it caches the files it downloads from the grid using the same
+     * {@code <cacheRoot>/<fileId>/<version>/} layout as the controller and the agent. Matches the {@code workingDir}
+     * field of the agent configuration.
      */
-    private String fileCacheDirectory = "work/filemanager";
+    private String workingDir = "work";
     /**
-     * Cleanup/TTL configuration of the proxy artifact cache (cleanup enablement, time-to-live and job
+     * Cleanup/TTL configuration of the proxy file cache (cleanup enablement, time-to-live and job
      * frequency). Mirrors the {@code fileManagerConfiguration} block of the agent configuration.
      */
     private FileManagerConfiguration fileManagerConfiguration = new FileManagerConfiguration();
@@ -51,12 +53,12 @@ public class GridProxyConfiguration extends AppConfiguration {
         super();
     }
 
-    public String getFileCacheDirectory() {
-        return fileCacheDirectory;
+    public String getWorkingDir() {
+        return workingDir;
     }
 
-    public void setFileCacheDirectory(String fileCacheDirectory) {
-        this.fileCacheDirectory = fileCacheDirectory;
+    public void setWorkingDir(String workingDir) {
+        this.workingDir = workingDir;
     }
 
     public FileManagerConfiguration getFileManagerConfiguration() {

@@ -167,14 +167,15 @@ public class GridProxy extends BaseServer implements AutoCloseable {
     }
 
     /**
-     * Initializes the proxy's artifact cache. Artifacts are downloaded once from the grid and stored locally
-     * using the same {@code <cacheRoot>/<fileId>/<version>/} layout as the controller. The proxy doesn't track
-     * runtime usage of files: cached versions are evicted purely based on the configured TTL by the cleanup job
-     * (AC-5). Partial downloads live in temporary folders that the cleanup job ignores, so files being written
-     * are never deleted.
+     * Initializes the proxy's file cache. Files are downloaded once from the grid and stored locally
+     * using the same {@code <cacheRoot>/<fileId>/<version>/} layout as the controller. The cache folder is the
+     * {@code filemanager} directory created under the configured working directory ({@code <workingDir>/filemanager}),
+     * mirroring the agent. The proxy doesn't track runtime usage of files: cached versions are evicted purely based
+     * on the configured TTL by the cleanup job. Partial downloads live in temporary folders that the cleanup job
+     * ignores, so files being written are never deleted.
      */
     private FileManagerClient initFileManagerClient(GridProxyConfiguration gridProxyConfiguration) {
-        File cacheFolder = new File(gridProxyConfiguration.getFileCacheDirectory());
+        File cacheFolder = new File(gridProxyConfiguration.getWorkingDir(), "filemanager");
         HttpFileVersionProvider fileVersionProvider = new HttpFileVersionProvider(client, gridUrl, jwtTokenGenerator,
             gridConnectTimeout, gridReadTimeout, gridProxyConfiguration.getGridMaxRetries(), gridProxyConfiguration.getGridRetryDelayMs(), FileManagerClientMode.RELAY);
         return new FileManagerClientImpl(cacheFolder, fileVersionProvider, gridProxyConfiguration.getFileManagerConfiguration(), FileManagerClientMode.RELAY);

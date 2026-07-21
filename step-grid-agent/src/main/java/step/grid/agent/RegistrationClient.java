@@ -68,7 +68,7 @@ public class RegistrationClient implements FileVersionProvider {
         this.retryDelayMs = retryDelayMs;
 
         jwtTokenGenerator = JwtTokenGenerator.initializeJwtTokenGenerator(gridSecurityConfiguration, "registration client");
-        // Delegate the actual artifact download to the shared HTTP file version provider
+        // Delegate the actual file download to the shared HTTP file version provider
         this.fileVersionProvider = new HttpFileVersionProvider(client, fileServer, jwtTokenGenerator,
             connectionTimeout, callTimeout, maxRetries, retryDelayMs, mode);
     }

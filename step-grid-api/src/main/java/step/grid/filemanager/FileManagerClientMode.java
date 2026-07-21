@@ -19,20 +19,20 @@
 package step.grid.filemanager;
 
 /**
- * The role a {@link FileManagerClient} plays with respect to the artifacts it caches, which determines how
- * directory artifacts are stored on disk.
+ * The role a {@link FileManagerClient} plays with respect to the files it caches, which determines how
+ * directories are stored on disk.
  */
 public enum FileManagerClientMode {
 
     /**
-     * The client is the final consumer of the artifacts (e.g. an executing agent). Directory artifacts are
+     * The client is the final consumer of the files (e.g. an executing agent). Directories are
      * stored <b>exploded</b> (unzipped) so they can be used directly, for instance to build a classpath.
      */
     CONSUMER,
 
     /**
-     * The client does not consume the artifacts itself, it only re-serves them to downstream consumers (the
-     * grid proxy, or a main agent serving its forked agents). Directory artifacts are kept <b>archived</b> (as a
+     * The client does not consume the files itself, it only re-serves them to downstream consumers (the
+     * grid proxy, or a main agent serving its forked agents). Directories are kept <b>archived</b> (as a
      * single zip) and streamed back verbatim, avoiding a pointless unzip-on-download and zip-on-serve round-trip.
      */
     RELAY

@@ -40,7 +40,7 @@ import java.util.function.Consumer;
  * A directory may be stored either <b>exploded</b> (a real directory on disk, e.g. an executing agent's cache),
  * in which case it is zipped on the fly, or already <b>archived</b> as a single zip file (the grid server, and
  * serve-only client caches), in which case it is streamed as-is. Both cases produce the {@code type = dir} wire
- * format. The form is detected from the on-disk artifact, so no caller needs to know how it was stored.
+ * format. The form is detected from the on-disk file, so no caller needs to know how it was stored.
  * <p>
  * The usage lock on the served version is released only once the streaming completes (on success, error, or
  * client disconnect), via the {@code releaser} callback. The caller must therefore acquire the version with

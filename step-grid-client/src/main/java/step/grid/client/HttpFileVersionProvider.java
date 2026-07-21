@@ -52,7 +52,7 @@ import java.util.stream.Stream;
  * Reusable {@link FileVersionProvider} which downloads a {@link FileVersion} over HTTP from an upstream
  * file server exposing the controller-compatible {@code GET /grid/file/{id}/{version}} endpoint.
  * <p>
- * It is shared by the components that need to fetch artifacts from an upstream: the agent (downloading from
+ * It is shared by the components that need to fetch files from an upstream: the agent (downloading from
  * the controller/grid), the grid proxy (downloading from the grid) and the forked agent (downloading from
  * its main agent). The same download + unzip semantics and the same retry policy apply in all cases.
  */
@@ -75,7 +75,7 @@ public class HttpFileVersionProvider implements FileVersionProvider {
     private final int maxRetries;
     private final int retryDelayMs;
     /**
-     * The role this provider serves. In {@link FileManagerClientMode#CONSUMER} mode directory artifacts are
+     * The role this provider serves. In {@link FileManagerClientMode#CONSUMER} mode directories are
      * exploded (unzipped) on download so they can be used directly; in {@link FileManagerClientMode#RELAY} mode
      * they are kept archived and stored as-is to be re-served verbatim.
      */
@@ -89,7 +89,7 @@ public class HttpFileVersionProvider implements FileVersionProvider {
      * @param callTimeout       the read timeout in milliseconds
      * @param maxRetries        the maximum number of download retries on transient network errors
      * @param retryDelayMs      the delay between retries in milliseconds
-     * @param mode              {@link FileManagerClientMode#CONSUMER} to explode (unzip) directory artifacts on
+     * @param mode              {@link FileManagerClientMode#CONSUMER} to explode (unzip) directories on
      *                          download for an executing consumer, {@link FileManagerClientMode#RELAY} to keep
      *                          them archived and store them as-is for re-serving
      */

@@ -39,7 +39,7 @@ public class FileManagerClientImpl extends AbstractFileManager implements FileMa
     protected FileVersionProvider fileProvider;
 
     /**
-     * The role of this client, which determines for instance how directory artifacts are stored. Must match the mode of the
+     * The role of this client, which determines for instance how directories are stored. Must match the mode of the
      * {@link FileVersionProvider} (e.g. {@code HttpFileVersionProvider}): a {@link FileManagerClientMode#RELAY}
      * cache (grid proxy, forker main agent) stores directories archived, a {@link FileManagerClientMode#CONSUMER}
      * cache stores them exploded.
@@ -55,7 +55,7 @@ public class FileManagerClientImpl extends AbstractFileManager implements FileMa
     }
 
     /**
-     * @param mode the role of this client ({@link FileManagerClientMode#CONSUMER} to store directory artifacts
+     * @param mode the role of this client ({@link FileManagerClientMode#CONSUMER} to store directories
      *             exploded, {@link FileManagerClientMode#RELAY} to keep them archived). Must match the mode of
      *             the {@code fileProvider}.
      */
