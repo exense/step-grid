@@ -57,7 +57,7 @@
     <!-- internal dependencies -->
     <dependencies.version>2026.7.1</dependencies.version>
     <exense-commons.version>2.2.1</exense-commons.version>
-    <step-api.version>1.6.1</step-api.version>
+    <step-api.version>0.0.0-MASTER-SNAPSHOT</step-api.version>
 
   </properties>
 
