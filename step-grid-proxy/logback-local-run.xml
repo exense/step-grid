@@ -1,0 +1,18 @@
+<configuration scan="true" scanPeriod="60 seconds">
+  <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder>
+      <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+    </encoder>
+  </appender>
+
+  <!-- loggers with deviating settings for specific packages -->
+  <!--	<logger name="step.parameter.ParameterManager" level="debug" />-->
+  <logger name="step.grid.contextbuilder" level="info"/>
+  <logger name="step.grid.filemanager" level="debug"/>
+  <logger name="step.grid.client" level="DEBUG"/>
+  <logger name="step.grid.agent" level="DEBUG"/>
+
+  <root level="info">
+    <appender-ref ref="STDOUT"/>
+  </root>
+</configuration>

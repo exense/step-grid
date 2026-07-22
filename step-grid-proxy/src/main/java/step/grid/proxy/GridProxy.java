@@ -19,7 +19,6 @@
 package step.grid.proxy;
 
 import ch.exense.commons.app.ArgumentParser;
-import ch.exense.commons.io.FileHelper;
 import jakarta.ws.rs.ProcessingException;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
@@ -27,7 +26,6 @@ import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.client.Invocation;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import jakarta.ws.rs.core.StreamingOutput;
 import org.eclipse.jetty.server.Server;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
 import org.glassfish.jersey.client.ClientProperties;
@@ -37,16 +35,23 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import step.grid.agent.RegistrationMessage;
 import step.grid.app.configuration.ConfigurationParser;
+import step.grid.app.filemanager.FileVersionResponseFactory;
 import step.grid.app.server.BaseServer;
+import step.grid.client.HttpFileVersionProvider;
+import step.grid.client.RemoteGridClientImpl;
 import step.grid.client.security.JwtTokenGenerator;
+import step.grid.filemanager.FileManagerClient;
+import step.grid.filemanager.FileManagerClientImpl;
+import step.grid.filemanager.FileManagerClientMode;
+import step.grid.filemanager.FileManagerException;
+import step.grid.filemanager.FileVersion;
+import step.grid.filemanager.FileVersionId;
 import step.grid.io.InputMessage;
 import step.grid.io.OutputMessage;
 import step.grid.proxy.conf.GridProxyConfiguration;
 import step.grid.proxy.services.GridProxyServices;
 
 import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Optional;
@@ -67,6 +72,7 @@ public class GridProxy extends BaseServer implements AutoCloseable {
     private final String gridProxyName;
     private final GridProxyConfiguration configuration;
     private Client client;
+    private FileManagerClient fileManagerClient;
 
     private final String gridUrl;
     private final Integer gridConnectTimeout;
@@ -75,6 +81,7 @@ public class GridProxy extends BaseServer implements AutoCloseable {
     private final Integer agentReserveTimeout;
     private final Integer agentReleaseTimeout;
     private JwtTokenGenerator jwtTokenGenerator;
+    private RemoteGridClientImpl remoteGridClient;
 
     public static void main(String[] args) throws Exception {
         GridProxy gridProxy = new GridProxy(args);
@@ -153,7 +160,25 @@ public class GridProxy extends BaseServer implements AutoCloseable {
         agentReserveTimeout = gridProxyConfiguration.getAgentReserveTimeout();
         agentReleaseTimeout = gridProxyConfiguration.getAgentReleaseTimeout();
 
+        fileManagerClient = initFileManagerClient(gridProxyConfiguration);
+        remoteGridClient = new RemoteGridClientImpl(gridUrl, gridProxyConfiguration.getGridSecurity());
+
         afterStart();
+    }
+
+    /**
+     * Initializes the proxy's file cache. Files are downloaded once from the grid and stored locally
+     * using the same {@code <cacheRoot>/<fileId>/<version>/} layout as the controller. The cache folder is the
+     * {@code filemanager} directory created under the configured working directory ({@code <workingDir>/filemanager}),
+     * mirroring the agent. The proxy doesn't track runtime usage of files: cached versions are evicted purely based
+     * on the configured TTL by the cleanup job. Partial downloads live in temporary folders that the cleanup job
+     * ignores, so files being written are never deleted.
+     */
+    private FileManagerClient initFileManagerClient(GridProxyConfiguration gridProxyConfiguration) {
+        File cacheFolder = new File(gridProxyConfiguration.getWorkingDir(), "filemanager");
+        HttpFileVersionProvider fileVersionProvider = new HttpFileVersionProvider(client, gridUrl, jwtTokenGenerator,
+            gridConnectTimeout, gridReadTimeout, gridProxyConfiguration.getGridMaxRetries(), gridProxyConfiguration.getGridRetryDelayMs(), FileManagerClientMode.RELAY);
+        return new FileManagerClientImpl(cacheFolder, fileVersionProvider, gridProxyConfiguration.getFileManagerConfiguration(), FileManagerClientMode.RELAY);
     }
 
     protected void beforeServerStart(ResourceConfig resourceConfig) throws Exception {
@@ -211,6 +236,10 @@ public class GridProxy extends BaseServer implements AutoCloseable {
         }
     }
 
+    public void forwardStartTokenMaintenance(String tokenId) {
+        remoteGridClient.startTokenMaintenance(tokenId);
+    }
+
     /**
      * This method return the registered context root for the provided agent URL or generates a unique one for new registration
      * <p>Note: parsing to URL might cause performance issue, could be replaced by URL encoding otherwise</p>
@@ -235,33 +264,22 @@ public class GridProxy extends BaseServer implements AutoCloseable {
         return contextRoot;
     }
 
-    public Response forwardGetFileRequest(String fileId, String version) throws IOException {
-        Response fromGrid = null;
-        try {
-            fromGrid = withAuthentication(client.target(gridUrl + "/grid/file/" + fileId + "/" + version).request().property(ClientProperties.READ_TIMEOUT, gridReadTimeout))
-                .property(ClientProperties.CONNECT_TIMEOUT, gridConnectTimeout).get();
-
-            //Shallow copy to properly clean up the resources of the invocation to the grid server
-            final InputStream inputStream = fromGrid.readEntity(InputStream.class);
-
-            StreamingOutput oupputStream = output -> {
-                try {
-                    FileHelper.copy(inputStream, output, 2048);
-                    output.flush();
-                } finally {
-                    inputStream.close();
-                }
-            };
-
-            Response.ResponseBuilder responseBuilder = Response.fromResponse(fromGrid);
-            return responseBuilder.entity(oupputStream).build();
-        } catch (Exception e) {
-            //In case of exception, explicitly close the resource. For successful calls the inputStream/outputStream are closed when consumed
-            if (fromGrid != null) {
-                fromGrid.close();
-            }
-            throw e;
+    public Response forwardGetFileRequest(String fileId, String version) throws FileManagerException {
+        // Serve the file from the local cache, downloading it from the grid only on a cache miss. The version is
+        // requested with usage tracking and the in-use lock is released only once the response has been fully
+        // streamed (see FileVersionResponseFactory#buildFileResponse). This keeps the file protected from
+        // eviction for the whole duration of the transfer, which makes parallel serving safe even with an
+        // immediate-eviction TTL of 0.
+        FileVersionId fileVersionId = new FileVersionId(fileId, version);
+        FileVersion fileVersion = fileManagerClient.requestFileVersion(fileVersionId, true);
+        if (fileVersion == null) {
+            return Response.status(Response.Status.NOT_FOUND).entity("File version " + fileVersionId + " not found").build();
         }
+        return FileVersionResponseFactory.buildFileResponse(fileVersion, fileManagerClient::releaseFileVersion);
+    }
+
+    protected FileManagerClient getFileManagerClient() {
+        return fileManagerClient;
     }
 
     public void reserveToken(String agentContext, String tokenId) {
@@ -306,6 +324,20 @@ public class GridProxy extends BaseServer implements AutoCloseable {
 
     @Override
     public void close() throws Exception {
+        if (fileManagerClient != null) {
+            try {
+                fileManagerClient.close();
+            } catch (Exception e) {
+                logger.error("Error while closing the grid proxy file manager", e);
+            }
+        }
+        if (remoteGridClient != null) {
+            try {
+                remoteGridClient.close();
+            } catch (Exception e) {
+                logger.error("Error while closing the grid client", e);
+            }
+        }
         if (server != null && !server.isStopped()) {
             server.stop();
         }

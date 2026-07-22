@@ -18,8 +18,6 @@
  ******************************************************************************/
 package step.grid.agent;
 
-import ch.exense.commons.io.FileHelper;
-import ch.exense.commons.resilience.RetryHelper;
 import jakarta.ws.rs.ProcessingException;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
@@ -32,34 +30,22 @@ import org.glassfish.jersey.jackson.internal.jackson.jaxrs.json.JacksonJsonProvi
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import step.grid.Token;
+import step.grid.client.HttpFileVersionProvider;
 import step.grid.client.security.JwtTokenGenerator;
 import step.grid.filemanager.*;
 import step.grid.security.SymmetricSecurityConfiguration;
 
-import java.io.BufferedOutputStream;
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.InputStream;
-import java.net.SocketTimeoutException;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 
 public class RegistrationClient implements FileVersionProvider {
 
-    public static final List<Class<? extends Exception>> RETRY_FOR_EXCEPTIONS = Stream.concat(
-        RetryHelper.COMMON_NETWORK_EXCEPTIONS.stream(),
-        Stream.of(ControllerCallException.class, ControllerCallTimeout.class)
-    ).collect(Collectors.toList());
-
     private final String registrationServer;
-    private final String fileServer;
     private final JwtTokenGenerator jwtTokenGenerator;
 
     private final Client client;
+    private final HttpFileVersionProvider fileVersionProvider;
 
     private static final Logger logger = LoggerFactory.getLogger(RegistrationClient.class);
 
@@ -69,10 +55,10 @@ public class RegistrationClient implements FileVersionProvider {
     int retryDelayMs;
 
     public RegistrationClient(String registrationServer, String fileServer, int connectionTimeout, int callTimeout,
-                              int maxRetries, int retryDelayMs, SymmetricSecurityConfiguration gridSecurityConfiguration) {
+                              int maxRetries, int retryDelayMs, SymmetricSecurityConfiguration gridSecurityConfiguration,
+                              FileManagerClientMode mode) {
         super();
         this.registrationServer = registrationServer;
-        this.fileServer = fileServer;
         this.client = ClientBuilder.newClient();
         this.client.register(ObjectMapperResolver.class);
         this.client.register(JacksonJsonProvider.class);
@@ -82,6 +68,9 @@ public class RegistrationClient implements FileVersionProvider {
         this.retryDelayMs = retryDelayMs;
 
         jwtTokenGenerator = JwtTokenGenerator.initializeJwtTokenGenerator(gridSecurityConfiguration, "registration client");
+        // Delegate the actual file download to the shared HTTP file version provider
+        this.fileVersionProvider = new HttpFileVersionProvider(client, fileServer, jwtTokenGenerator,
+            connectionTimeout, callTimeout, maxRetries, retryDelayMs, mode);
     }
 
     public boolean sendRegistrationMessage(RegistrationMessage message) {
@@ -111,70 +100,7 @@ public class RegistrationClient implements FileVersionProvider {
 
     @Override
     public FileVersion saveFileVersionTo(FileVersionId fileVersionId, File container) throws FileManagerException {
-        try {
-            return RetryHelper.executeWithRetryOnExceptions(
-                () -> downloadAndSaveFileVersion(fileVersionId, container),
-                maxRetries,
-                retryDelayMs,
-                RETRY_FOR_EXCEPTIONS,
-                "Download file " + fileVersionId
-            );
-        } catch (Exception e) {
-            throw new FileManagerException(fileVersionId, e);
-        }
-    }
-
-    private FileVersion downloadAndSaveFileVersion(FileVersionId fileVersionId, File container) throws Exception {
-        Response response;
-        try {
-            response = withAuthentication(client.target(fileServer + "/grid/file/" + fileVersionId.getFileId() + "/" + fileVersionId.getVersion()).request()).property(ClientProperties.READ_TIMEOUT, callTimeout)
-                .property(ClientProperties.CONNECT_TIMEOUT, connectionTimeout).get();
-        } catch (ProcessingException e) {
-            Throwable cause = e.getCause();
-            if (cause instanceof SocketTimeoutException) {
-                String causeMessage = cause.getMessage();
-                if (causeMessage.contains("Read timed out")) {
-                    throw new ControllerCallTimeout(e, callTimeout);
-                } else {
-                    throw new ControllerCallException(e);
-                }
-            } else {
-                throw new ControllerCallException(e);
-            }
-        }
-        if (response.getStatus() != 200) {
-            String error = response.readEntity(String.class);
-            throw new RuntimeException("Unexpected server error: " + error);
-        } else {
-            InputStream in = (InputStream) response.getEntity();
-            String contentDisposition = response.getHeaderString("content-disposition");
-            if (contentDisposition != null) {
-                boolean isDirectory = contentDisposition.contains("type = dir");
-                Matcher m = Pattern.compile(".*filename = (.+?);.*").matcher(contentDisposition);
-                if (m.find()) {
-                    String filename = m.group(1);
-
-                    long t2 = System.currentTimeMillis();
-                    File file = new File(container + "/" + filename);
-                    if (isDirectory) {
-                        FileHelper.unzip(in, file);
-                    } else {
-                        try (BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(file))) {
-                            FileHelper.copy(in, bos, 1024);
-                        }
-                    }
-                    if (logger.isDebugEnabled()) {
-                        logger.debug("Uncompressed file " + fileVersionId + " in " + (System.currentTimeMillis() - t2) + "ms to " + file.getAbsoluteFile());
-                    }
-
-                    return new FileVersion(file, fileVersionId, isDirectory);
-                } else {
-                    throw new RuntimeException("Unable to find filename in header: " + contentDisposition);
-                }
-            } else {
-                throw new RuntimeException("No content-disposition header found in the HTTP response");
-            }
-        }
+        return fileVersionProvider.saveFileVersionTo(fileVersionId, container);
     }
 
     public void switchTokensToMaintenanceMode(List<Token> tokens) {
