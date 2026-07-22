@@ -175,7 +175,7 @@ public class HttpFileVersionProvider implements FileVersionProvider {
                 } else {
                     // A plain file, or a directory kept archived for a relay cache: store the stream as-is.
                     try (BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(file))) {
-                        FileHelper.copy(in, bos, 1024);
+                        FileHelper.copy(in, bos, 2048);
                     }
                 }
                 if (logger.isDebugEnabled()) {

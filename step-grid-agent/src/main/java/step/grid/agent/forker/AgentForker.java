@@ -17,12 +17,14 @@ import step.grid.client.GridClientException;
 import step.grid.client.LocalGridClientImpl;
 import step.grid.io.InputMessage;
 import step.grid.io.OutputMessage;
+import step.grid.security.SymmetricSecurityConfiguration;
 import step.grid.tokenpool.Interest;
 
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
@@ -39,9 +41,21 @@ public class AgentForker implements AutoCloseable {
 
     private static final Logger logger = LoggerFactory.getLogger(AgentForker.class);
     private static final String FORKED_AGENT_DIR_PREFIX = "forked-agent";
+    private static final String FORKED_AGENT_CONF_PREFIX = "ForkedAgentConf";
+    private static final String FORKED_AGENT_CONF_SUFFIX = ".yaml";
+    /**
+     * Matches the configurations extracted by {@link #getForkedAgentConf(AgentForkerConfiguration)}, i.e. the
+     * prefix and suffix passed to {@link Files#createTempFile(Path, String, String, java.nio.file.attribute.FileAttribute[])}
+     * separated by the random part it generates. Deliberately stricter than a prefix match so that a custom
+     * configuration which happens to be named {@code ForkedAgentConf.yaml} and to be stored in the working
+     * directory is never mistaken for a leftover and deleted.
+     */
+    private static final Pattern FORKED_AGENT_CONF_PATTERN = Pattern.compile(
+        Pattern.quote(FORKED_AGENT_CONF_PREFIX) + "\\d+" + Pattern.quote(FORKED_AGENT_CONF_SUFFIX));
     private final AgentForkerConfiguration configuration;
     private final GridImpl grid;
     private final String fileServerHost;
+    private final SymmetricSecurityConfiguration gridSecurity;
     private final Path forkedAgentConf;
     private final LocalGridClientImpl gridClient;
     private static final AtomicLong nextSessionId = new AtomicLong(1);
@@ -49,19 +63,28 @@ public class AgentForker implements AutoCloseable {
     private final Path logbackConfiguration;
     private final Path workingDirectory;
 
-    public AgentForker(AgentForkerConfiguration configuration, String fileServerHost) throws IOException {
+    /**
+     * @param configuration  the configuration of the forker
+     * @param fileServerHost the URL of the file server the forked agents should download their files from,
+     *                       i.e. the URL of the main agent
+     * @param gridSecurity   the security configuration of the grid, or {@code null} if authentication is
+     *                       disabled. The grid uses a single shared secret which every component must be
+     *                       configured with, the forked agents included: they authenticate against their main
+     *                       agent to download their files and their own services are in turn called by the
+     *                       main agent.
+     */
+    public AgentForker(AgentForkerConfiguration configuration, String fileServerHost, SymmetricSecurityConfiguration gridSecurity) throws IOException {
         if (!configuration.enabled) {
             throw new IllegalArgumentException("Agent forker configuration is disabled. The AgentForker is not supposed to be instantiated.");
         }
         this.configuration = configuration;
         this.fileServerHost = fileServerHost;
+        this.gridSecurity = gridSecurity;
         workingDirectory = Path.of(Objects.requireNonNull(configuration.workingDirectory)).toAbsolutePath();
         workingDirectory.toFile().mkdirs();
         logger.debug("Using working directory: {}", workingDirectory);
-        // Remove execution directories left over by forked agents of a previous run that crashed before they
-        // could be cleaned up. Each forked agent stores its own ephemeral file cache inside its execution
-        // directory, so deleting these also purges any leftover cached files (AC-4).
-        cleanupStaleForkedAgentDirectories();
+        // Remove execution directories left over by forked agents of a previous run that crashed before they could be cleaned up.
+        cleanupStaleForkedAgentFiles();
         forkedAgentConf = getForkedAgentConf(configuration);
         logbackConfiguration = getLogbackConfiguration(configuration);
         grid = createGrid();
@@ -74,18 +97,56 @@ public class AgentForker implements AutoCloseable {
         if (configuration.agentConf != null) {
             forkedAgentConf = Path.of(configuration.agentConf);
             logger.info("Initializing agent forker using agent conf: {}", forkedAgentConf);
+            if (isGridAuthenticationEnabled()) {
+                // The custom configuration belongs to the user, we never rewrite it. Declaring the secret in it
+                // is therefore the responsibility of whoever provides it.
+                logger.warn("A custom forked agent configuration is used while the grid authentication is enabled. Ensure that {} "
+                    + "declares the same 'gridSecurity.jwtSecretKey' as this agent.", forkedAgentConf);
+            }
         } else {
             logger.info("Extracting embedded agent conf to {}...", workingDirectory);
-            forkedAgentConf = Files.createTempFile(workingDirectory, "ForkedAgentConf", ".yaml");
+            forkedAgentConf = Files.createTempFile(workingDirectory, FORKED_AGENT_CONF_PREFIX, FORKED_AGENT_CONF_SUFFIX);
             forkedAgentConf.toFile().deleteOnExit();
             Files.write(forkedAgentConf, FileHelper.readClassLoaderResourceAsByteArray(getClass().getClassLoader(),
                 "ForkedAgentConf.yaml"), StandardOpenOption.APPEND);
+            appendGridSecurity(forkedAgentConf);
             logger.info("Initializing agent forker using embedded agent conf");
         }
         if (!Files.exists(forkedAgentConf)) {
             throw new IOException("Agent forker configuration file does not exist: " + forkedAgentConf);
         }
         return forkedAgentConf;
+    }
+
+    private boolean isGridAuthenticationEnabled() {
+        return gridSecurity != null && gridSecurity.isJwtAuthenticationEnabled();
+    }
+
+    /**
+     * Adds the grid security configuration of the main agent to the extracted forked agent configuration. The
+     * embedded configuration is generic and cannot declare the secret itself, so it is injected here to give the
+     * forked agents the same secret as the rest of the grid.
+     * <p>
+     * The extracted configuration is created with {@link Files#createTempFile}, which restricts it to its owner
+     * on file systems supporting POSIX permissions. This doesn't extend the exposure of the secret, which is
+     * already stored in clear text in the configuration file of the main agent on the same file system.
+     */
+    private void appendGridSecurity(Path forkedAgentConf) throws IOException {
+        if (!isGridAuthenticationEnabled()) {
+            return;
+        }
+        String gridSecuritySection = System.lineSeparator()
+            + "gridSecurity:" + System.lineSeparator()
+            + "  jwtSecretKey: " + asSingleQuotedYamlScalar(gridSecurity.jwtSecretKey) + System.lineSeparator();
+        Files.write(forkedAgentConf, gridSecuritySection.getBytes(StandardCharsets.UTF_8), StandardOpenOption.APPEND);
+    }
+
+    /**
+     * The secret is an arbitrary string which may contain characters that are significant in a plain YAML
+     * scalar. Single quoted scalars are literal, only the quote character itself has to be escaped.
+     */
+    private static String asSingleQuotedYamlScalar(String value) {
+        return "'" + value.replace("'", "''") + "'";
     }
 
     private Path getLogbackConfiguration(AgentForkerConfiguration configuration) throws IOException {
@@ -126,20 +187,35 @@ public class AgentForker implements AutoCloseable {
         }
     }
 
-    private void cleanupStaleForkedAgentDirectories() {
-        File[] candidateDirectories = workingDirectory.toFile().listFiles(
-            (dir, name) -> name.startsWith(FORKED_AGENT_DIR_PREFIX) && new File(dir, name).isDirectory());
-        if (candidateDirectories == null) {
-            return;
-        }
+    private void cleanupStaleForkedAgentFiles() {
+        File workingDirectoryFile = workingDirectory.toFile();
         // Forked agent execution directories found here are leftovers from a previous run (e.g. one that crashed before it
         // could clean up) and can be removed unconditionally.
-        for (File candidateDirectory : candidateDirectories) {
-            logger.info("Removing stale forked agent execution directory {} left over by a previous run.", candidateDirectory);
-            try {
-                FileUtils.deleteDirectory(candidateDirectory);
-            } catch (IOException e) {
-                logger.warn("Failed to delete stale forked agent execution directory {}.", candidateDirectory, e);
+        File[] candidateDirectories = workingDirectoryFile.listFiles(
+            (dir, name) -> name.startsWith(FORKED_AGENT_DIR_PREFIX) && new File(dir, name).isDirectory());
+        if (candidateDirectories != null) {
+            for (File candidateDirectory : candidateDirectories) {
+                logger.info("Removing stale forked agent execution directory {} left over by a previous run.", candidateDirectory);
+                try {
+                    FileUtils.deleteDirectory(candidateDirectory);
+                } catch (IOException e) {
+                    logger.warn("Failed to delete stale forked agent execution directory {}.", candidateDirectory, e);
+                }
+            }
+        }
+        // The extracted forked agent configurations are registered for deletion on exit,
+        // which doesn't cover a forcibly terminated main agent, so leftovers
+        // are removed here rather than being left behind on the file system.
+        File[] candidateConfigurations = workingDirectoryFile.listFiles(
+            (dir, name) -> FORKED_AGENT_CONF_PATTERN.matcher(name).matches() && new File(dir, name).isFile());
+        if (candidateConfigurations != null) {
+            for (File candidateConfiguration : candidateConfigurations) {
+                logger.info("Removing stale forked agent configuration {} left over by a previous run.", candidateConfiguration);
+                try {
+                    Files.delete(candidateConfiguration.toPath());
+                } catch (IOException e) {
+                    logger.warn("Failed to delete stale forked agent configuration {}.", candidateConfiguration, e);
+                }
             }
         }
     }
@@ -149,7 +225,12 @@ public class AgentForker implements AutoCloseable {
         logger.info("Starting agent forker grid on port {}...", port);
         File agentForkerGridFilemanager = FileHelper.createTempFolder("agentForkerGridFilemanager");
         agentForkerGridFilemanager.deleteOnExit();
-        GridImpl forkedExecutionGrid = new GridImpl(agentForkerGridFilemanager, port);
+        GridImpl.GridImplConfig gridConfig = new GridImpl.GridImplConfig();
+        // The forked agent grid is only meant to be reached by the forked agents of this main agent, but it is
+        // exposed over HTTP like any other grid. It is therefore protected with the same secret as the rest of
+        // the topology so that no component is left unauthenticated when the grid authentication is enabled.
+        gridConfig.setSecurity(gridSecurity);
+        GridImpl forkedExecutionGrid = new GridImpl(agentForkerGridFilemanager, port, gridConfig);
         try {
             forkedExecutionGrid.start();
         } catch (Exception e) {
@@ -194,6 +275,10 @@ public class AgentForker implements AutoCloseable {
     private LocalGridClientImpl newClient() {
         GridClientConfiguration gridClientConfiguration = new GridClientConfiguration();
         gridClientConfiguration.setNoMatchExistsTimeout(configuration.startTimeoutMs);
+        // The services of the forked agents are protected when the grid authentication is enabled. Without the
+        // secret this client wouldn't be able to reserve, call, interrupt, release nor shut down the very forked
+        // agents it starts.
+        gridClientConfiguration.setGridSecurity(gridSecurity);
         return new LocalGridClientImpl(gridClientConfiguration, grid);
     }
 

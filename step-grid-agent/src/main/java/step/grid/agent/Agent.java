@@ -193,7 +193,7 @@ public class Agent extends BaseServer implements AutoCloseable {
         // directly, it downloads its files from its main agent (which caches them once on its behalf).
         if (forkerEnabled) {
             logger.info("Agent forker is enabled. All token messages will be executed in forked agent processes.");
-            agentForker = new AgentForker(agentForkerConfiguration, this.agentUrl);
+            agentForker = new AgentForker(agentForkerConfiguration, this.agentUrl, agentConf.getGridSecurity());
         } else {
             logger.info("Agent forker is disabled. All token messages will be executed within this JVM.");
             agentForker = null;
