@@ -1,3 +1,12 @@
 ---
 gridUrl: http://localhost:8081
 gridProxyUrl: http://localhost:8082
+
+fileManagerConfiguration:
+  # enable or disable the cleanup (true by default)
+  enableCleanup: true
+  # define file that are eligible for cleanup based on their last access time (default 120 minutes).
+  # When set to 0, files are cleaned up as soon as they're not used anymore without waiting for the clean up job
+  cleanupTimeToLiveMinutes: 4
+  # define the frequency of the cleanup job in minutes (default 60)
+  cleanupFrequencyMinutes: 2

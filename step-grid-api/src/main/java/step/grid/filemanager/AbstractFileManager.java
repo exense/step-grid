@@ -24,6 +24,9 @@ import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.FilenameFilter;
 import java.io.IOException;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
@@ -46,6 +49,23 @@ public class AbstractFileManager {
     protected static final String CLEANABLE_PROPERTY = "cleanable";
     protected static final String ORIGINAL_FILE_PATH_PROPERTY = "originalfile";
     protected static final String META_FILENAME = "filemanager.meta";
+    /**
+     * Name of the dedicated directory, directly under the cache root, holding the temporary container folders
+     * into which file versions are downloaded before being atomically moved to their final
+     * {@code <fileId>/<version>} location. The whole directory holds only partial/in-progress downloads, so it
+     * is discarded as a whole when loading the cache (recovering cleanly from a crash). It is kept under the
+     * cache root so the temp folders sit on the same file system as their final destination, making the move an
+     * atomic rename.
+     */
+    protected static final String TEMP_CONTAINER_DIR = ".tmp";
+    /**
+     * Name of the marker file, at the cache root, recording the {@link FileManagerClientMode} of a client cache.
+     * Its presence marks a {@link FileManagerClientMode#RELAY} cache (directories stored archived); its absence
+     * marks a {@link FileManagerClientMode#CONSUMER} cache (directories stored exploded, the default). A change of
+     * mode between runs makes the on-disk cache unusable, so the cache is dropped and rebuilt (see
+     * {@code FileManagerClientImpl}).
+     */
+    protected static final String CACHE_MODE_FILENAME = ".cachemode";
     protected final File cacheFolder;
     protected ConcurrentHashMap<String, Map<FileVersionId, CachedFileVersion>> fileHandleCache = new ConcurrentHashMap<>();
     protected FileManagerConfiguration fileManagerConfiguration;
@@ -68,7 +88,17 @@ public class AbstractFileManager {
     protected void loadCache() {
         logger.info("Loading file manager client cache from data folder: " + cacheFolder.getAbsolutePath());
         if (cacheFolder.exists() && cacheFolder.isDirectory()) {
+            // Discard any leftover temporary download folders (e.g. from a crash) in one shot: they all live under
+            // the dedicated temp directory, so the cache recovers cleanly and the versions can be downloaded again.
+            File tempContainerRoot = getTempContainerRootFolder();
+            if (tempContainerRoot.exists()) {
+                logger.info("Removing leftover temporary download folder " + tempContainerRoot.getAbsolutePath());
+                FileHelper.safeDeleteFolder(tempContainerRoot);
+            }
             for (File file : cacheFolder.listFiles()) {
+                if (file.getName().equals(TEMP_CONTAINER_DIR) || file.getName().equals(CACHE_MODE_FILENAME)) {
+                    continue;
+                }
                 try {
                     if (file.isDirectory()) {
                         for (File container : file.listFiles()) {
@@ -91,7 +121,7 @@ public class AbstractFileManager {
                                 CachedFileVersion cachedFileVersion = new CachedFileVersion(fileVersion, isCleanable);
                                 logger.debug("Adding file to cache. file id: " + fileId + " and version " + version);
 
-                                Map<FileVersionId, CachedFileVersion> fileVersions = fileHandleCache.computeIfAbsent(fileId, f -> new ConcurrentHashMap<FileVersionId, CachedFileVersion>());
+                                Map<FileVersionId, CachedFileVersion> fileVersions = fileHandleCache.computeIfAbsent(fileId, f -> new HashMap<>());
                                 fileVersions.put(fileVersionId, cachedFileVersion);
                             } else {
                                 logger.error("The file " + file.getAbsolutePath() + " is not a directory!");
@@ -133,9 +163,66 @@ public class AbstractFileManager {
         return container;
     }
 
-    protected void createMetaFile(String registryIndex, CachedFileVersion cachedFileVersion) throws FileManagerException {
+    /**
+     * Returns the final {@code <cacheRoot>/<fileId>/<version>} container folder <b>without</b> creating it.
+     * Used by the atomic download flow which must not pre-create the target of the atomic move.
+     */
+    protected File getFinalContainerFolder(FileVersionId fileVersionId) {
+        return new File(cacheFolder + "/" + fileVersionId.getFileId() + "/" + fileVersionId.getVersion());
+    }
+
+    /**
+     * Returns the dedicated {@link #TEMP_CONTAINER_DIR} directory, directly under the cache root, that holds the
+     * temporary download containers. Not created here; {@link #createTempContainerFolder(FileVersionId)} creates
+     * it on demand.
+     */
+    protected File getTempContainerRootFolder() {
+        return new File(cacheFolder, TEMP_CONTAINER_DIR);
+    }
+
+    /**
+     * Deletes the whole cache folder and recreates it empty. Used to drop a cache that has become unusable,
+     * e.g. after a directory storage-mode change.
+     */
+    protected void wipeCacheFolder() {
+        FileHelper.safeDeleteFolder(cacheFolder);
+        cacheFolder.mkdirs();
+    }
+
+    /**
+     * Creates a unique temporary container folder, under the dedicated {@link #TEMP_CONTAINER_DIR} directory at
+     * the cache root, into which a file version is downloaded before being atomically moved to its final
+     * location. Keeping the temp folders under the cache root guarantees they sit on the same file system as the
+     * final folders so that the move can be atomic (a rename).
+     */
+    protected File createTempContainerFolder(FileVersionId fileVersionId) {
+        File tempContainer = new File(getTempContainerRootFolder(),
+            fileVersionId.getFileId() + "-" + fileVersionId.getVersion() + "-" + UUID.randomUUID());
+        tempContainer.mkdirs();
+        return tempContainer;
+    }
+
+    /**
+     * Atomically moves a fully downloaded temporary container into its final {@code <fileId>/<version>}
+     * location. Falls back to a non-atomic move if the underlying file system doesn't support atomic moves.
+     */
+    protected void moveContainerIntoPlace(File tempContainer, File finalContainer) throws IOException {
+        // The temp container lives under the dedicated temp directory, so the final <fileId> parent folder may
+        // not exist yet; create it before moving the container into place.
+        File finalParent = finalContainer.getParentFile();
+        if (finalParent != null && !finalParent.exists()) {
+            finalParent.mkdirs();
+        }
+        try {
+            Files.move(tempContainer.toPath(), finalContainer.toPath(), StandardCopyOption.ATOMIC_MOVE);
+        } catch (AtomicMoveNotSupportedException e) {
+            Files.move(tempContainer.toPath(), finalContainer.toPath());
+        }
+    }
+
+    protected void createMetaFileInContainer(File container, String registryIndex, CachedFileVersion cachedFileVersion) throws FileManagerException {
         FileVersion fileVersion = cachedFileVersion.getFileVersion();
-        File metaFile = getMetaFile(fileVersion.getVersionId());
+        File metaFile = new File(container + "/" + META_FILENAME);
         Properties metaProperties = new Properties();
         metaProperties.setProperty(DIRECTORY_PROPERTY, Boolean.toString(fileVersion.isDirectory()));
         metaProperties.setProperty(CLEANABLE_PROPERTY, Boolean.toString(cachedFileVersion.isCleanable()));
@@ -147,6 +234,11 @@ public class AbstractFileManager {
         } catch (IOException e) {
             throw new FileManagerException(fileVersion.getVersionId(), "Error while writing meta file '" + metaFile + "'", e);
         }
+    }
+
+    protected void createMetaFile(String registryIndex, CachedFileVersion cachedFileVersion) throws FileManagerException {
+        FileVersion fileVersion = cachedFileVersion.getFileVersion();
+        createMetaFileInContainer(getContainerFolder(fileVersion.getVersionId()), registryIndex, cachedFileVersion);
     }
 
     private Properties getMetaProperties(FileVersionId fileVersionId) throws IOException, FileNotFoundException {

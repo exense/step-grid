@@ -39,6 +39,7 @@ import step.grid.bootstrap.BootstrapManager;
 import step.grid.contextbuilder.ApplicationContextBuilder;
 import step.grid.filemanager.FileManagerClient;
 import step.grid.filemanager.FileManagerClientImpl;
+import step.grid.filemanager.FileManagerClientMode;
 import step.grid.filemanager.FileManagerConfiguration;
 import step.grid.threads.NamedThreadFactory;
 import step.grid.tokenpool.Interest;
@@ -146,12 +147,18 @@ public class Agent extends BaseServer implements AutoCloseable {
         String gridUrl = agentConf.getGridHost();
         String fileServerHost = Optional.ofNullable(agentConf.getFileServerHost()).orElse(gridUrl);
 
+        // When the forker is enabled the main agent never executes keywords itself (all token messages run in
+        // forked agents), it only relays files to them:
+        AgentForkerConfiguration agentForkerConfiguration = agentConf.getAgentForker();
+        boolean forkerEnabled = agentForkerConfiguration != null && agentForkerConfiguration.enabled;
+        FileManagerClientMode fileManagerClientMode = forkerEnabled ? FileManagerClientMode.RELAY : FileManagerClientMode.CONSUMER;
+
         registrationClient = new RegistrationClient(gridUrl, fileServerHost,
             agentConf.getGridConnectTimeout(), agentConf.getGridReadTimeout(),
-            agentConf.getGridMaxRetries(), agentConf.getGridRetryDelayMs(), agentConf.getGridSecurity());
+            agentConf.getGridMaxRetries(), agentConf.getGridRetryDelayMs(), agentConf.getGridSecurity(), fileManagerClientMode);
 
 
-        fileManagerClient = initFileManager(registrationClient, agentConf.getWorkingDir(), agentConf.getFileManagerConfiguration());
+        fileManagerClient = initFileManager(registrationClient, agentConf.getWorkingDir(), agentConf.getFileManagerConfiguration(), fileManagerClientMode);
 
         agentTokenServices = new AgentTokenServices(fileManagerClient);
         agentTokenServices.setAgentProperties(agentConf.getProperties());
@@ -171,15 +178,6 @@ public class Agent extends BaseServer implements AutoCloseable {
         logger.info("Starting token executor...");
         executor = Executors.newCachedThreadPool(NamedThreadFactory.create("agent-token-executor"));
 
-        AgentForkerConfiguration agentForkerConfiguration = agentConf.getAgentForker();
-        if (agentForkerConfiguration != null && agentForkerConfiguration.enabled) {
-            logger.info("Agent forker is enabled. All token messages will be executed in forked agent processes.");
-            agentForker = new AgentForker(agentForkerConfiguration, fileServerHost);
-        } else {
-            logger.info("Agent forker is disabled. All token messages will be executed within this JVM.");
-            agentForker = null;
-        }
-
         int serverPort = this.resolveServerPort(agentUrl, agentPort);
 
         logger.info("Starting server...");
@@ -189,6 +187,17 @@ public class Agent extends BaseServer implements AutoCloseable {
         logger.info("Successfully started server on port " + actualServerPort);
 
         this.agentUrl = this.getOrBuildActualUrl(agentHost, agentUrl, actualServerPort, agentConf.isSsl());
+
+        // The agent forker is created after the server has started so that forked agents can be pointed at
+        // this main agent's own URL as their file server: a forked agent never contacts the controller
+        // directly, it downloads its files from its main agent (which caches them once on its behalf).
+        if (forkerEnabled) {
+            logger.info("Agent forker is enabled. All token messages will be executed in forked agent processes.");
+            agentForker = new AgentForker(agentForkerConfiguration, this.agentUrl, agentConf.getGridSecurity());
+        } else {
+            logger.info("Agent forker is disabled. All token messages will be executed within this JVM.");
+            agentForker = null;
+        }
 
         logger.info("Starting grid registration task using grid URL " + gridUrl + "...");
         registrationTask = createGridRegistrationTask(registrationClient);
@@ -302,7 +311,7 @@ public class Agent extends BaseServer implements AutoCloseable {
         return result;
     }
 
-    private FileManagerClient initFileManager(RegistrationClient registrationClient, String workingDir, FileManagerConfiguration fileManagerConfig) throws IOException {
+    private FileManagerClient initFileManager(RegistrationClient registrationClient, String workingDir, FileManagerConfiguration fileManagerConfig, FileManagerClientMode mode) throws IOException {
         String fileManagerDirPath;
         if (workingDir != null) {
             fileManagerDirPath = workingDir;
@@ -314,7 +323,7 @@ public class Agent extends BaseServer implements AutoCloseable {
         if (!fileManagerDir.exists()) {
             Files.createDirectories(fileManagerDir.toPath());
         }
-        return new FileManagerClientImpl(fileManagerDir, registrationClient, fileManagerConfig);
+        return new FileManagerClientImpl(fileManagerDir, registrationClient, fileManagerConfig, mode);
     }
 
     protected String getAgentUrl() {

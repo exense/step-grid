@@ -19,6 +19,7 @@
 package step.grid.proxy.conf;
 
 import step.grid.app.configuration.AppConfiguration;
+import step.grid.filemanager.FileManagerConfiguration;
 import step.grid.security.SymmetricSecurityConfiguration;
 
 public class GridProxyConfiguration extends AppConfiguration {
@@ -35,8 +36,37 @@ public class GridProxyConfiguration extends AppConfiguration {
     private Integer agentReserveTimeout = 3000;
     private Integer agentReleaseTimeout = 3000;
 
+    /**
+     * Working directory of the grid proxy. The proxy creates its {@code filemanager} cache folder underneath it
+     * (i.e. {@code <workingDir>/filemanager}), where it caches the files it downloads from the grid using the same
+     * {@code <cacheRoot>/<fileId>/<version>/} layout as the controller and the agent. Matches the {@code workingDir}
+     * field of the agent configuration.
+     */
+    private String workingDir = "work";
+    /**
+     * Cleanup/TTL configuration of the proxy file cache (cleanup enablement, time-to-live and job
+     * frequency). Mirrors the {@code fileManagerConfiguration} block of the agent configuration.
+     */
+    private FileManagerConfiguration fileManagerConfiguration = new FileManagerConfiguration();
+
     public GridProxyConfiguration() {
         super();
+    }
+
+    public String getWorkingDir() {
+        return workingDir;
+    }
+
+    public void setWorkingDir(String workingDir) {
+        this.workingDir = workingDir;
+    }
+
+    public FileManagerConfiguration getFileManagerConfiguration() {
+        return fileManagerConfiguration;
+    }
+
+    public void setFileManagerConfiguration(FileManagerConfiguration fileManagerConfiguration) {
+        this.fileManagerConfiguration = fileManagerConfiguration;
     }
 
     public String getGridProxyName() {

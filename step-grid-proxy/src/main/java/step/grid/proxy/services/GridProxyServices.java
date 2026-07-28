@@ -62,6 +62,14 @@ public class GridProxyServices extends AbstractGridServices {
     }
 
     @Secured
+    @POST
+    @Path("/grid/token/{id}/maintenance")
+    public void startTokenMaintenance(@PathParam("id") String tokenId) {
+        gridProxy.forwardStartTokenMaintenance(tokenId);
+    }
+
+
+    @Secured
     @GET
     @Path("/grid/file/{id}/{version}")
     public Response getFile(@PathParam("id") String id, @PathParam("version") String version) throws GridProxyException {
