@@ -39,8 +39,10 @@ import step.grid.filemanager.FileVersionProvider;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.SocketTimeoutException;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -170,22 +172,89 @@ public class HttpFileVersionProvider implements FileVersionProvider {
 
                 long t2 = System.currentTimeMillis();
                 File file = resolveWithinContainer(container, filename);
+                // Wrapping the input stream to count bytes reads, used for debug only
+                InputStream actualStream = logger.isDebugEnabled() ? new CountingInputStream(in) : in;
                 if (isDirectory && mode == FileManagerClientMode.CONSUMER) {
-                    FileHelper.unzip(in, file);
+                    // FileHelper.unzip create a ZipInputStream that closes the stream it is given after reading it.
+                    // It stops reading at the central directory and skip the index, thus not fully consuming the stream.
+                    // Not fully consuming the response cause EOF exception upstream, so we must drain the stream.
+                    FileHelper.unzip(new NonClosingInputStream(actualStream), file);
+                    drain(actualStream);
                 } else {
                     // A plain file, or a directory kept archived for a relay cache: store the stream as-is.
                     try (BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(file))) {
-                        FileHelper.copy(in, bos, 2048);
+                        FileHelper.copy(actualStream, bos, 2048);
                     }
                 }
-                if (logger.isDebugEnabled()) {
+                if (logger.isDebugEnabled() && actualStream instanceof CountingInputStream countingInputStream) {
                     logger.debug("Stored file " + fileVersionId + " in " + (System.currentTimeMillis() - t2) + "ms to " + file.getAbsoluteFile());
+                    // Compare with what the upstream reports having written: a shortfall here is an entity which did
+                    // not arrive in full, which the zip formats hide because the tail of an archive is not needed to
+                    // read its entries.
+                    logger.debug("Read {} bytes of file version {} from the response (content-length: {}, transfer-encoding: {}, content-disposition: {})",
+                        countingInputStream.count, fileVersionId, response.getHeaderString("Content-Length"),
+                        response.getHeaderString("Transfer-Encoding"), contentDisposition);
                 }
-
                 return new FileVersion(file, fileVersionId, isDirectory);
             }
         } finally {
             response.close();
+        }
+    }
+
+    /**
+     * Reads whatever is left of the response, so that it is fully consumed before being closed.
+     */
+    private static void drain(InputStream in) throws IOException {
+        long drained = in.transferTo(OutputStream.nullOutputStream());
+        if (drained > 0 && logger.isDebugEnabled()) {
+            logger.debug("Drained the {} trailing bytes of the response", drained);
+        }
+    }
+
+    /**
+     * Counts the bytes read, to be able to state how much of the entity actually arrived.
+     */
+    private static class CountingInputStream extends FilterInputStream {
+
+        private long count;
+
+        CountingInputStream(InputStream in) {
+            super(in);
+        }
+
+        @Override
+        public int read() throws IOException {
+            int read = in.read();
+            if (read >= 0) {
+                count++;
+            }
+            return read;
+        }
+
+        @Override
+        public int read(byte[] b, int off, int len) throws IOException {
+            int read = in.read(b, off, len);
+            if (read > 0) {
+                count += read;
+            }
+            return read;
+        }
+    }
+
+    /**
+     * Hides {@link #close()} from a consumer which closes the stream it is handed. {@link java.util.zip.ZipInputStream}
+     * does, and closing the response entity is precisely what has to be deferred until it has been drained.
+     */
+    private static class NonClosingInputStream extends FilterInputStream {
+
+        NonClosingInputStream(InputStream in) {
+            super(in);
+        }
+
+        @Override
+        public void close() {
+            // The owner of the stream closes it
         }
     }
 
