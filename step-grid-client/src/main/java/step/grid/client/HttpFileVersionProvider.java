@@ -205,10 +205,14 @@ public class HttpFileVersionProvider implements FileVersionProvider {
     /**
      * Reads whatever is left of the response, so that it is fully consumed before being closed.
      */
-    private static void drain(InputStream in) throws IOException {
-        long drained = in.transferTo(OutputStream.nullOutputStream());
-        if (drained > 0 && logger.isDebugEnabled()) {
-            logger.debug("Drained the {} trailing bytes of the response", drained);
+    private static void drain(InputStream in) {
+        try {
+            long drained = in.transferTo(OutputStream.nullOutputStream());
+            if (drained > 0 && logger.isDebugEnabled()) {
+                logger.debug("Drained the {} trailing bytes of the response", drained);
+            }
+        } catch (IOException e) {
+            logger.debug("Failed to drain the remaining bytes of the response", e);
         }
     }
 
@@ -239,6 +243,15 @@ public class HttpFileVersionProvider implements FileVersionProvider {
                 count += read;
             }
             return read;
+        }
+
+        @Override
+        public long skip(long n) throws IOException {
+            long skipped = in.skip(n);
+            if (skipped > 0) {
+                count += skipped;
+            }
+            return skipped;
         }
     }
 
