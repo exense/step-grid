@@ -28,16 +28,34 @@ import step.grid.filemanager.FileVersionId;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Files;
+import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class FileVersionResponseFactoryTest {
 
-    private static byte[] stream(Response response) throws Exception {
+    private static RecordingOutputStream stream(Response response) throws Exception {
         StreamingOutput streamingOutput = (StreamingOutput) response.getEntity();
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        RecordingOutputStream out = new RecordingOutputStream();
         streamingOutput.write(out);
-        return out.toByteArray();
+        return out;
+    }
+
+    /**
+     * Records what the factory does to the stream it is handed. A {@link StreamingOutput} must not close the
+     * response stream: the JAX-RS runtime owns it and closes it once the body has been written.
+     */
+    private static class RecordingOutputStream extends ByteArrayOutputStream {
+
+        private int closeCount;
+
+        @Override
+        public void close() throws IOException {
+            closeCount++;
+            super.close();
+        }
     }
 
     /**
@@ -54,11 +72,12 @@ public class FileVersionResponseFactoryTest {
         Response response = FileVersionResponseFactory.buildFileResponse(fileVersion, fv -> released.incrementAndGet());
         // Not released before the body is streamed
         Assert.assertEquals(0, released.get());
-        byte[] out = stream(response);
+        RecordingOutputStream out = stream(response);
 
-        Assert.assertArrayEquals("hello".getBytes(), out);
+        Assert.assertArrayEquals("hello".getBytes(), out.toByteArray());
         Assert.assertTrue(response.getHeaderString("content-disposition").contains("type = file"));
         Assert.assertEquals(1, released.get());
+        Assert.assertEquals("the response stream must be left open for the JAX-RS runtime", 0, out.closeCount);
     }
 
     /**
@@ -75,11 +94,12 @@ public class FileVersionResponseFactoryTest {
         AtomicInteger released = new AtomicInteger();
 
         Response response = FileVersionResponseFactory.buildFileResponse(fileVersion, fv -> released.incrementAndGet());
-        byte[] out = stream(response);
+        RecordingOutputStream out = stream(response);
 
-        Assert.assertArrayEquals("archived directory must be streamed byte-for-byte", Files.readAllBytes(zip.toPath()), out);
+        Assert.assertArrayEquals("archived directory must be streamed byte-for-byte", Files.readAllBytes(zip.toPath()), out.toByteArray());
         Assert.assertTrue(response.getHeaderString("content-disposition").contains("type = dir"));
         Assert.assertEquals(1, released.get());
+        Assert.assertEquals("the response stream must be left open for the JAX-RS runtime", 0, out.closeCount);
     }
 
     /**
@@ -95,11 +115,20 @@ public class FileVersionResponseFactoryTest {
         AtomicInteger released = new AtomicInteger();
 
         Response response = FileVersionResponseFactory.buildFileResponse(fileVersion, fv -> released.incrementAndGet());
-        byte[] out = stream(response);
+        RecordingOutputStream out = stream(response);
 
         Assert.assertTrue(response.getHeaderString("content-disposition").contains("type = dir"));
         // The exploded directory was zipped on the fly: the output is a zip stream (PK magic), not a raw listing.
-        Assert.assertTrue("expected a zip stream", out.length > 4 && out[0] == 'P' && out[1] == 'K');
+        byte[] bytes = out.toByteArray();
+        Assert.assertTrue("expected a zip stream", bytes.length > 4 && bytes[0] == 'P' && bytes[1] == 'K');
         Assert.assertEquals(1, released.get());
+        // Zipping on the fly must not close the response stream either, even though the ZipOutputStream created
+        // by FileHelper.zip is closed: only its finish() concerns us, the JAX-RS runtime closes the response.
+        Assert.assertEquals("the response stream must be left open for the JAX-RS runtime", 0, out.closeCount);
+        // ... and suppressing that close must not cost us the central directory the finish() writes: the archive
+        // is complete and readable, entries included.
+        File unzipped = FileHelper.createTempFolder();
+        FileHelper.unzip(bytes, unzipped);
+        Assert.assertEquals(Set.of("a.txt", "b.txt"), Set.of(Objects.requireNonNull(unzipped.list())));
     }
 }
