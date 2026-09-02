@@ -55,9 +55,9 @@
     <maven.compiler.release>21</maven.compiler.release>
 
     <!-- internal dependencies -->
-    <dependencies.version>0.0.0-MASTER-SNAPSHOT</dependencies.version>
-    <exense-commons.version>0.0.0-MASTER-SNAPSHOT</exense-commons.version>
-    <step-api.version>0.0.0-MASTER-SNAPSHOT</step-api.version>
+    <dependencies.version>0.0.0-SED-4915-SNAPSHOT</dependencies.version>
+    <exense-commons.version>0.0.0-SED-4915-SNAPSHOT</exense-commons.version>
+    <step-api.version>0.0.0-SED-4915-SNAPSHOT</step-api.version>
 
   </properties>
 
@@ -280,6 +280,13 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-enforcer-plugin</artifactId>
+        <dependencies>
+          <dependency>
+            <groupId>org.codehaus.mojo</groupId>
+            <artifactId>extra-enforcer-rules</artifactId>
+            <version>1.9.0</version>
+          </dependency>
+        </dependencies>
         <executions>
           <execution>
             <id>enforce-policies</id>
@@ -289,6 +296,10 @@
             <configuration>
               <rules>
                 <requireUpperBoundDeps/>
+                <banDuplicateClasses>
+                  <findAllDuplicates>true</findAllDuplicates>
+                  <ignoreWhenIdentical>true</ignoreWhenIdentical>
+                </banDuplicateClasses>
               </rules>
               <fail>true</fail>
             </configuration>
