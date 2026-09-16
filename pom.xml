@@ -55,9 +55,9 @@
     <maven.compiler.release>21</maven.compiler.release>
 
     <!-- internal dependencies -->
-    <dependencies.version>2026.8.20</dependencies.version>
-    <exense-commons.version>2.2.3</exense-commons.version>
-    <step-api.version>1.6.3</step-api.version>
+    <dependencies.version>2026.9.16</dependencies.version>
+    <exense-commons.version>0.0.0-STEP-30-SNAPSHOT</exense-commons.version>
+    <step-api.version>0.0.0-STEP-30-SNAPSHOT</step-api.version>
 
   </properties>
 
@@ -127,14 +127,6 @@
       <dependency>
         <groupId>ch.exense.dependencies</groupId>
         <artifactId>dependencies-jakarta</artifactId>
-        <version>${dependencies.version}</version>
-        <type>pom</type>
-        <scope>import</scope>
-      </dependency>
-
-      <dependency>
-        <groupId>ch.exense.dependencies</groupId>
-        <artifactId>dependencies-jetty</artifactId>
         <version>${dependencies.version}</version>
         <type>pom</type>
         <scope>import</scope>
