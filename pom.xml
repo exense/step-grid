@@ -134,14 +134,6 @@
 
       <dependency>
         <groupId>ch.exense.dependencies</groupId>
-        <artifactId>dependencies-jetty</artifactId>
-        <version>${dependencies.version}</version>
-        <type>pom</type>
-        <scope>import</scope>
-      </dependency>
-
-      <dependency>
-        <groupId>ch.exense.dependencies</groupId>
         <artifactId>dependencies-mockito</artifactId>
         <version>${dependencies.version}</version>
         <type>pom</type>
