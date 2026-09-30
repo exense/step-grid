@@ -20,10 +20,14 @@ package step.grid;
 
 import io.swagger.v3.oas.annotations.Hidden;
 import jakarta.inject.Inject;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.ws.rs.*;
+import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.StreamingOutput;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
 import org.glassfish.jersey.media.multipart.FormDataParam;
 import step.grid.agent.RegistrationMessage;
@@ -43,11 +47,16 @@ import java.util.concurrent.TimeoutException;
 @Hidden
 public class GridServices {
 
+    private static final Logger logger = LoggerFactory.getLogger(GridServices.class);
+
     @Inject
     GridImpl grid;
 
     @Inject
     FileManager fileManager;
+
+    @Context
+    private HttpServletRequest httpRequest;
 
     @Secured
     @POST
@@ -62,8 +71,13 @@ public class GridServices {
     @Path("/file/{id}/{version}")
     public Response getFile(@PathParam("id") String id, @PathParam("version") String version) throws IOException, FileManagerException {
         FileVersionId versionId = new FileVersionId(id, version);
+        logger.debug("Serving file version {} to {}", versionId, remoteAddress());
         FileVersion fileVersion = fileManager.getFileVersion(versionId);
         return FileVersionResponseFactory.buildFileResponse(fileVersion, fileManager::releaseFileVersion);
+    }
+
+    private String remoteAddress() {
+        return httpRequest != null ? httpRequest.getRemoteAddr() + ":" + httpRequest.getRemotePort() : "an unknown client";
     }
 
     @Secured

@@ -22,11 +22,16 @@ import ch.exense.commons.io.FileHelper;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.StreamingOutput;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import step.grid.filemanager.FileVersion;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FilterOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.function.Consumer;
 
 /**
@@ -50,7 +55,50 @@ import java.util.function.Consumer;
  */
 public class FileVersionResponseFactory {
 
+    private static final Logger logger = LoggerFactory.getLogger(FileVersionResponseFactory.class);
+
     private FileVersionResponseFactory() {
+    }
+
+    /**
+     * Counts what was written, so that a failed transfer can be reported with the point it reached. Only the
+     * methods {@link FileHelper} writes through need to be counted.
+     * <p>
+     * This is a non-owning decorator: {@link #close()} flushes but never closes the stream it wraps. The response
+     * stream belongs to the JAX-RS runtime, which closes it once the body has been written, so a
+     * {@link StreamingOutput} must leave it open. Suppressing the close is not merely defensive: {@code FileHelper.zip}
+     * closes the {@link java.util.zip.ZipOutputStream} it creates, which cascades into closing whatever it was
+     * given - so before this suppression the response stream was closed here, but only on the zip-on-the-fly path,
+     * which made the two paths of {@link #buildFileResponse} behave differently for no reason.
+     */
+    private static class NonClosingCountingOutputStream extends FilterOutputStream {
+
+        private long count;
+
+        NonClosingCountingOutputStream(OutputStream out) {
+            super(out);
+        }
+
+        @Override
+        public void write(int b) throws IOException {
+            out.write(b);
+            count++;
+        }
+
+        @Override
+        public void write(byte[] b, int off, int len) throws IOException {
+            out.write(b, off, len);
+            count += len;
+        }
+
+        /**
+         * Flushes what the writer may still be holding, but leaves the wrapped stream open - see the class javadoc.
+         * This deliberately does not call {@code super.close()}, which would close it.
+         */
+        @Override
+        public void close() throws IOException {
+            flush();
+        }
     }
 
     /**
@@ -67,20 +115,29 @@ public class FileVersionResponseFactory {
         // archived (a single zip file) and plain files are streamed as-is.
         boolean zipOnTheFly = isDirectory && file.isDirectory();
         StreamingOutput fileStream = output -> {
-            try {
+            // Closing the counting stream flushes it without closing the response stream, which stays the
+            // JAX-RS runtime's to close.
+            NonClosingCountingOutputStream countingOutput = new NonClosingCountingOutputStream(output);
+            try (countingOutput) {
                 if (zipOnTheFly) {
-                    FileHelper.zip(file, output);
+                    FileHelper.zip(file, countingOutput);
                 } else {
                     try (InputStream inputStream = new FileInputStream(file)) {
-                        FileHelper.copy(inputStream, output, 2048);
+                        FileHelper.copy(inputStream, countingOutput, 2048);
                     }
                 }
-                output.flush();
+            } catch (IOException e) {
+                logger.warn("Transfer of file version {} failed after {} of {} bytes", fileVersion.getVersionId(),
+                    countingOutput.count, zipOnTheFly ? "an unknown number" : String.valueOf(file.length()), e);
+                throw e;
             } finally {
                 // Release the usage lock only once the file has been fully streamed (or the transfer failed),
                 // so the version stays protected from eviction for the entire duration of the transfer.
                 releaser.accept(fileVersion);
             }
+            // Logged once the counting stream has been closed, i.e. flushed: everything counted here did reach
+            // the response stream.
+            logger.debug("Streamed {} bytes of file version {}", countingOutput.count, fileVersion.getVersionId());
         };
         return Response.ok(fileStream, MediaType.APPLICATION_OCTET_STREAM)
             .header("content-disposition", "attachment; filename = " + file.getName() + "; type = " + (isDirectory ? "dir" : "file"))

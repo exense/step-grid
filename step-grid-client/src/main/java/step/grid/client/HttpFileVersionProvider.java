@@ -39,8 +39,10 @@ import step.grid.filemanager.FileVersionProvider;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.SocketTimeoutException;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -170,22 +172,100 @@ public class HttpFileVersionProvider implements FileVersionProvider {
 
                 long t2 = System.currentTimeMillis();
                 File file = resolveWithinContainer(container, filename);
-                if (isDirectory && mode == FileManagerClientMode.CONSUMER) {
-                    FileHelper.unzip(in, file);
-                } else {
-                    // A plain file, or a directory kept archived for a relay cache: store the stream as-is.
-                    try (BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(file))) {
-                        FileHelper.copy(in, bos, 2048);
+                // Shields the entity stream from the consumers below, which close what they are handed, and counts
+                // what is read on the way. Closing it here closes nothing: the entity stream is closed above.
+                try (NonClosingCountingInputStream actualStream = new NonClosingCountingInputStream(in)) {
+                    if (isDirectory && mode == FileManagerClientMode.CONSUMER) {
+                        // FileHelper.unzip create a ZipInputStream that closes the stream it is given after reading it.
+                        // It stops reading at the central directory and skip the index, thus not fully consuming the stream.
+                        // Not fully consuming the response cause EOF exception upstream, so we must drain the stream.
+                        FileHelper.unzip(actualStream, file);
+                        drain(actualStream);
+                    } else {
+                        // A plain file, or a directory kept archived for a relay cache: store the stream as-is.
+                        try (BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(file))) {
+                            FileHelper.copy(actualStream, bos, 2048);
+                        }
+                    }
+                    if (logger.isDebugEnabled()) {
+                        logger.debug("Stored file " + fileVersionId + " in " + (System.currentTimeMillis() - t2) + "ms to " + file.getAbsoluteFile());
+                        // Compare with what the upstream reports having written: a shortfall here is an entity which did
+                        // not arrive in full, which the zip formats hide because the tail of an archive is not needed to
+                        // read its entries.
+                        logger.debug("Read {} bytes of file version {} from the response (content-length: {}, transfer-encoding: {}, content-disposition: {})",
+                            actualStream.count, fileVersionId, response.getHeaderString("Content-Length"),
+                            response.getHeaderString("Transfer-Encoding"), contentDisposition);
                     }
                 }
-                if (logger.isDebugEnabled()) {
-                    logger.debug("Stored file " + fileVersionId + " in " + (System.currentTimeMillis() - t2) + "ms to " + file.getAbsoluteFile());
-                }
-
                 return new FileVersion(file, fileVersionId, isDirectory);
             }
         } finally {
             response.close();
+        }
+    }
+
+    /**
+     * Reads whatever is left of the response, so that it is fully consumed before being closed.
+     */
+    private static void drain(InputStream in) {
+        try {
+            long drained = in.transferTo(OutputStream.nullOutputStream());
+            if (drained > 0 && logger.isDebugEnabled()) {
+                logger.debug("Drained the {} trailing bytes of the response", drained);
+            }
+        } catch (IOException e) {
+            logger.debug("Failed to drain the remaining bytes of the response", e);
+        }
+    }
+
+    /**
+     * Counts the bytes read, to be able to state how much of the entity actually arrived.
+     * <p>
+     * This is a non-owning decorator: {@link #close()} does nothing, and in particular never closes the response
+     * entity stream it wraps, which is closed by its owner once the download is over. Hiding the close is what
+     * makes it safe to hand the entity stream to a consumer that closes what it is given - {@link java.util.zip.ZipInputStream}
+     * does - when closing it is precisely what has to be deferred until the entity has been drained.
+     */
+    private static class NonClosingCountingInputStream extends FilterInputStream {
+
+        private long count;
+
+        NonClosingCountingInputStream(InputStream in) {
+            super(in);
+        }
+
+        /**
+         * Does nothing: the wrapped stream is closed by its owner, see the class javadoc.
+         */
+        @Override
+        public void close() {
+        }
+
+        @Override
+        public int read() throws IOException {
+            int read = in.read();
+            if (read >= 0) {
+                count++;
+            }
+            return read;
+        }
+
+        @Override
+        public int read(byte[] b, int off, int len) throws IOException {
+            int read = in.read(b, off, len);
+            if (read > 0) {
+                count += read;
+            }
+            return read;
+        }
+
+        @Override
+        public long skip(long n) throws IOException {
+            long skipped = in.skip(n);
+            if (skipped > 0) {
+                count += skipped;
+            }
+            return skipped;
         }
     }
 
