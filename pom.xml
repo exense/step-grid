@@ -42,11 +42,10 @@
     <repository>
       <id>nexus-staging</id>
       <url>https://nexus-enterprise-staging.stepcloud-test.ch/repository/staging-maven/</url>
-    </repository>
-    <!-- private nexus -->
-    <repository>
-      <id>nexus-exense</id>
-      <url>https://nexus-enterprise.exense.ch/repository/exense/</url>
+      <snapshots>
+        <enabled>true</enabled>
+        <updatePolicy>always</updatePolicy>
+      </snapshots>
     </repository>
   </repositories>
 
@@ -55,9 +54,9 @@
     <maven.compiler.release>21</maven.compiler.release>
 
     <!-- internal dependencies -->
-    <dependencies.version>0.0.0-MASTER-SNAPSHOT</dependencies.version>
-    <exense-commons.version>0.0.0-MASTER-SNAPSHOT</exense-commons.version>
-    <step-api.version>0.0.0-MASTER-SNAPSHOT</step-api.version>
+    <dependencies.version>0.0.0-SED-4967-SNAPSHOT</dependencies.version>
+    <exense-commons.version>0.0.0-SED-4967-SNAPSHOT</exense-commons.version>
+    <step-api.version>0.0.0-SED-4967-SNAPSHOT</step-api.version>
 
   </properties>
 
