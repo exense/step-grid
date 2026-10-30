@@ -54,7 +54,7 @@
     <maven.compiler.release>21</maven.compiler.release>
 
     <!-- internal dependencies -->
-    <dependencies.version>0.0.0-MASTER-SNAPSHOT</dependencies.version>
+    <dependencies.version>0.0.0-SED-5000-SNAPSHOT</dependencies.version>
     <exense-commons.version>0.0.0-MASTER-SNAPSHOT</exense-commons.version>
     <step-api.version>0.0.0-MASTER-SNAPSHOT</step-api.version>
 
