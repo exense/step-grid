@@ -10,7 +10,7 @@
     },
     {
       "NAME": "PRODUCTION",
-      "URL": "sonatype::https://unused",
+      "URL": "nexus-exense-oss::https://nexus-enterprise.exense.ch/repository/maven-oss/",
       "CONFIG": "SignedBuild"
     }
   ]
