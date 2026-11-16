@@ -24,15 +24,36 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 
 import java.io.File;
 import java.nio.file.Files;
+import java.util.Objects;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * Parses a YAML or JSON configuration file. The placeholders of the file are replaced by the startup argument of the
+ * same name (case-insensitive) or, if no argument defines them, by the environment variable of the same name
+ * (case-sensitive).
+ */
 public class ConfigurationParser<T extends AppConfiguration> {
 
     private static final String JSON = "json";
     private static final String YAML = "yaml";
+    private static final Pattern PLACEHOLDER_PATTERN = Pattern.compile("\\$\\{(.+?)\\}");
+
+    private final Function<String, String> environmentVariables;
+
+    public ConfigurationParser() {
+        this(System::getenv);
+    }
+
+    ConfigurationParser(Function<String, String> environmentVariables) {
+        this.environmentVariables = environmentVariables;
+    }
 
     public T parse(ArgumentParser arguments, File file, Class<T> clazz) throws Exception {
+        Objects.requireNonNull(arguments, "The arguments must not be null");
+        Objects.requireNonNull(file, "The configuration file must not be null");
+        Objects.requireNonNull(clazz, "The configuration class must not be null");
         byte[] bytes = Files.readAllBytes(file.toPath());
 
         String content = new String(bytes);
@@ -52,16 +73,25 @@ public class ConfigurationParser<T extends AppConfiguration> {
         return mapper.readValue(resolvedContent, clazz);
     }
 
-    private String replacePlaceholders(ArgumentParser arguments, String configXml) {
-        StringBuffer sb = new StringBuffer();
-        Matcher m = Pattern.compile("\\$\\{(.+?)\\}").matcher(configXml);
+    private String replacePlaceholders(ArgumentParser arguments, String content) {
+        StringBuilder sb = new StringBuilder();
+        Matcher m = PLACEHOLDER_PATTERN.matcher(content);
         while (m.find()) {
-            String key = m.group(1);
-            String replacement = arguments.getOption(key);
-            m.appendReplacement(sb, replacement);
+            m.appendReplacement(sb, Matcher.quoteReplacement(getPlaceholderValue(arguments, m.group(1))));
         }
         m.appendTail(sb);
         return sb.toString();
+    }
+
+    private String getPlaceholderValue(ArgumentParser arguments, String key) {
+        String value = arguments.getOption(key);
+        if (value == null) {
+            value = environmentVariables.apply(key);
+        }
+        if (value == null) {
+            throw new IllegalArgumentException("Missing placeholder '" + key + "': not defined as argument nor as environment variable.");
+        }
+        return value;
     }
 
 }
