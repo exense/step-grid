@@ -62,7 +62,7 @@
 
     <!-- internal dependencies -->
     <dependencies.version>2026.10.19</dependencies.version>
-    <exense-commons.version>0.0.0-SED-1781-SNAPSHOT</exense-commons.version>
+    <exense-commons.version>0.0.0-MASTER-SNAPSHOT</exense-commons.version>
     <step-api.version>1.7.0</step-api.version>
 
   </properties>
